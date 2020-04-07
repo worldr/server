@@ -638,6 +638,31 @@ func (_m *API) GetChannelByNameForTeamName(teamName string, channelName string, 
 	return r0, r1
 }
 
+// GetChannelCategories provides a mock function with given fields: userId
+func (_m *API) GetChannelCategories(userId string) (*model.ChannelCategoriesList, *model.AppError) {
+	ret := _m.Called(userId)
+
+	var r0 *model.ChannelCategoriesList
+	if rf, ok := ret.Get(0).(func(string) *model.ChannelCategoriesList); ok {
+		r0 = rf(userId)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*model.ChannelCategoriesList)
+		}
+	}
+
+	var r1 *model.AppError
+	if rf, ok := ret.Get(1).(func(string) *model.AppError); ok {
+		r1 = rf(userId)
+	} else {
+		if ret.Get(1) != nil {
+			r1 = ret.Get(1).(*model.AppError)
+		}
+	}
+
+	return r0, r1
+}
+
 // GetChannelMember provides a mock function with given fields: channelId, userId
 func (_m *API) GetChannelMember(channelId string, userId string) (*model.ChannelMember, *model.AppError) {
 	ret := _m.Called(channelId, userId)

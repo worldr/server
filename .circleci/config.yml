@@ -1,5 +1,6 @@
 version: 2.1
-
+# We cannot use the API to start jobs.
+# See: https://circleci.com/docs/2.0/api-job-trigger/
 orbs:
   aws-s3: circleci/aws-s3@1.0.11
 
@@ -99,9 +100,9 @@ jobs:
           path: ~/mattermost/mattermost-server/dist/mattermost-team-linux-amd64.tar.gz
       # We only need linux build, the rest is irrelevant for now.
       #- store_artifacts:
-          #path: ~/mattermost/mattermost-server/dist/mattermost-team-osx-amd64.tar.gz
+      #path: ~/mattermost/mattermost-server/dist/mattermost-team-osx-amd64.tar.gz
       #- store_artifacts:
-          #path: ~/mattermost/mattermost-server/dist/mattermost-team-windows-amd64.zip
+      #path: ~/mattermost/mattermost-server/dist/mattermost-team-windows-amd64.zip
       - persist_to_workspace:
           root: ~/mattermost
           paths:
@@ -215,7 +216,7 @@ jobs:
             echo "Creating databases"
             docker-compose --no-ansi exec -T postgres sh -c 'exec echo "CREATE DATABASE migrated; CREATE DATABASE latest;" | exec psql -U mmuser mattermost_test'
             echo "Importing postgres dump from version 5.0"
-            docker-compose --no-ansi exec -T postgres psql -U mmuser -d migrated < ../scripts/mattermost-postgresql-5.0.sql
+            docker-compose --no-ansi exec -T postgres psql -U mmuser -d migrated < ../scripts/worldr-postgresql-1.0.sql
             docker run -it --net circleci_mm-test \
               --env CI_INBUCKET_HOST=inbucket \
               --env CI_MINIO_HOST=minio \
@@ -270,72 +271,68 @@ jobs:
       #         -w /mattermost/mattermost-server \
       #         mattermost/mattermost-build-server:oct-18-2019 \
       #         bash -c 'ulimit -n 8096; make ARGS="version" run-cli && make MM_SQLSETTINGS_DATASOURCE="mmuser:mostest@tcp(mysql:3306)/latest?charset=utf8mb4,utf8&readTimeout=30s&writeTimeout=30s" ARGS="version" run-cli'
-
       #       echo "Ignoring known MySQL mismatch: ChannelMembers.SchemeGuest"
       #       docker-compose --no-ansi exec -T mysql mysql -D migrated -uroot -pmostest -e "ALTER TABLE ChannelMembers DROP COLUMN SchemeGuest;"
       #       docker-compose --no-ansi exec -T mysql mysql -D latest -uroot -pmostest -e "ALTER TABLE ChannelMembers DROP COLUMN SchemeGuest;"
-
       #       echo "Generating dump"
       #       docker-compose --no-ansi exec -T mysql mysqldump --skip-opt --no-data --compact -u root -pmostest migrated > migrated.sql
       #       docker-compose --no-ansi exec -T mysql mysqldump --skip-opt --no-data --compact -u root -pmostest latest > latest.sql
-
       #       echo "Removing databases created for db comparison"
       #       docker-compose --no-ansi exec -T mysql mysql -uroot -pmostest -e 'DROP DATABASE migrated; DROP DATABASE latest'
-
       #       echo "Generating diff"
       #       diff migrated.sql latest.sql > diff.txt && echo "Both schemas are same" || (echo "Schema mismatch" && cat diff.txt && exit 1)
       #     no_output_timeout: 1h
 
-# These are not needed as of now but might be in the future.
-#  upload-s3-sha:
-#    docker:
-#      - image: 'circleci/python:2.7'
-#    working_directory: ~/mattermost/enterprise
-#    steps:
-#      - attach_workspace:
-#          at: ~/mattermost/
-#      - run:
-#          command: |
-#            cd ~/mattermost/mattermost-server/dist/
-#            rm -rf mattermost
-#      - aws-s3/copy:
-#          from: ~/mattermost/mattermost-server/dist/
-#          to: "s3://pr-builds.mattermost.com/mattermost-server/commit/${CIRCLE_SHA1}/"
-#          arguments: --acl public-read --cache-control "no-cache" --recursive
-#
-#  upload-s3:
-#    docker:
-#    - image: 'circleci/python:2.7'
-#    working_directory: ~/mattermost/enterprise
-#    steps:
-#      - attach_workspace:
-#          at: ~/mattermost/
-#      - run:
-#          command: |
-#            cd ~/mattermost/mattermost-server/dist/
-#            rm -rf mattermost
-#      - aws-s3/copy:
-#          from: ~/mattermost/mattermost-server/dist/
-#          to: s3://pr-builds.mattermost.com/mattermost-server/$(echo "${CIRCLE_BRANCH}" | sed 's/pull\//PR-/g')/
-#          arguments: --acl public-read --cache-control "no-cache" --recursive
-#
-#  build-docker:
-#    working_directory: ~/
-#    docker:
-#      - image: circleci/buildpack-deps:stretch
-#    resource_class: "medium"
-#    steps:
-#      - attach_workspace:
-#          at: .
-#      - setup_remote_docker
-#      - run:
-#          command: |
-#            export TAG="${CIRCLE_SHA1:0:7}"
-#            cd mattermost-server
-#            export MM_PACKAGE=https://pr-builds.mattermost.com/mattermost-server/commit/${CIRCLE_SHA1}/mattermost-team-linux-amd64.tar.gz
-#            docker build --build-arg MM_PACKAGE=$MM_PACKAGE -t mattermost/mattermost-team-edition:${TAG} build
-#            echo $DOCKER_PASSWORD | docker login --username $DOCKER_USERNAME --password-stdin
-#            docker push mattermost/mattermost-team-edition:${TAG}
+  # These are not needed as of now but might be in the future.
+  #  upload-s3-sha:
+  #    docker:
+  #      - image: 'circleci/python:2.7'
+  #    working_directory: ~/mattermost/enterprise
+  #    steps:
+  #      - attach_workspace:
+  #          at: ~/mattermost/
+  #      - run:
+  #          command: |
+  #            cd ~/mattermost/mattermost-server/dist/
+  #            rm -rf mattermost
+  #      - aws-s3/copy:
+  #          from: ~/mattermost/mattermost-server/dist/
+  #          to: "s3://pr-builds.mattermost.com/mattermost-server/commit/${CIRCLE_SHA1}/"
+  #          arguments: --acl public-read --cache-control "no-cache" --recursive
+  #
+  #  upload-s3:
+  #    docker:
+  #    - image: 'circleci/python:2.7'
+  #    working_directory: ~/mattermost/enterprise
+  #    steps:
+  #      - attach_workspace:
+  #          at: ~/mattermost/
+  #      - run:
+  #          command: |
+  #            cd ~/mattermost/mattermost-server/dist/
+  #            rm -rf mattermost
+  #      - aws-s3/copy:
+  #          from: ~/mattermost/mattermost-server/dist/
+  #          to: s3://pr-builds.mattermost.com/mattermost-server/$(echo "${CIRCLE_BRANCH}" | sed 's/pull\//PR-/g')/
+  #          arguments: --acl public-read --cache-control "no-cache" --recursive
+  #
+  #  build-docker:
+  #    working_directory: ~/
+  #    docker:
+  #      - image: circleci/buildpack-deps:stretch
+  #    resource_class: "medium"
+  #    steps:
+  #      - attach_workspace:
+  #          at: .
+  #      - setup_remote_docker
+  #      - run:
+  #          command: |
+  #            export TAG="${CIRCLE_SHA1:0:7}"
+  #            cd mattermost-server
+  #            export MM_PACKAGE=https://pr-builds.mattermost.com/mattermost-server/commit/${CIRCLE_SHA1}/mattermost-team-linux-amd64.tar.gz
+  #            docker build --build-arg MM_PACKAGE=$MM_PACKAGE -t mattermost/mattermost-team-edition:${TAG} build
+  #            echo $DOCKER_PASSWORD | docker login --username $DOCKER_USERNAME --password-stdin
+  #            docker push mattermost/mattermost-team-edition:${TAG}
 
   trigger-ee-tests:
     machine: true
@@ -357,9 +354,9 @@ workflows:
       - setup:
           filters:
             branches:
-                ignore:
-                  - master
-                  - /^release-.*/
+              ignore:
+                - master
+                - /^release-.*/
       # - check-i18n:
       #     requires:
       #       - setup

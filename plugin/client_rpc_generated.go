@@ -4342,3 +4342,32 @@ func (s *apiRPCServer) DeleteBotIconImage(args *Z_DeleteBotIconImageArgs, return
 	}
 	return nil
 }
+
+type Z_GetChannelCategoriesArgs struct {
+	A string
+}
+
+type Z_GetChannelCategoriesReturns struct {
+	A *model.ChannelCategoriesList
+	B *model.AppError
+}
+
+func (g *apiRPCClient) GetChannelCategories(userId string) (*model.ChannelCategoriesList, *model.AppError) {
+	_args := &Z_GetChannelCategoriesArgs{userId}
+	_returns := &Z_GetChannelCategoriesReturns{}
+	if err := g.client.Call("Plugin.GetChannelCategories", _args, _returns); err != nil {
+		log.Printf("RPC call to GetChannelCategories API failed: %s", err.Error())
+	}
+	return _returns.A, _returns.B
+}
+
+func (s *apiRPCServer) GetChannelCategories(args *Z_GetChannelCategoriesArgs, returns *Z_GetChannelCategoriesReturns) error {
+	if hook, ok := s.impl.(interface {
+		GetChannelCategories(userId string) (*model.ChannelCategoriesList, *model.AppError)
+	}); ok {
+		returns.A, returns.B = hook.GetChannelCategories(args.A)
+	} else {
+		return encodableError(fmt.Errorf("API GetChannelCategories called but not implemented."))
+	}
+	return nil
+}

@@ -15,6 +15,8 @@ import (
 )
 
 func (api *API) InitChannel() {
+	api.BaseRoutes.Worldr.Handle("/categories", api.ApiSessionRequired(getChannelsCategories)).Methods("GET")
+
 	api.BaseRoutes.Channels.Handle("", api.ApiSessionRequired(getAllChannels)).Methods("GET")
 	api.BaseRoutes.Channels.Handle("", api.ApiSessionRequired(createChannel)).Methods("POST")
 	api.BaseRoutes.Channels.Handle("/direct", api.ApiSessionRequired(createDirectChannel)).Methods("POST")
@@ -62,6 +64,16 @@ func (api *API) InitChannel() {
 
 	api.BaseRoutes.ChannelModerations.Handle("", api.ApiSessionRequired(getChannelModerations)).Methods("GET")
 	api.BaseRoutes.ChannelModerations.Handle("/patch", api.ApiSessionRequired(patchChannelModerations)).Methods("PUT")
+}
+
+func getChannelsCategories(c *Context, w http.ResponseWriter, r *http.Request) {
+	uid := c.App.Session().UserId
+	cats, err := c.App.GetChannelsCategories(uid)
+	if err != nil {
+		c.Err = err
+		return
+	}
+	w.Write([]byte(cats.ChannelCategoriesListToJson()))
 }
 
 func createChannel(c *Context, w http.ResponseWriter, r *http.Request) {

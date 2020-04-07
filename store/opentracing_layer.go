@@ -20,6 +20,7 @@ type OpenTracingLayer struct {
 	AuditStore                AuditStore
 	BotStore                  BotStore
 	ChannelStore              ChannelStore
+	ChannelCategoryStore      ChannelCategoryStore
 	ChannelMemberHistoryStore ChannelMemberHistoryStore
 	ClusterDiscoveryStore     ClusterDiscoveryStore
 	CommandStore              CommandStore
@@ -60,6 +61,10 @@ func (s *OpenTracingLayer) Bot() BotStore {
 
 func (s *OpenTracingLayer) Channel() ChannelStore {
 	return s.ChannelStore
+}
+
+func (s *OpenTracingLayer) ChannelCategory() ChannelCategoryStore {
+	return s.ChannelCategoryStore
 }
 
 func (s *OpenTracingLayer) ChannelMemberHistory() ChannelMemberHistoryStore {
@@ -186,6 +191,11 @@ type OpenTracingLayerBotStore struct {
 
 type OpenTracingLayerChannelStore struct {
 	ChannelStore
+	Root *OpenTracingLayer
+}
+
+type OpenTracingLayerChannelCategoryStore struct {
+	ChannelCategoryStore
 	Root *OpenTracingLayer
 }
 
@@ -1904,6 +1914,78 @@ func (s *OpenTracingLayerChannelStore) UserBelongsToChannels(userId string, chan
 
 	defer span.Finish()
 	resultVar0, resultVar1 := s.ChannelStore.UserBelongsToChannels(userId, channelIds)
+	if resultVar1 != nil {
+		span.LogFields(spanlog.Error(resultVar1))
+		ext.Error.Set(span, true)
+	}
+
+	return resultVar0, resultVar1
+}
+
+func (s *OpenTracingLayerChannelCategoryStore) Delete(userId string, catId int32) *model.AppError {
+	origCtx := s.Root.Store.Context()
+	span, newCtx := tracing.StartSpanWithParentByContext(s.Root.Store.Context(), "ChannelCategoryStore.Delete")
+	s.Root.Store.SetContext(newCtx)
+	defer func() {
+		s.Root.Store.SetContext(origCtx)
+	}()
+
+	defer span.Finish()
+	resultVar0 := s.ChannelCategoryStore.Delete(userId, catId)
+	if resultVar0 != nil {
+		span.LogFields(spanlog.Error(resultVar0))
+		ext.Error.Set(span, true)
+	}
+
+	return resultVar0
+}
+
+func (s *OpenTracingLayerChannelCategoryStore) Get(catId int32) (*model.ChannelCategory, *model.AppError) {
+	origCtx := s.Root.Store.Context()
+	span, newCtx := tracing.StartSpanWithParentByContext(s.Root.Store.Context(), "ChannelCategoryStore.Get")
+	s.Root.Store.SetContext(newCtx)
+	defer func() {
+		s.Root.Store.SetContext(origCtx)
+	}()
+
+	defer span.Finish()
+	resultVar0, resultVar1 := s.ChannelCategoryStore.Get(catId)
+	if resultVar1 != nil {
+		span.LogFields(spanlog.Error(resultVar1))
+		ext.Error.Set(span, true)
+	}
+
+	return resultVar0, resultVar1
+}
+
+func (s *OpenTracingLayerChannelCategoryStore) GetForUser(userId string) (*model.ChannelCategoriesList, *model.AppError) {
+	origCtx := s.Root.Store.Context()
+	span, newCtx := tracing.StartSpanWithParentByContext(s.Root.Store.Context(), "ChannelCategoryStore.GetForUser")
+	s.Root.Store.SetContext(newCtx)
+	defer func() {
+		s.Root.Store.SetContext(origCtx)
+	}()
+
+	defer span.Finish()
+	resultVar0, resultVar1 := s.ChannelCategoryStore.GetForUser(userId)
+	if resultVar1 != nil {
+		span.LogFields(spanlog.Error(resultVar1))
+		ext.Error.Set(span, true)
+	}
+
+	return resultVar0, resultVar1
+}
+
+func (s *OpenTracingLayerChannelCategoryStore) SaveOrUpdate(cat *model.ChannelCategory) (*model.ChannelCategory, *model.AppError) {
+	origCtx := s.Root.Store.Context()
+	span, newCtx := tracing.StartSpanWithParentByContext(s.Root.Store.Context(), "ChannelCategoryStore.SaveOrUpdate")
+	s.Root.Store.SetContext(newCtx)
+	defer func() {
+		s.Root.Store.SetContext(origCtx)
+	}()
+
+	defer span.Finish()
+	resultVar0, resultVar1 := s.ChannelCategoryStore.SaveOrUpdate(cat)
 	if resultVar1 != nil {
 		span.LogFields(spanlog.Error(resultVar1))
 		ext.Error.Set(span, true)
@@ -4783,6 +4865,24 @@ func (s *OpenTracingLayerPostStore) Overwrite(post *model.Post) (*model.Post, *m
 	return resultVar0, resultVar1
 }
 
+func (s *OpenTracingLayerPostStore) OverwriteMultiple(posts []*model.Post) ([]*model.Post, *model.AppError) {
+	origCtx := s.Root.Store.Context()
+	span, newCtx := tracing.StartSpanWithParentByContext(s.Root.Store.Context(), "PostStore.OverwriteMultiple")
+	s.Root.Store.SetContext(newCtx)
+	defer func() {
+		s.Root.Store.SetContext(origCtx)
+	}()
+
+	defer span.Finish()
+	resultVar0, resultVar1 := s.PostStore.OverwriteMultiple(posts)
+	if resultVar1 != nil {
+		span.LogFields(spanlog.Error(resultVar1))
+		ext.Error.Set(span, true)
+	}
+
+	return resultVar0, resultVar1
+}
+
 func (s *OpenTracingLayerPostStore) PermanentDeleteBatch(endTime int64, limit int64) (int64, *model.AppError) {
 	origCtx := s.Root.Store.Context()
 	span, newCtx := tracing.StartSpanWithParentByContext(s.Root.Store.Context(), "PostStore.PermanentDeleteBatch")
@@ -4847,6 +4947,24 @@ func (s *OpenTracingLayerPostStore) Save(post *model.Post) (*model.Post, *model.
 
 	defer span.Finish()
 	resultVar0, resultVar1 := s.PostStore.Save(post)
+	if resultVar1 != nil {
+		span.LogFields(spanlog.Error(resultVar1))
+		ext.Error.Set(span, true)
+	}
+
+	return resultVar0, resultVar1
+}
+
+func (s *OpenTracingLayerPostStore) SaveMultiple(posts []*model.Post) ([]*model.Post, *model.AppError) {
+	origCtx := s.Root.Store.Context()
+	span, newCtx := tracing.StartSpanWithParentByContext(s.Root.Store.Context(), "PostStore.SaveMultiple")
+	s.Root.Store.SetContext(newCtx)
+	defer func() {
+		s.Root.Store.SetContext(origCtx)
+	}()
+
+	defer span.Finish()
+	resultVar0, resultVar1 := s.PostStore.SaveMultiple(posts)
 	if resultVar1 != nil {
 		span.LogFields(spanlog.Error(resultVar1))
 		ext.Error.Set(span, true)
@@ -6151,6 +6269,24 @@ func (s *OpenTracingLayerTeamStore) GetByName(name string) (*model.Team, *model.
 
 	defer span.Finish()
 	resultVar0, resultVar1 := s.TeamStore.GetByName(name)
+	if resultVar1 != nil {
+		span.LogFields(spanlog.Error(resultVar1))
+		ext.Error.Set(span, true)
+	}
+
+	return resultVar0, resultVar1
+}
+
+func (s *OpenTracingLayerTeamStore) GetByNames(name []string) ([]*model.Team, *model.AppError) {
+	origCtx := s.Root.Store.Context()
+	span, newCtx := tracing.StartSpanWithParentByContext(s.Root.Store.Context(), "TeamStore.GetByNames")
+	s.Root.Store.SetContext(newCtx)
+	defer func() {
+		s.Root.Store.SetContext(origCtx)
+	}()
+
+	defer span.Finish()
+	resultVar0, resultVar1 := s.TeamStore.GetByNames(name)
 	if resultVar1 != nil {
 		span.LogFields(spanlog.Error(resultVar1))
 		ext.Error.Set(span, true)
@@ -8672,6 +8808,7 @@ func NewOpenTracingLayer(childStore Store, ctx context.Context) *OpenTracingLaye
 	newStore.AuditStore = &OpenTracingLayerAuditStore{AuditStore: childStore.Audit(), Root: &newStore}
 	newStore.BotStore = &OpenTracingLayerBotStore{BotStore: childStore.Bot(), Root: &newStore}
 	newStore.ChannelStore = &OpenTracingLayerChannelStore{ChannelStore: childStore.Channel(), Root: &newStore}
+	newStore.ChannelCategoryStore = &OpenTracingLayerChannelCategoryStore{ChannelCategoryStore: childStore.ChannelCategory(), Root: &newStore}
 	newStore.ChannelMemberHistoryStore = &OpenTracingLayerChannelMemberHistoryStore{ChannelMemberHistoryStore: childStore.ChannelMemberHistory(), Root: &newStore}
 	newStore.ClusterDiscoveryStore = &OpenTracingLayerClusterDiscoveryStore{ClusterDiscoveryStore: childStore.ClusterDiscovery(), Root: &newStore}
 	newStore.CommandStore = &OpenTracingLayerCommandStore{CommandStore: childStore.Command(), Root: &newStore}

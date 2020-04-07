@@ -51,6 +51,8 @@ type Channel struct {
 	SchemeId         *string                `json:"scheme_id"`
 	Props            map[string]interface{} `json:"props" db:"-"`
 	GroupConstrained *bool                  `json:"group_constrained"`
+	Kind             string                 `json:"kind"`
+	CategoryId       int32                  `json:"category_id"`
 }
 
 type ChannelWithTeamData struct {
@@ -71,6 +73,8 @@ type ChannelPatch struct {
 	Header           *string `json:"header"`
 	Purpose          *string `json:"purpose"`
 	GroupConstrained *bool   `json:"group_constrained"`
+	Kind             string  `json:"kind"`
+	CategoryId       int32   `json:"category_id"`
 }
 
 type ChannelForExport struct {

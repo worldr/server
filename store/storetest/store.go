@@ -44,6 +44,7 @@ type Store struct {
 	GroupStore                mocks.GroupStore
 	UserTermsOfServiceStore   mocks.UserTermsOfServiceStore
 	LinkMetadataStore         mocks.LinkMetadataStore
+	ChannelCategoryStore      mocks.ChannelCategoryStore
 	context                   context.Context
 }
 
@@ -94,6 +95,7 @@ func (s *Store) GetCurrentSchemaVersion() string       { return "" }
 func (s *Store) CheckIntegrity() <-chan store.IntegrityCheckResult {
 	return make(chan store.IntegrityCheckResult)
 }
+func (s *Store) ChannelCategory() store.ChannelCategoryStore { return &s.ChannelCategoryStore }
 
 func (s *Store) AssertExpectations(t mock.TestingT) bool {
 	return mock.AssertExpectationsForObjects(t,
@@ -124,5 +126,6 @@ func (s *Store) AssertExpectations(t mock.TestingT) bool {
 		&s.PluginStore,
 		&s.RoleStore,
 		&s.SchemeStore,
+		&s.ChannelCategoryStore,
 	)
 }

@@ -932,6 +932,11 @@ type API interface {
 	//
 	// Minimum server version: 5.18
 	PluginHTTP(request *http.Request) *http.Response
+
+	// GetChannelCategories returns the list of channels categories for user.
+	// Used for grouping of channels in the UI.
+	// Minimum server version: 6.0
+	GetChannelCategories(userId string) (*model.ChannelCategoriesList, *model.AppError)
 }
 
 var handshake = plugin.HandshakeConfig{

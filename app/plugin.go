@@ -141,17 +141,6 @@ func (a *App) NewPluginAPI(manifest *model.Manifest) plugin.API {
 }
 
 func (a *App) InitPlugins(pluginDir, webappPluginDir string) {
-	a.Log().Debug("Where are my plugins? [" + pluginDir + "," + webappPluginDir + "]")
-	if abs1, err1 := filepath.Abs(pluginDir); err1 == nil {
-		a.Log().Debug("server ->" + abs1)
-	} else {
-		a.Log().Debug("server ->" + err1.Error())
-	}
-	if abs2, err2 := filepath.Abs(webappPluginDir); err2 == nil {
-		a.Log().Debug("client ->" + abs2)
-	} else {
-		a.Log().Debug("client ->" + err2.Error())
-	}
 	// Acquiring lock manually, as plugins might be disabled. See GetPluginsEnvironment.
 	a.Srv().PluginsLock.RLock()
 	pluginsEnvironment := a.Srv().PluginsEnvironment

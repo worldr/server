@@ -202,9 +202,14 @@ endif
 endif
 
 app-layers: ## Extract interface from App struct
-    # The following commented commands can be used to re-generate the AppIface from the App struct
+  # The following commented commands can be used to re-generate the AppIface from the App struct
 	# env GO111MODULE=off $(GO) get gopkg.in/reflog/struct2interface.v0
 	# $(GOBIN)/struct2interface.v0 -f "app" -o "app/app_iface.go" -p "app" -s "App" -i "AppIface" -t ./app/layer_generators/app_iface.go.tmpl
+	$(GO) run ./app/layer_generators -in ./app/app_iface.go -out ./app/opentracing_layer.go -template ./app/layer_generators/opentracing_layer.go.tmpl
+
+app-iface: ## Extract interface from App struct
+	env GO111MODULE=off $(GO) get gopkg.in/reflog/struct2interface.v0
+	$(GOPATH)/bin/struct2interface.v0 -f "app" -o "app/app_iface.go" -p "app" -s "App" -i "AppIface" -t ./app/layer_generators/app_iface.go.tmpl
 	$(GO) run ./app/layer_generators -in ./app/app_iface.go -out ./app/opentracing_layer.go -template ./app/layer_generators/opentracing_layer.go.tmpl
 
 i18n-extract: ## Extract strings for translation from the source code
@@ -361,9 +366,9 @@ validate-go-version: ## Validates the installed version of go against Mattermost
 	elif [ $(GO_MINOR_VERSION) -lt $(MINIMUM_SUPPORTED_GO_MINOR_VERSION) ] ; then \
 		echo '$(GO_VERSION_VALIDATION_ERR_MSG)';\
 		exit 1; \
-	fi
+	fi	
 
-run-server: prepackaged-binaries validate-go-version start-docker ## Starts the server.
+run-server: build-worldr prepackaged-binaries validate-go-version start-docker ## Starts the server.
 	@echo Running mattermost for development
 
 	#M: removed client build
@@ -446,22 +451,22 @@ run-job-server: ## Runs the background job server.
 	@echo Running job server for development
 	$(GO) run $(GOFLAGS) -ldflags '$(LDFLAGS)' $(PLATFORM_FILES) jobserver --disableconfigwatch &
 
-config-ldap: ## Configures LDAP.
-	@echo Setting up configuration for local LDAP
+# config-ldap: ## Configures LDAP.
+# 	@echo Setting up configuration for local LDAP
 
-	@sed -i'' -e 's|"LdapServer": ".*"|"LdapServer": "localhost"|g' config/config.json
-	@sed -i'' -e 's|"BaseDN": ".*"|"BaseDN": "dc=mm,dc=test,dc=com"|g' config/config.json
-	@sed -i'' -e 's|"BindUsername": ".*"|"BindUsername": "cn=admin,dc=mm,dc=test,dc=com"|g' config/config.json
-	@sed -i'' -e 's|"BindPassword": ".*"|"BindPassword": "mostest"|g' config/config.json
-	@sed -i'' -e 's|"FirstNameAttribute": ".*"|"FirstNameAttribute": "cn"|g' config/config.json
-	@sed -i'' -e 's|"LastNameAttribute": ".*"|"LastNameAttribute": "sn"|g' config/config.json
-	@sed -i'' -e 's|"NicknameAttribute": ".*"|"NicknameAttribute": "cn"|g' config/config.json
-	@sed -i'' -e 's|"EmailAttribute": ".*"|"EmailAttribute": "mail"|g' config/config.json
-	@sed -i'' -e 's|"UsernameAttribute": ".*"|"UsernameAttribute": "uid"|g' config/config.json
-	@sed -i'' -e 's|"IdAttribute": ".*"|"IdAttribute": "uid"|g' config/config.json
-	@sed -i'' -e 's|"LoginIdAttribute": ".*"|"LoginIdAttribute": "uid"|g' config/config.json
-	@sed -i'' -e 's|"GroupDisplayNameAttribute": ".*"|"GroupDisplayNameAttribute": "cn"|g' config/config.json
-	@sed -i'' -e 's|"GroupIdAttribute": ".*"|"GroupIdAttribute": "entryUUID"|g' config/config.json
+# 	@sed -i'' -e 's|"LdapServer": ".*"|"LdapServer": "localhost"|g' config/config.json
+# 	@sed -i'' -e 's|"BaseDN": ".*"|"BaseDN": "dc=mm,dc=test,dc=com"|g' config/config.json
+# 	@sed -i'' -e 's|"BindUsername": ".*"|"BindUsername": "cn=admin,dc=mm,dc=test,dc=com"|g' config/config.json
+# 	@sed -i'' -e 's|"BindPassword": ".*"|"BindPassword": "mostest"|g' config/config.json
+# 	@sed -i'' -e 's|"FirstNameAttribute": ".*"|"FirstNameAttribute": "cn"|g' config/config.json
+# 	@sed -i'' -e 's|"LastNameAttribute": ".*"|"LastNameAttribute": "sn"|g' config/config.json
+# 	@sed -i'' -e 's|"NicknameAttribute": ".*"|"NicknameAttribute": "cn"|g' config/config.json
+# 	@sed -i'' -e 's|"EmailAttribute": ".*"|"EmailAttribute": "mail"|g' config/config.json
+# 	@sed -i'' -e 's|"UsernameAttribute": ".*"|"UsernameAttribute": "uid"|g' config/config.json
+# 	@sed -i'' -e 's|"IdAttribute": ".*"|"IdAttribute": "uid"|g' config/config.json
+# 	@sed -i'' -e 's|"LoginIdAttribute": ".*"|"LoginIdAttribute": "uid"|g' config/config.json
+# 	@sed -i'' -e 's|"GroupDisplayNameAttribute": ".*"|"GroupDisplayNameAttribute": "cn"|g' config/config.json
+# 	@sed -i'' -e 's|"GroupIdAttribute": ".*"|"GroupIdAttribute": "entryUUID"|g' config/config.json
 
 config-reset: ## Resets the config/config.json file to the default.
 	@echo Resetting configuration to default
@@ -522,10 +527,12 @@ vet: ## Run mattermost go vet specific checks
 		exit 1; \
 	fi; \
 
-	$(GO) vet -vettool=$(GOBIN)/mattermost-govet -license -structuredLogging -inconsistentReceiverName -tFatal ./...
+	# $(GO) vet -vettool=$(GOBIN)/mattermost-govet -license -structuredLogging -inconsistentReceiverName -tFatal ./...
+	$(GO) vet -vettool=$(GOBIN)/mattermost-govet -structuredLogging -inconsistentReceiverName -tFatal ./...
 ifeq ($(BUILD_ENTERPRISE_READY),true)
 ifneq ($(MM_NO_ENTERPRISE_LINT),true)
-	$(GO) vet -vettool=$(GOBIN)/mattermost-govet -enterpriseLicense -structuredLogging -tFatal ./enterprise/...
+	# $(GO) vet -vettool=$(GOBIN)/mattermost-govet -enterpriseLicense -structuredLogging -tFatal ./enterprise/...
+	$(GO) vet -vettool=$(GOBIN)/mattermost-govet -structuredLogging -tFatal ./enterprise/...
 endif
 endif
 

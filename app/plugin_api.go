@@ -863,3 +863,11 @@ func (api *PluginAPI) PluginHTTP(request *http.Request) *http.Response {
 	api.app.ServeInterPluginRequest(responseTransfer, request, api.id, destinationPluginId)
 	return responseTransfer.GenerateResponse()
 }
+
+func (api *PluginAPI) GetChannelCategories(userId string) (*model.ChannelCategoriesList, *model.AppError) {
+	if cats, err := api.app.GetChannelsCategories(userId); err != nil {
+		return nil, err
+	} else {
+		return cats, nil
+	}
+}

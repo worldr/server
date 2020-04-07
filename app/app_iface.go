@@ -35,10 +35,14 @@ import (
 
 // AppIface is extracted from App struct and contains all it's exported methods. It's provided to allow partial interface passing and app layers creation.
 type AppIface interface {
-	// GetViewUsersRestrictionsForTeam returns a list with the channel ids that the user has permissions to view on a
-	// team. If the result is an empty list, the user can't view any channel; if it's
-	// nil, there are no restrictions for the user in the specified team.
+	/**
+	 * Returns a list with the channel ids that the user has permissions to view on a
+	 * team. If the result is an empty list, the user can't view any channel; if it's
+	 * nil, there are no restrictions for the user in the specified team.
+	 */
 	GetViewUsersRestrictionsForTeam(userId string, teamId string) ([]string, *model.AppError)
+	// @openTracingParams args
+	ExecuteCommand(args *model.CommandArgs) (*model.CommandResponse, *model.AppError)
 	// @openTracingParams teamId
 	// previous ListCommands now ListAutocompleteCommands
 	ListAutocompleteCommands(teamId string, T goi18n.TranslateFunc) ([]*model.Command, *model.AppError)
@@ -50,6 +54,8 @@ type AppIface interface {
 	AddCursorIdsForPostList(originalList *model.PostList, afterPost, beforePost string, since int64, page, perPage int)
 	// AddPublicKey will add plugin public key to the config. Overwrites the previous file
 	AddPublicKey(name string, key io.Reader) *model.AppError
+	// AssignCategory sets the category_id field for a channel
+	AssignCategory(channelId string, categoryId int32) (*model.Channel, *model.AppError)
 	// Basic test team and user so you always know one
 	CreateBasicUser(client *model.Client4) *model.AppError
 	// Caller must close the first return value
@@ -66,6 +72,8 @@ type AppIface interface {
 	ConvertUserToBot(user *model.User) (*model.Bot, *model.AppError)
 	// CreateBot creates the given bot and corresponding user.
 	CreateBot(bot *model.Bot) (*model.Bot, *model.AppError)
+	// CreateChannelScheme creates a new Scheme of scope channel and assigns it to the channel.
+	CreateChannelScheme(channel *model.Channel) (*model.Scheme, *model.AppError)
 	// CreateDefaultChannels creates channels in the given team for each channel returned by (*App).DefaultChannelNames.
 	CreateDefaultChannels(teamID string) ([]*model.Channel, *model.AppError)
 	// CreateDefaultMemberships adds users to teams and channels based on their group memberships and how those groups
@@ -90,9 +98,12 @@ type AppIface interface {
 	// However, if TeamSettings.ExperimentalDefaultChannels contains a list of channels then that list will replace
 	// 'off-topic' and be included in the return results in addition to 'town-square'. For example:
 	//	['town-square', 'game-of-thrones', 'wow']
+	//
 	DefaultChannelNames() []string
 	// DeleteBotIconImage deletes LHS icon for a bot.
 	DeleteBotIconImage(botUserId string) *model.AppError
+	// DeleteChannelScheme deletes a channels scheme and sets its SchemeId to nil.
+	DeleteChannelScheme(channel *model.Channel) (*model.Channel, *model.AppError)
 	// DeleteGroupConstrainedMemberships deletes team and channel memberships of users who aren't members of the allowed
 	// groups of all group-constrained teams and channels.
 	DeleteGroupConstrainedMemberships() error
@@ -137,6 +148,8 @@ type AppIface interface {
 	GetBots(options *model.BotGetOptions) (model.BotList, *model.AppError)
 	// GetChannelGroupUsers returns the users who are associated to the channel via GroupChannels and GroupMembers.
 	GetChannelGroupUsers(channelID string) ([]*model.User, *model.AppError)
+	// GetChannelsCategories returns the list of channels categories of the current user
+	GetChannelsCategories(userId string) (*model.ChannelCategoriesList, *model.AppError)
 	// GetClusterPluginStatuses returns the status for plugins installed anywhere in the cluster.
 	GetClusterPluginStatuses() (model.PluginStatuses, *model.AppError)
 	// GetConfigFile proxies access to the given configuration file to the underlying config store.
@@ -167,8 +180,12 @@ type AppIface interface {
 	GetPublicKey(name string) ([]byte, *model.AppError)
 	// GetSanitizedConfig gets the configuration for a system admin without any secrets.
 	GetSanitizedConfig() *model.Config
+	// GetSchemeRolesForChannel Checks if a channel or its team has an override scheme for channel roles and returns the scheme roles or default channel roles.
+	GetSchemeRolesForChannel(channelId string) (string, string, string, *model.AppError)
 	// GetTeamGroupUsers returns the users who are associated to the team via GroupTeams and GroupMembers.
 	GetTeamGroupUsers(teamID string) ([]*model.User, *model.AppError)
+	// GetTeamSchemeChannelRoles Checks if a team has an override scheme and returns the scheme channel role names or default channel role names.
+	GetTeamSchemeChannelRoles(teamId string) (string, string, string, *model.AppError)
 	// GetTotalUsersStats is used for the DM list total
 	GetTotalUsersStats(viewRestrictions *model.ViewUsersRestrictions) (*model.UsersStats, *model.AppError)
 	// InstallMarketplacePlugin installs a plugin listed in the marketplace server. It will get the plugin bundle
@@ -191,6 +208,10 @@ type AppIface interface {
 	OverrideIconURLIfEmoji(post *model.Post)
 	// PatchBot applies the given patch to the bot and corresponding user.
 	PatchBot(botUserId string, botPatch *model.BotPatch) (*model.Bot, *model.AppError)
+	// PatchChannelModerationsForChannel Gets a channels ChannelModerations from either the higherScoped roles or from the channel scheme roles.
+	GetChannelModerationsForChannel(channel *model.Channel) ([]*model.ChannelModeration, *model.AppError)
+	// PatchChannelModerationsForChannel Updates a channels scheme roles based on a given ChannelModerationPatch, if the permissions match the higher scoped role the scheme is deleted.
+	PatchChannelModerationsForChannel(channel *model.Channel, channelModerationsPatch []*model.ChannelModerationPatch) ([]*model.ChannelModeration, *model.AppError)
 	// Perform an HTTP POST request to an integration's action endpoint.
 	// Caller must consume and close returned http.Response as necessary.
 	// For internal requests, requests are routed directly to a plugin ServerHTTP hook
@@ -259,6 +280,8 @@ type AppIface interface {
 	UpdateBotOwner(botUserId, newOwnerId string) (*model.Bot, *model.AppError)
 	// UpdateChannel updates a given channel by its Id. It also publishes the CHANNEL_UPDATED event.
 	UpdateChannel(channel *model.Channel) (*model.Channel, *model.AppError)
+	// UpdateChannelScheme saves the new SchemeId of the channel passed.
+	UpdateChannelScheme(channel *model.Channel) (*model.Channel, *model.AppError)
 	// UploadFile uploads a single file in form of a completely constructed byte array for a channel.
 	UploadFile(data []byte, channelId string, filename string) (*model.FileInfo, *model.AppError)
 	// UploadFileX uploads a single file as specified in t. It applies the upload
@@ -417,8 +440,6 @@ type AppIface interface {
 	EnableUserAccessToken(token *model.UserAccessToken) *model.AppError
 	EnsureDiagnosticId()
 	EnvironmentConfig() map[string]interface{}
-	// @openTracingParams args
-	ExecuteCommand(args *model.CommandArgs) (*model.CommandResponse, *model.AppError)
 	ExportPermissions(w io.Writer) error
 	FetchSamlMetadataFromIdp(url string) ([]byte, *model.AppError)
 	FileBackend() (filesstore.FileBackend, *model.AppError)
@@ -461,7 +482,6 @@ type AppIface interface {
 	GetChannelMembersForUserWithPagination(teamId, userId string, page, perPage int) ([]*model.ChannelMember, *model.AppError)
 	GetChannelMembersPage(channelId string, page, perPage int) (*model.ChannelMembers, *model.AppError)
 	GetChannelMembersTimezones(channelId string) ([]string, *model.AppError)
-	GetChannelModerationsForChannel(channel *model.Channel) ([]*model.ChannelModeration, *model.AppError)
 	GetChannelPinnedPostCount(channelId string) (int64, *model.AppError)
 	GetChannelUnread(channelId, userId string) (*model.ChannelUnread, *model.AppError)
 	GetChannelsByNames(channelNames []string, teamId string) ([]*model.Channel, *model.AppError)
@@ -580,7 +600,6 @@ type AppIface interface {
 	GetSanitizedClientLicense() map[string]string
 	GetScheme(id string) (*model.Scheme, *model.AppError)
 	GetSchemeByName(name string) (*model.Scheme, *model.AppError)
-	GetSchemeRolesForChannel(channelId string) (string, string, string, *model.AppError)
 	GetSchemeRolesForTeam(teamId string) (string, string, string, *model.AppError)
 	GetSchemes(scope string, offset int, limit int) ([]*model.Scheme, *model.AppError)
 	GetSchemesPage(scope string, page int, perPage int) ([]*model.Scheme, *model.AppError)
@@ -671,6 +690,7 @@ type AppIface interface {
 	InvalidateAllCaches() *model.AppError
 	InvalidateAllCachesSkipSend()
 	InvalidateAllEmailInvites() *model.AppError
+	InvalidateCacheForUser(userId string)
 	InvalidateWebConnSessionCacheForUser(userId string)
 	InviteGuestsToChannels(teamId string, guestsInvite *model.GuestsInvite, senderId string) *model.AppError
 	InviteGuestsToChannelsGracefully(teamId string, guestsInvite *model.GuestsInvite, senderId string) ([]*model.EmailInviteWithError, *model.AppError)
@@ -716,7 +736,6 @@ type AppIface interface {
 	OpenInteractiveDialog(request model.OpenDialogRequest) *model.AppError
 	OriginChecker() func(*http.Request) bool
 	PatchChannel(channel *model.Channel, patch *model.ChannelPatch, userId string) (*model.Channel, *model.AppError)
-	PatchChannelModerationsForChannel(channel *model.Channel, channelModerationsPatch []*model.ChannelModerationPatch) ([]*model.ChannelModeration, *model.AppError)
 	PatchPost(postId string, patch *model.PostPatch) (*model.Post, *model.AppError)
 	PatchRole(role *model.Role, patch *model.RolePatch) (*model.Role, *model.AppError)
 	PatchScheme(scheme *model.Scheme, patch *model.SchemePatch) (*model.Scheme, *model.AppError)
@@ -901,7 +920,6 @@ type AppIface interface {
 	UpdateChannelMemberRoles(channelId string, userId string, newRoles string) (*model.ChannelMember, *model.AppError)
 	UpdateChannelMemberSchemeRoles(channelId string, userId string, isSchemeGuest bool, isSchemeUser bool, isSchemeAdmin bool) (*model.ChannelMember, *model.AppError)
 	UpdateChannelPrivacy(oldChannel *model.Channel, user *model.User) (*model.Channel, *model.AppError)
-	UpdateChannelScheme(channel *model.Channel) (*model.Channel, *model.AppError)
 	UpdateCommand(oldCmd, updatedCmd *model.Command) (*model.Command, *model.AppError)
 	UpdateConfig(f func(*model.Config))
 	UpdateEphemeralPost(userId string, post *model.Post) *model.Post

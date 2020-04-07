@@ -20,6 +20,7 @@ type TimerLayer struct {
 	AuditStore                AuditStore
 	BotStore                  BotStore
 	ChannelStore              ChannelStore
+	ChannelCategoryStore      ChannelCategoryStore
 	ChannelMemberHistoryStore ChannelMemberHistoryStore
 	ClusterDiscoveryStore     ClusterDiscoveryStore
 	CommandStore              CommandStore
@@ -60,6 +61,10 @@ func (s *TimerLayer) Bot() BotStore {
 
 func (s *TimerLayer) Channel() ChannelStore {
 	return s.ChannelStore
+}
+
+func (s *TimerLayer) ChannelCategory() ChannelCategoryStore {
+	return s.ChannelCategoryStore
 }
 
 func (s *TimerLayer) ChannelMemberHistory() ChannelMemberHistoryStore {
@@ -186,6 +191,11 @@ type TimerLayerBotStore struct {
 
 type TimerLayerChannelStore struct {
 	ChannelStore
+	Root *TimerLayer
+}
+
+type TimerLayerChannelCategoryStore struct {
+	ChannelCategoryStore
 	Root *TimerLayer
 }
 
@@ -1773,6 +1783,70 @@ func (s *TimerLayerChannelStore) UserBelongsToChannels(userId string, channelIds
 			success = "true"
 		}
 		s.Root.Metrics.ObserveStoreMethodDuration("ChannelStore.UserBelongsToChannels", success, elapsed)
+	}
+	return resultVar0, resultVar1
+}
+
+func (s *TimerLayerChannelCategoryStore) Delete(userId string, catId int32) *model.AppError {
+	start := timemodule.Now()
+
+	resultVar0 := s.ChannelCategoryStore.Delete(userId, catId)
+
+	elapsed := float64(timemodule.Since(start)) / float64(timemodule.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if resultVar0 == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("ChannelCategoryStore.Delete", success, elapsed)
+	}
+	return resultVar0
+}
+
+func (s *TimerLayerChannelCategoryStore) Get(catId int32) (*model.ChannelCategory, *model.AppError) {
+	start := timemodule.Now()
+
+	resultVar0, resultVar1 := s.ChannelCategoryStore.Get(catId)
+
+	elapsed := float64(timemodule.Since(start)) / float64(timemodule.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if resultVar1 == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("ChannelCategoryStore.Get", success, elapsed)
+	}
+	return resultVar0, resultVar1
+}
+
+func (s *TimerLayerChannelCategoryStore) GetForUser(userId string) (*model.ChannelCategoriesList, *model.AppError) {
+	start := timemodule.Now()
+
+	resultVar0, resultVar1 := s.ChannelCategoryStore.GetForUser(userId)
+
+	elapsed := float64(timemodule.Since(start)) / float64(timemodule.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if resultVar1 == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("ChannelCategoryStore.GetForUser", success, elapsed)
+	}
+	return resultVar0, resultVar1
+}
+
+func (s *TimerLayerChannelCategoryStore) SaveOrUpdate(cat *model.ChannelCategory) (*model.ChannelCategory, *model.AppError) {
+	start := timemodule.Now()
+
+	resultVar0, resultVar1 := s.ChannelCategoryStore.SaveOrUpdate(cat)
+
+	elapsed := float64(timemodule.Since(start)) / float64(timemodule.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if resultVar1 == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("ChannelCategoryStore.SaveOrUpdate", success, elapsed)
 	}
 	return resultVar0, resultVar1
 }
@@ -4348,6 +4422,22 @@ func (s *TimerLayerPostStore) Overwrite(post *model.Post) (*model.Post, *model.A
 	return resultVar0, resultVar1
 }
 
+func (s *TimerLayerPostStore) OverwriteMultiple(posts []*model.Post) ([]*model.Post, *model.AppError) {
+	start := timemodule.Now()
+
+	resultVar0, resultVar1 := s.PostStore.OverwriteMultiple(posts)
+
+	elapsed := float64(timemodule.Since(start)) / float64(timemodule.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if resultVar1 == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("PostStore.OverwriteMultiple", success, elapsed)
+	}
+	return resultVar0, resultVar1
+}
+
 func (s *TimerLayerPostStore) PermanentDeleteBatch(endTime int64, limit int64) (int64, *model.AppError) {
 	start := timemodule.Now()
 
@@ -5590,6 +5680,22 @@ func (s *TimerLayerTeamStore) GetByName(name string) (*model.Team, *model.AppErr
 			success = "true"
 		}
 		s.Root.Metrics.ObserveStoreMethodDuration("TeamStore.GetByName", success, elapsed)
+	}
+	return resultVar0, resultVar1
+}
+
+func (s *TimerLayerTeamStore) GetByNames(name []string) ([]*model.Team, *model.AppError) {
+	start := timemodule.Now()
+
+	resultVar0, resultVar1 := s.TeamStore.GetByNames(name)
+
+	elapsed := float64(timemodule.Since(start)) / float64(timemodule.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if resultVar1 == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("TeamStore.GetByNames", success, elapsed)
 	}
 	return resultVar0, resultVar1
 }
@@ -7875,6 +7981,7 @@ func NewTimerLayer(childStore Store, metrics einterfaces.MetricsInterface) *Time
 	newStore.AuditStore = &TimerLayerAuditStore{AuditStore: childStore.Audit(), Root: &newStore}
 	newStore.BotStore = &TimerLayerBotStore{BotStore: childStore.Bot(), Root: &newStore}
 	newStore.ChannelStore = &TimerLayerChannelStore{ChannelStore: childStore.Channel(), Root: &newStore}
+	newStore.ChannelCategoryStore = &TimerLayerChannelCategoryStore{ChannelCategoryStore: childStore.ChannelCategory(), Root: &newStore}
 	newStore.ChannelMemberHistoryStore = &TimerLayerChannelMemberHistoryStore{ChannelMemberHistoryStore: childStore.ChannelMemberHistory(), Root: &newStore}
 	newStore.ClusterDiscoveryStore = &TimerLayerClusterDiscoveryStore{ClusterDiscoveryStore: childStore.ClusterDiscovery(), Root: &newStore}
 	newStore.CommandStore = &TimerLayerCommandStore{CommandStore: childStore.Command(), Root: &newStore}

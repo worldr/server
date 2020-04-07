@@ -7,7 +7,7 @@ echo "Creating databases"
 docker exec mattermost-postgres sh -c 'exec echo "CREATE DATABASE migrated; CREATE DATABASE latest;" | exec psql -U mmuser mattermost_test'
 
 echo "Importing postgres dump from version 5.0"
-docker exec -i mattermost-postgres psql -U mmuser -d migrated < $(pwd)/scripts/mattermost-postgresql-5.0.sql
+docker exec -i mattermost-postgres psql -U mmuser -d migrated < $(pwd)/scripts/worldr-postgresql-1.0.sql
 
 echo "Setting up config for db migration"
 make ARGS="config set SqlSettings.DataSource 'postgres://mmuser:mostest@localhost:5432/migrated?sslmode=disable&connect_timeout=10' --config $TMPDIR/config.json" run-cli

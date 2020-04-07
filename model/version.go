@@ -13,6 +13,7 @@ import (
 // It should be maintained in chronological order with most current
 // release at the front of the list.
 var versions = []string{
+	"6.0.0", // Worldr starts here
 	"5.22.0",
 	"5.21.0",
 	"5.20.0",

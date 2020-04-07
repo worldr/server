@@ -18,6 +18,7 @@ web/static/js/libs*.js
 config/active.dat
 config/config.json
 /plugins
+/bin
 
 # Enteprise imports file
 imports/imports.go
@@ -52,6 +53,7 @@ _testmain.go
 *.exe
 *.test
 *.prof
+*.out
 
 # Log files
 *.log

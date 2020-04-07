@@ -64,6 +64,22 @@ func (_m *Store) Channel() store.ChannelStore {
 	return r0
 }
 
+// ChannelCategory provides a mock function with given fields:
+func (_m *Store) ChannelCategory() store.ChannelCategoryStore {
+	ret := _m.Called()
+
+	var r0 store.ChannelCategoryStore
+	if rf, ok := ret.Get(0).(func() store.ChannelCategoryStore); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(store.ChannelCategoryStore)
+		}
+	}
+
+	return r0
+}
+
 // ChannelMemberHistory provides a mock function with given fields:
 func (_m *Store) ChannelMemberHistory() store.ChannelMemberHistoryStore {
 	ret := _m.Called()

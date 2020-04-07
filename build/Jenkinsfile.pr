@@ -276,7 +276,7 @@ pipeline {
 						echo "Creating databases"
 						/usr/local/bin/docker-compose --no-ansi -f build/docker-compose.yml  exec -T postgres sh -c 'exec echo "CREATE DATABASE migrated; CREATE DATABASE latest;" | exec psql -U mmuser mattermost_test'
 						echo "Importing postgres dump from version 5.0"
-						/usr/local/bin/docker-compose --no-ansi -f build/docker-compose.yml  exec -T postgres psql -U mmuser -d migrated < \$(pwd)/scripts/mattermost-postgresql-5.0.sql
+						/usr/local/bin/docker-compose --no-ansi -f build/docker-compose.yml  exec -T postgres psql -U mmuser -d migrated < \$(pwd)/scripts/worldr-postgresql-1.0.sql
 						"""
 					}
 				}
@@ -443,7 +443,7 @@ pipeline {
 						echo "Creating databases"
 						/usr/local/bin/docker-compose --no-ansi -f build/docker-compose.yml  exec -T postgres sh -c 'exec echo "CREATE DATABASE migrated; CREATE DATABASE latest;" | exec psql -U mmuser mattermost_test'
 						echo "Importing postgres dump from version 5.0"
-						/usr/local/bin/docker-compose --no-ansi -f build/docker-compose.yml  exec -T postgres psql -U mmuser -d migrated < \$(pwd)/scripts/mattermost-postgresql-5.0.sql
+						/usr/local/bin/docker-compose --no-ansi -f build/docker-compose.yml  exec -T postgres psql -U mmuser -d migrated < \$(pwd)/scripts/worldr-postgresql-1.0.sql
 						"""
 					}
 				}

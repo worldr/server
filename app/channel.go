@@ -16,8 +16,16 @@ import (
 	"github.com/mattermost/mattermost-server/v5/utils"
 )
 
+// GetChannelsCategories returns the list of channels categories of the current user
+func (a *App) GetChannelsCategories(userId string) (*model.ChannelCategoriesList, *model.AppError) {
+	cats, err := a.Srv().Store.ChannelCategory().GetForUser(userId)
+	if err != nil {
+		return nil, err
+	}
+	return cats, nil
+}
+
 // CreateDefaultChannels creates channels in the given team for each channel returned by (*App).DefaultChannelNames.
-//
 func (a *App) CreateDefaultChannels(teamID string) ([]*model.Channel, *model.AppError) {
 	displayNames := map[string]string{
 		"town-square": utils.T("api.channel.create_default_channels.town_square"),
@@ -708,7 +716,7 @@ func (a *App) PatchChannel(channel *model.Channel, patch *model.ChannelPatch, us
 }
 
 // GetSchemeRolesForChannel Checks if a channel or its team has an override scheme for channel roles and returns the scheme roles or default channel roles.
-func (a *App) GetSchemeRolesForChannel(channelId string) (guestRoleName, userRoleName, adminRoleName string, err *model.AppError) {
+func (a *App) GetSchemeRolesForChannel(channelId string) (guestRoleName string, userRoleName string, adminRoleName string, err *model.AppError) {
 	channel, err := a.GetChannel(channelId)
 	if err != nil {
 		return
@@ -732,7 +740,7 @@ func (a *App) GetSchemeRolesForChannel(channelId string) (guestRoleName, userRol
 }
 
 // GetTeamSchemeChannelRoles Checks if a team has an override scheme and returns the scheme channel role names or default channel role names.
-func (a *App) GetTeamSchemeChannelRoles(teamId string) (guestRoleName, userRoleName, adminRoleName string, err *model.AppError) {
+func (a *App) GetTeamSchemeChannelRoles(teamId string) (guestRoleName string, userRoleName string, adminRoleName string, err *model.AppError) {
 	team, err := a.GetTeam(teamId)
 	if err != nil {
 		return
@@ -2465,5 +2473,21 @@ func (a *App) ClearChannelMembersCache(channelID string) {
 		}
 
 		page++
+	}
+}
+
+// AssignCategory sets the category_id field for a channel
+func (a *App) AssignCategory(channelId string, categoryId int32) (*model.Channel, *model.AppError) {
+	if ch, err := a.GetChannel(channelId); err != nil {
+		return nil, model.NewAppError("AssignCategory", "api.channel.assign_category.cant_assign_category.app_error", nil, err.Message, http.StatusBadRequest)
+	} else if _, err := a.Srv().Store.ChannelCategory().Get(categoryId); err != nil {
+		return nil, model.NewAppError("AssignCategory", "api.channel.assign_category.cant_assign_category.app_error", nil, err.Message, http.StatusBadRequest)
+	} else {
+		ch.CategoryId = categoryId
+		newChannel, err := a.UpdateChannel(ch)
+		if err != nil {
+			return nil, err
+		}
+		return newChannel, nil
 	}
 }

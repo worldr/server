@@ -98,6 +98,7 @@ type SqlSupplierStores struct {
 	group                store.GroupStore
 	UserTermsOfService   store.UserTermsOfServiceStore
 	linkMetadata         store.LinkMetadataStore
+	channelCategory      store.ChannelCategoryStore
 }
 
 type SqlSupplier struct {
@@ -164,6 +165,7 @@ func NewSqlSupplier(settings model.SqlSettings, metrics einterfaces.MetricsInter
 	supplier.stores.role = newSqlRoleStore(supplier)
 	supplier.stores.scheme = newSqlSchemeStore(supplier)
 	supplier.stores.group = newSqlGroupStore(supplier)
+	supplier.stores.channelCategory = newSqlChannelCategoryStore(supplier)
 
 	err := supplier.GetMaster().CreateTablesIfNotExists()
 	if err != nil {
@@ -209,6 +211,7 @@ func NewSqlSupplier(settings model.SqlSettings, metrics einterfaces.MetricsInter
 	supplier.stores.scheme.(*SqlSchemeStore).createIndexesIfNotExists()
 	supplier.stores.group.(*SqlGroupStore).createIndexesIfNotExists()
 	supplier.stores.preference.(*SqlPreferenceStore).deleteUnusedFeatures()
+	supplier.stores.channelCategory.(*SqlChannelCategoryStore).createIndexesIfNotExists()
 
 	return supplier
 }
@@ -1061,6 +1064,10 @@ func (ss *SqlSupplier) Group() store.GroupStore {
 
 func (ss *SqlSupplier) LinkMetadata() store.LinkMetadataStore {
 	return ss.stores.linkMetadata
+}
+
+func (ss *SqlSupplier) ChannelCategory() store.ChannelCategoryStore {
+	return ss.stores.channelCategory
 }
 
 func (ss *SqlSupplier) DropAllTables() {

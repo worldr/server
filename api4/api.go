@@ -19,6 +19,8 @@ type Routes struct {
 	Root    *mux.Router // ''
 	ApiRoot *mux.Router // 'api/v4'
 
+	Worldr *mux.Router // 'api/v4/worldr'
+
 	Users          *mux.Router // 'api/v4/users'
 	User           *mux.Router // 'api/v4/users/{user_id:[A-Za-z0-9]+}'
 	UserByUsername *mux.Router // 'api/v4/users/username/{username:[A-Za-z0-9_-\.]+}'
@@ -130,6 +132,8 @@ func Init(configservice configservice.ConfigService, globalOptionsFunc app.AppOp
 
 	api.BaseRoutes.Root = root
 	api.BaseRoutes.ApiRoot = root.PathPrefix(model.API_URL_SUFFIX).Subrouter()
+
+	api.BaseRoutes.Worldr = api.BaseRoutes.ApiRoot.PathPrefix("/worldr").Subrouter()
 
 	api.BaseRoutes.Users = api.BaseRoutes.ApiRoot.PathPrefix("/users").Subrouter()
 	api.BaseRoutes.User = api.BaseRoutes.ApiRoot.PathPrefix("/users/{user_id:[A-Za-z0-9]+}").Subrouter()

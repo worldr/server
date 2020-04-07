@@ -994,3 +994,10 @@ func (api *apiTimerLayer) PluginHTTP(request *http.Request) *http.Response {
 	api.recordTime(startTime, "PluginHTTP", true)
 	return _returnsA
 }
+
+func (api *apiTimerLayer) GetChannelCategories(userId string) (*model.ChannelCategoriesList, *model.AppError) {
+	startTime := timePkg.Now()
+	_returnsA, _returnsB := api.apiImpl.GetChannelCategories(userId)
+	api.recordTime(startTime, "GetChannelCategories", true)
+	return _returnsA, _returnsB
+}

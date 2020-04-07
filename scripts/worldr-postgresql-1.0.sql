@@ -8,6 +8,7 @@ SET client_encoding = 'UTF8';
 SET standard_conforming_strings = on;
 SELECT pg_catalog.set_config('search_path', '', false);
 SET check_function_bodies = false;
+SET xmloption = content;
 SET client_min_messages = warning;
 
 --
@@ -46,6 +47,58 @@ CREATE TABLE public.audits (
 ALTER TABLE public.audits OWNER TO mmuser;
 
 --
+-- Name: bots; Type: TABLE; Schema: public; Owner: mmuser; Tablespace: 
+--
+
+CREATE TABLE public.bots (
+    userid character varying(26) NOT NULL,
+    description character varying(1024),
+    ownerid character varying(190),
+    lasticonupdate bigint,
+    createat bigint,
+    updateat bigint,
+    deleteat bigint
+);
+
+
+ALTER TABLE public.bots OWNER TO mmuser;
+
+--
+-- Name: channelcategories; Type: TABLE; Schema: public; Owner: mmuser; Tablespace: 
+--
+
+CREATE TABLE public.channelcategories (
+    id integer NOT NULL,
+    userid character varying(26),
+    name character varying(100) NOT NULL,
+    sort integer
+);
+
+
+ALTER TABLE public.channelcategories OWNER TO mmuser;
+
+--
+-- Name: channelcategories_id_seq; Type: SEQUENCE; Schema: public; Owner: mmuser
+--
+
+CREATE SEQUENCE public.channelcategories_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE public.channelcategories_id_seq OWNER TO mmuser;
+
+--
+-- Name: channelcategories_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: mmuser
+--
+
+ALTER SEQUENCE public.channelcategories_id_seq OWNED BY public.channelcategories.id;
+
+
+--
 -- Name: channelmemberhistory; Type: TABLE; Schema: public; Owner: mmuser; Tablespace: 
 --
 
@@ -73,7 +126,8 @@ CREATE TABLE public.channelmembers (
     notifyprops character varying(2000),
     lastupdateat bigint,
     schemeuser boolean,
-    schemeadmin boolean
+    schemeadmin boolean,
+    schemeguest boolean
 );
 
 
@@ -98,7 +152,10 @@ CREATE TABLE public.channels (
     totalmsgcount bigint,
     extraupdateat bigint,
     creatorid character varying(26),
-    schemeid character varying(26)
+    schemeid character varying(26),
+    groupconstrained boolean,
+    kind character varying(26),
+    categoryid integer
 );
 
 
@@ -231,6 +288,54 @@ CREATE TABLE public.fileinfo (
 ALTER TABLE public.fileinfo OWNER TO mmuser;
 
 --
+-- Name: groupchannels; Type: TABLE; Schema: public; Owner: mmuser; Tablespace: 
+--
+
+CREATE TABLE public.groupchannels (
+    groupid character varying(26) NOT NULL,
+    autoadd boolean,
+    schemeadmin boolean,
+    createat bigint,
+    deleteat bigint,
+    updateat bigint,
+    channelid character varying(26) NOT NULL
+);
+
+
+ALTER TABLE public.groupchannels OWNER TO mmuser;
+
+--
+-- Name: groupmembers; Type: TABLE; Schema: public; Owner: mmuser; Tablespace: 
+--
+
+CREATE TABLE public.groupmembers (
+    groupid character varying(26) NOT NULL,
+    userid character varying(26) NOT NULL,
+    createat bigint,
+    deleteat bigint
+);
+
+
+ALTER TABLE public.groupmembers OWNER TO mmuser;
+
+--
+-- Name: groupteams; Type: TABLE; Schema: public; Owner: mmuser; Tablespace: 
+--
+
+CREATE TABLE public.groupteams (
+    groupid character varying(26) NOT NULL,
+    autoadd boolean,
+    schemeadmin boolean,
+    createat bigint,
+    deleteat bigint,
+    updateat bigint,
+    teamid character varying(26) NOT NULL
+);
+
+
+ALTER TABLE public.groupteams OWNER TO mmuser;
+
+--
 -- Name: incomingwebhooks; Type: TABLE; Schema: public; Owner: mmuser; Tablespace: 
 --
 
@@ -243,7 +348,7 @@ CREATE TABLE public.incomingwebhooks (
     channelid character varying(26),
     teamid character varying(26),
     displayname character varying(64),
-    description character varying(128),
+    description character varying(500),
     username text,
     iconurl text,
     channellocked boolean
@@ -283,6 +388,21 @@ CREATE TABLE public.licenses (
 
 
 ALTER TABLE public.licenses OWNER TO mmuser;
+
+--
+-- Name: linkmetadata; Type: TABLE; Schema: public; Owner: mmuser; Tablespace: 
+--
+
+CREATE TABLE public.linkmetadata (
+    hash bigint NOT NULL,
+    url character varying(2048),
+    "timestamp" bigint,
+    type character varying(16),
+    data character varying(4096)
+);
+
+
+ALTER TABLE public.linkmetadata OWNER TO mmuser;
 
 --
 -- Name: oauthaccessdata; Type: TABLE; Schema: public; Owner: mmuser; Tablespace: 
@@ -357,8 +477,10 @@ CREATE TABLE public.outgoingwebhooks (
     triggerwhen integer,
     callbackurls character varying(1024),
     displayname character varying(64),
-    description character varying(128),
-    contenttype character varying(128)
+    description character varying(500),
+    contenttype character varying(128),
+    username character varying(64),
+    iconurl character varying(1024)
 );
 
 
@@ -371,7 +493,8 @@ ALTER TABLE public.outgoingwebhooks OWNER TO mmuser;
 CREATE TABLE public.pluginkeyvaluestore (
     pluginid character varying(190) NOT NULL,
     pkey character varying(50) NOT NULL,
-    pvalue bytea
+    pvalue bytea,
+    expireat bigint
 );
 
 
@@ -418,6 +541,23 @@ CREATE TABLE public.preferences (
 
 
 ALTER TABLE public.preferences OWNER TO mmuser;
+
+--
+-- Name: publicchannels; Type: TABLE; Schema: public; Owner: mmuser; Tablespace: 
+--
+
+CREATE TABLE public.publicchannels (
+    id character varying(26) NOT NULL,
+    deleteat bigint,
+    teamid character varying(26),
+    displayname character varying(64),
+    name character varying(64),
+    header character varying(1024),
+    purpose character varying(250)
+);
+
+
+ALTER TABLE public.publicchannels OWNER TO mmuser;
 
 --
 -- Name: reactions; Type: TABLE; Schema: public; Owner: mmuser; Tablespace: 
@@ -469,7 +609,9 @@ CREATE TABLE public.schemes (
     defaultteamadminrole character varying(64),
     defaultteamuserrole character varying(64),
     defaultchanneladminrole character varying(64),
-    defaultchanneluserrole character varying(64)
+    defaultchanneluserrole character varying(64),
+    defaultteamguestrole character varying(64),
+    defaultchannelguestrole character varying(64)
 );
 
 
@@ -531,7 +673,8 @@ CREATE TABLE public.teammembers (
     roles character varying(64),
     deleteat bigint,
     schemeuser boolean,
-    schemeadmin boolean
+    schemeadmin boolean,
+    schemeguest boolean
 );
 
 
@@ -552,15 +695,30 @@ CREATE TABLE public.teams (
     email character varying(128),
     type text,
     companyname character varying(64),
-    alloweddomains character varying(500),
+    alloweddomains character varying(1000),
     inviteid character varying(32),
     allowopeninvite boolean,
     lastteamiconupdate bigint,
-    schemeid text
+    schemeid text,
+    groupconstrained boolean
 );
 
 
 ALTER TABLE public.teams OWNER TO mmuser;
+
+--
+-- Name: termsofservice; Type: TABLE; Schema: public; Owner: mmuser; Tablespace: 
+--
+
+CREATE TABLE public.termsofservice (
+    id character varying(26) NOT NULL,
+    createat bigint,
+    userid character varying(26),
+    text character varying(65535)
+);
+
+
+ALTER TABLE public.termsofservice OWNER TO mmuser;
 
 --
 -- Name: tokens; Type: TABLE; Schema: public; Owner: mmuser; Tablespace: 
@@ -570,7 +728,7 @@ CREATE TABLE public.tokens (
     token character varying(64) NOT NULL,
     createat bigint,
     type character varying(64),
-    extra character varying(128)
+    extra character varying(2048)
 );
 
 
@@ -590,6 +748,25 @@ CREATE TABLE public.useraccesstokens (
 
 
 ALTER TABLE public.useraccesstokens OWNER TO mmuser;
+
+--
+-- Name: usergroups; Type: TABLE; Schema: public; Owner: mmuser; Tablespace: 
+--
+
+CREATE TABLE public.usergroups (
+    id character varying(26) NOT NULL,
+    name character varying(64),
+    displayname character varying(128),
+    description character varying(1024),
+    source character varying(64),
+    remoteid character varying(48),
+    createat bigint,
+    updateat bigint,
+    deleteat bigint
+);
+
+
+ALTER TABLE public.usergroups OWNER TO mmuser;
 
 --
 -- Name: users; Type: TABLE; Schema: public; Owner: mmuser; Tablespace: 
@@ -627,268 +804,23 @@ CREATE TABLE public.users (
 ALTER TABLE public.users OWNER TO mmuser;
 
 --
--- Data for Name: audits; Type: TABLE DATA; Schema: public; Owner: mmuser
+-- Name: usertermsofservice; Type: TABLE; Schema: public; Owner: mmuser; Tablespace: 
 --
 
-COPY public.audits (id, createat, userid, action, extrainfo, ipaddress, sessionid) FROM stdin;
-\.
+CREATE TABLE public.usertermsofservice (
+    userid character varying(26) NOT NULL,
+    termsofserviceid character varying(26),
+    createat bigint
+);
 
 
---
--- Data for Name: channelmemberhistory; Type: TABLE DATA; Schema: public; Owner: mmuser
---
-
-COPY public.channelmemberhistory (channelid, userid, jointime, leavetime) FROM stdin;
-\.
-
+ALTER TABLE public.usertermsofservice OWNER TO mmuser;
 
 --
--- Data for Name: channelmembers; Type: TABLE DATA; Schema: public; Owner: mmuser
+-- Name: id; Type: DEFAULT; Schema: public; Owner: mmuser
 --
 
-COPY public.channelmembers (channelid, userid, roles, lastviewedat, msgcount, mentioncount, notifyprops, lastupdateat, schemeuser, schemeadmin) FROM stdin;
-\.
-
-
---
--- Data for Name: channels; Type: TABLE DATA; Schema: public; Owner: mmuser
---
-
-COPY public.channels (id, createat, updateat, deleteat, teamid, type, displayname, name, header, purpose, lastpostat, totalmsgcount, extraupdateat, creatorid, schemeid) FROM stdin;
-\.
-
-
---
--- Data for Name: clusterdiscovery; Type: TABLE DATA; Schema: public; Owner: mmuser
---
-
-COPY public.clusterdiscovery (id, type, clustername, hostname, gossipport, port, createat, lastpingat) FROM stdin;
-\.
-
-
---
--- Data for Name: commands; Type: TABLE DATA; Schema: public; Owner: mmuser
---
-
-COPY public.commands (id, token, createat, updateat, deleteat, creatorid, teamid, trigger, method, username, iconurl, autocomplete, autocompletedesc, autocompletehint, displayname, description, url) FROM stdin;
-\.
-
-
---
--- Data for Name: commandwebhooks; Type: TABLE DATA; Schema: public; Owner: mmuser
---
-
-COPY public.commandwebhooks (id, createat, commandid, userid, channelid, rootid, parentid, usecount) FROM stdin;
-\.
-
-
---
--- Data for Name: compliances; Type: TABLE DATA; Schema: public; Owner: mmuser
---
-
-COPY public.compliances (id, createat, userid, status, count, "desc", type, startat, endat, keywords, emails) FROM stdin;
-\.
-
-
---
--- Data for Name: emoji; Type: TABLE DATA; Schema: public; Owner: mmuser
---
-
-COPY public.emoji (id, createat, updateat, deleteat, creatorid, name) FROM stdin;
-\.
-
-
---
--- Data for Name: fileinfo; Type: TABLE DATA; Schema: public; Owner: mmuser
---
-
-COPY public.fileinfo (id, creatorid, postid, createat, updateat, deleteat, path, thumbnailpath, previewpath, name, extension, size, mimetype, width, height, haspreviewimage) FROM stdin;
-\.
-
-
---
--- Data for Name: incomingwebhooks; Type: TABLE DATA; Schema: public; Owner: mmuser
---
-
-COPY public.incomingwebhooks (id, createat, updateat, deleteat, userid, channelid, teamid, displayname, description, username, iconurl, channellocked) FROM stdin;
-\.
-
-
---
--- Data for Name: jobs; Type: TABLE DATA; Schema: public; Owner: mmuser
---
-
-COPY public.jobs (id, type, priority, createat, startat, lastactivityat, status, progress, data) FROM stdin;
-\.
-
-
---
--- Data for Name: licenses; Type: TABLE DATA; Schema: public; Owner: mmuser
---
-
-COPY public.licenses (id, createat, bytes) FROM stdin;
-\.
-
-
---
--- Data for Name: oauthaccessdata; Type: TABLE DATA; Schema: public; Owner: mmuser
---
-
-COPY public.oauthaccessdata (clientid, userid, token, refreshtoken, redirecturi, expiresat, scope) FROM stdin;
-\.
-
-
---
--- Data for Name: oauthapps; Type: TABLE DATA; Schema: public; Owner: mmuser
---
-
-COPY public.oauthapps (id, creatorid, createat, updateat, clientsecret, name, description, iconurl, callbackurls, homepage, istrusted) FROM stdin;
-\.
-
-
---
--- Data for Name: oauthauthdata; Type: TABLE DATA; Schema: public; Owner: mmuser
---
-
-COPY public.oauthauthdata (clientid, userid, code, expiresin, createat, redirecturi, state, scope) FROM stdin;
-\.
-
-
---
--- Data for Name: outgoingwebhooks; Type: TABLE DATA; Schema: public; Owner: mmuser
---
-
-COPY public.outgoingwebhooks (id, token, createat, updateat, deleteat, creatorid, channelid, teamid, triggerwords, triggerwhen, callbackurls, displayname, description, contenttype) FROM stdin;
-\.
-
-
---
--- Data for Name: pluginkeyvaluestore; Type: TABLE DATA; Schema: public; Owner: mmuser
---
-
-COPY public.pluginkeyvaluestore (pluginid, pkey, pvalue) FROM stdin;
-\.
-
-
---
--- Data for Name: posts; Type: TABLE DATA; Schema: public; Owner: mmuser
---
-
-COPY public.posts (id, createat, updateat, editat, deleteat, ispinned, userid, channelid, rootid, parentid, originalid, message, type, props, hashtags, filenames, fileids, hasreactions) FROM stdin;
-\.
-
-
---
--- Data for Name: preferences; Type: TABLE DATA; Schema: public; Owner: mmuser
---
-
-COPY public.preferences (userid, category, name, value) FROM stdin;
-\.
-
-
---
--- Data for Name: reactions; Type: TABLE DATA; Schema: public; Owner: mmuser
---
-
-COPY public.reactions (userid, postid, emojiname, createat) FROM stdin;
-\.
-
-
---
--- Data for Name: roles; Type: TABLE DATA; Schema: public; Owner: mmuser
---
-
-COPY public.roles (id, name, displayname, description, createat, updateat, deleteat, permissions, schememanaged, builtin) FROM stdin;
-aap88jdt37dgdgkek1c7dq69ua	team_post_all	authentication.roles.team_post_all.name	authentication.roles.team_post_all.description	1552912816230	1552912816230	0	 create_post	f	t
-masesduwobn95dqoyba5xmtz5o	team_post_all_public	authentication.roles.team_post_all_public.name	authentication.roles.team_post_all_public.description	1552912816258	1552912816258	0	 create_post_public	f	t
-ufy3o8h1y3g4bgqeyw7yb6hrwe	system_post_all	authentication.roles.system_post_all.name	authentication.roles.system_post_all.description	1552912816269	1552912816269	0	 create_post	f	t
-7ptq38iy4br59q8y4zt9mm3zwy	system_post_all_public	authentication.roles.system_post_all_public.name	authentication.roles.system_post_all_public.description	1552912816288	1552912816288	0	 create_post_public	f	t
-wpxrpuiyo3bgdf34u7t65gcota	system_user_access_token	authentication.roles.system_user_access_token.name	authentication.roles.system_user_access_token.description	1552912816404	1552912816404	0	 create_user_access_token read_user_access_token revoke_user_access_token	f	t
-fomn851ie3gmz8zwr87szazm6w	channel_user	authentication.roles.channel_user.name	authentication.roles.channel_user.description	1552912816614	1552912816614	0	 read_channel add_reaction remove_reaction manage_public_channel_members upload_file get_public_link create_post use_slash_commands manage_private_channel_members delete_post edit_post	t	t
-xjxw3p6ect8bjfre7wc5jhwbqr	channel_admin	authentication.roles.channel_admin.name	authentication.roles.channel_admin.description	1552912816669	1552912816669	0	 manage_channel_roles	t	t
-q5qjsjsn3py5mfodcirqjkhsjy	team_user	authentication.roles.team_user.name	authentication.roles.team_user.description	1552912816680	1552912816680	0	 list_team_channels join_public_channels read_public_channel view_team create_public_channel manage_public_channel_properties delete_public_channel create_private_channel manage_private_channel_properties delete_private_channel invite_user add_user_to_team	t	t
-ntqm5c1rbjb9mrh69zagibxoxa	team_admin	authentication.roles.team_admin.name	authentication.roles.team_admin.description	1552912816746	1552912816746	0	 edit_others_posts remove_user_from_team manage_team import_team manage_team_roles manage_channel_roles manage_others_webhooks manage_slash_commands manage_others_slash_commands manage_webhooks delete_post delete_others_posts	t	t
-ts6aqp9p6jy97jwyf6wh4f5qaa	system_user	authentication.roles.global_user.name	authentication.roles.global_user.description	1552912816757	1552912816913	0	 create_direct_channel create_group_channel permanent_delete_user create_team manage_emojis	t	t
-twatrmjz8i8spfdyus18bm4nth	system_admin	authentication.roles.global_admin.name	authentication.roles.global_admin.description	1552912816481	1552912816923	0	 assign_system_admin_role manage_system manage_roles manage_public_channel_properties manage_public_channel_members manage_private_channel_members delete_public_channel create_public_channel manage_private_channel_properties delete_private_channel create_private_channel manage_system_wide_oauth manage_others_webhooks edit_other_users manage_oauth invite_user delete_post delete_others_posts create_team add_user_to_team list_users_without_team manage_jobs create_post_public create_post_ephemeral create_user_access_token read_user_access_token revoke_user_access_token remove_others_reactions list_team_channels join_public_channels read_public_channel view_team read_channel add_reaction remove_reaction upload_file get_public_link create_post use_slash_commands edit_others_posts remove_user_from_team manage_team import_team manage_team_roles manage_channel_roles manage_slash_commands manage_others_slash_commands manage_webhooks edit_post manage_emojis manage_others_emojis	t	t
-\.
-
-
---
--- Data for Name: schemes; Type: TABLE DATA; Schema: public; Owner: mmuser
---
-
-COPY public.schemes (id, name, displayname, description, createat, updateat, deleteat, scope, defaultteamadminrole, defaultteamuserrole, defaultchanneladminrole, defaultchanneluserrole) FROM stdin;
-\.
-
-
---
--- Data for Name: sessions; Type: TABLE DATA; Schema: public; Owner: mmuser
---
-
-COPY public.sessions (id, token, createat, expiresat, lastactivityat, userid, deviceid, roles, isoauth, props) FROM stdin;
-\.
-
-
---
--- Data for Name: status; Type: TABLE DATA; Schema: public; Owner: mmuser
---
-
-COPY public.status (userid, status, manual, lastactivityat) FROM stdin;
-\.
-
-
---
--- Data for Name: systems; Type: TABLE DATA; Schema: public; Owner: mmuser
---
-
-COPY public.systems (name, value) FROM stdin;
-Version	5.0.0
-AsymmetricSigningKey	{"ecdsa_key":{"curve":"P-256","x":50494983991025284560870211683226455202411615657166048251398890171377825517363,"y":113694733845764674468191147267904180878076486503487433150108745296643202957034,"d":85042364128488616037616885822024419913274924562562115600648814391088417875310}}
-AdvancedPermissionsMigrationComplete	true
-EmojisPermissionsMigrationComplete	true
-DiagnosticId	up3o75jkjbbs8dbawiwypzwrmc
-LastSecurityTime	1552912819442
-\.
-
-
---
--- Data for Name: teammembers; Type: TABLE DATA; Schema: public; Owner: mmuser
---
-
-COPY public.teammembers (teamid, userid, roles, deleteat, schemeuser, schemeadmin) FROM stdin;
-\.
-
-
---
--- Data for Name: teams; Type: TABLE DATA; Schema: public; Owner: mmuser
---
-
-COPY public.teams (id, createat, updateat, deleteat, displayname, name, description, email, type, companyname, alloweddomains, inviteid, allowopeninvite, lastteamiconupdate, schemeid) FROM stdin;
-\.
-
-
---
--- Data for Name: tokens; Type: TABLE DATA; Schema: public; Owner: mmuser
---
-
-COPY public.tokens (token, createat, type, extra) FROM stdin;
-\.
-
-
---
--- Data for Name: useraccesstokens; Type: TABLE DATA; Schema: public; Owner: mmuser
---
-
-COPY public.useraccesstokens (id, token, userid, description, isactive) FROM stdin;
-\.
-
-
---
--- Data for Name: users; Type: TABLE DATA; Schema: public; Owner: mmuser
---
-
-COPY public.users (id, createat, updateat, deleteat, username, password, authdata, authservice, email, emailverified, nickname, firstname, lastname, "position", roles, allowmarketing, props, notifyprops, lastpasswordupdate, lastpictureupdate, failedattempts, locale, timezone, mfaactive, mfasecret) FROM stdin;
-\.
+ALTER TABLE ONLY public.channelcategories ALTER COLUMN id SET DEFAULT nextval('public.channelcategories_id_seq'::regclass);
 
 
 --
@@ -897,6 +829,22 @@ COPY public.users (id, createat, updateat, deleteat, username, password, authdat
 
 ALTER TABLE ONLY public.audits
     ADD CONSTRAINT audits_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: bots_pkey; Type: CONSTRAINT; Schema: public; Owner: mmuser; Tablespace: 
+--
+
+ALTER TABLE ONLY public.bots
+    ADD CONSTRAINT bots_pkey PRIMARY KEY (userid);
+
+
+--
+-- Name: channelcategories_pkey; Type: CONSTRAINT; Schema: public; Owner: mmuser; Tablespace: 
+--
+
+ALTER TABLE ONLY public.channelcategories
+    ADD CONSTRAINT channelcategories_pkey PRIMARY KEY (id);
 
 
 --
@@ -988,6 +936,30 @@ ALTER TABLE ONLY public.fileinfo
 
 
 --
+-- Name: groupchannels_pkey; Type: CONSTRAINT; Schema: public; Owner: mmuser; Tablespace: 
+--
+
+ALTER TABLE ONLY public.groupchannels
+    ADD CONSTRAINT groupchannels_pkey PRIMARY KEY (groupid, channelid);
+
+
+--
+-- Name: groupmembers_pkey; Type: CONSTRAINT; Schema: public; Owner: mmuser; Tablespace: 
+--
+
+ALTER TABLE ONLY public.groupmembers
+    ADD CONSTRAINT groupmembers_pkey PRIMARY KEY (groupid, userid);
+
+
+--
+-- Name: groupteams_pkey; Type: CONSTRAINT; Schema: public; Owner: mmuser; Tablespace: 
+--
+
+ALTER TABLE ONLY public.groupteams
+    ADD CONSTRAINT groupteams_pkey PRIMARY KEY (groupid, teamid);
+
+
+--
 -- Name: incomingwebhooks_pkey; Type: CONSTRAINT; Schema: public; Owner: mmuser; Tablespace: 
 --
 
@@ -1009,6 +981,14 @@ ALTER TABLE ONLY public.jobs
 
 ALTER TABLE ONLY public.licenses
     ADD CONSTRAINT licenses_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: linkmetadata_pkey; Type: CONSTRAINT; Schema: public; Owner: mmuser; Tablespace: 
+--
+
+ALTER TABLE ONLY public.linkmetadata
+    ADD CONSTRAINT linkmetadata_pkey PRIMARY KEY (hash);
 
 
 --
@@ -1073,6 +1053,22 @@ ALTER TABLE ONLY public.posts
 
 ALTER TABLE ONLY public.preferences
     ADD CONSTRAINT preferences_pkey PRIMARY KEY (userid, category, name);
+
+
+--
+-- Name: publicchannels_name_teamid_key; Type: CONSTRAINT; Schema: public; Owner: mmuser; Tablespace: 
+--
+
+ALTER TABLE ONLY public.publicchannels
+    ADD CONSTRAINT publicchannels_name_teamid_key UNIQUE (name, teamid);
+
+
+--
+-- Name: publicchannels_pkey; Type: CONSTRAINT; Schema: public; Owner: mmuser; Tablespace: 
+--
+
+ALTER TABLE ONLY public.publicchannels
+    ADD CONSTRAINT publicchannels_pkey PRIMARY KEY (id);
 
 
 --
@@ -1164,6 +1160,14 @@ ALTER TABLE ONLY public.teams
 
 
 --
+-- Name: termsofservice_pkey; Type: CONSTRAINT; Schema: public; Owner: mmuser; Tablespace: 
+--
+
+ALTER TABLE ONLY public.termsofservice
+    ADD CONSTRAINT termsofservice_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: tokens_pkey; Type: CONSTRAINT; Schema: public; Owner: mmuser; Tablespace: 
 --
 
@@ -1185,6 +1189,30 @@ ALTER TABLE ONLY public.useraccesstokens
 
 ALTER TABLE ONLY public.useraccesstokens
     ADD CONSTRAINT useraccesstokens_token_key UNIQUE (token);
+
+
+--
+-- Name: usergroups_name_key; Type: CONSTRAINT; Schema: public; Owner: mmuser; Tablespace: 
+--
+
+ALTER TABLE ONLY public.usergroups
+    ADD CONSTRAINT usergroups_name_key UNIQUE (name);
+
+
+--
+-- Name: usergroups_pkey; Type: CONSTRAINT; Schema: public; Owner: mmuser; Tablespace: 
+--
+
+ALTER TABLE ONLY public.usergroups
+    ADD CONSTRAINT usergroups_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: usergroups_source_remoteid_key; Type: CONSTRAINT; Schema: public; Owner: mmuser; Tablespace: 
+--
+
+ALTER TABLE ONLY public.usergroups
+    ADD CONSTRAINT usergroups_source_remoteid_key UNIQUE (source, remoteid);
 
 
 --
@@ -1220,10 +1248,25 @@ ALTER TABLE ONLY public.users
 
 
 --
+-- Name: usertermsofservice_pkey; Type: CONSTRAINT; Schema: public; Owner: mmuser; Tablespace: 
+--
+
+ALTER TABLE ONLY public.usertermsofservice
+    ADD CONSTRAINT usertermsofservice_pkey PRIMARY KEY (userid);
+
+
+--
 -- Name: idx_audits_user_id; Type: INDEX; Schema: public; Owner: mmuser; Tablespace: 
 --
 
 CREATE INDEX idx_audits_user_id ON public.audits USING btree (userid);
+
+
+--
+-- Name: idx_channel_search_txt; Type: INDEX; Schema: public; Owner: mmuser; Tablespace: 
+--
+
+CREATE INDEX idx_channel_search_txt ON public.channels USING gin (to_tsvector('english'::regconfig, (((((name)::text || ' '::text) || (displayname)::text) || ' '::text) || (purpose)::text)));
 
 
 --
@@ -1280,13 +1323,6 @@ CREATE INDEX idx_channels_name_lower ON public.channels USING btree (lower((name
 --
 
 CREATE INDEX idx_channels_team_id ON public.channels USING btree (teamid);
-
-
---
--- Name: idx_channels_txt; Type: INDEX; Schema: public; Owner: mmuser; Tablespace: 
---
-
-CREATE INDEX idx_channels_txt ON public.channels USING gin (to_tsvector('english'::regconfig, (((name)::text || ' '::text) || (displayname)::text)));
 
 
 --
@@ -1388,6 +1424,41 @@ CREATE INDEX idx_fileinfo_update_at ON public.fileinfo USING btree (updateat);
 
 
 --
+-- Name: idx_groupchannels_channelid; Type: INDEX; Schema: public; Owner: mmuser; Tablespace: 
+--
+
+CREATE INDEX idx_groupchannels_channelid ON public.groupchannels USING btree (channelid);
+
+
+--
+-- Name: idx_groupchannels_schemeadmin; Type: INDEX; Schema: public; Owner: mmuser; Tablespace: 
+--
+
+CREATE INDEX idx_groupchannels_schemeadmin ON public.groupchannels USING btree (schemeadmin);
+
+
+--
+-- Name: idx_groupmembers_create_at; Type: INDEX; Schema: public; Owner: mmuser; Tablespace: 
+--
+
+CREATE INDEX idx_groupmembers_create_at ON public.groupmembers USING btree (createat);
+
+
+--
+-- Name: idx_groupteams_schemeadmin; Type: INDEX; Schema: public; Owner: mmuser; Tablespace: 
+--
+
+CREATE INDEX idx_groupteams_schemeadmin ON public.groupteams USING btree (schemeadmin);
+
+
+--
+-- Name: idx_groupteams_teamid; Type: INDEX; Schema: public; Owner: mmuser; Tablespace: 
+--
+
+CREATE INDEX idx_groupteams_teamid ON public.groupteams USING btree (teamid);
+
+
+--
 -- Name: idx_incoming_webhook_create_at; Type: INDEX; Schema: public; Owner: mmuser; Tablespace: 
 --
 
@@ -1427,6 +1498,13 @@ CREATE INDEX idx_incoming_webhook_user_id ON public.incomingwebhooks USING btree
 --
 
 CREATE INDEX idx_jobs_type ON public.jobs USING btree (type);
+
+
+--
+-- Name: idx_link_metadata_url_timestamp; Type: INDEX; Schema: public; Owner: mmuser; Tablespace: 
+--
+
+CREATE INDEX idx_link_metadata_url_timestamp ON public.linkmetadata USING btree (url, "timestamp");
 
 
 --
@@ -1591,6 +1669,48 @@ CREATE INDEX idx_preferences_user_id ON public.preferences USING btree (userid);
 
 
 --
+-- Name: idx_publicchannels_delete_at; Type: INDEX; Schema: public; Owner: mmuser; Tablespace: 
+--
+
+CREATE INDEX idx_publicchannels_delete_at ON public.publicchannels USING btree (deleteat);
+
+
+--
+-- Name: idx_publicchannels_displayname_lower; Type: INDEX; Schema: public; Owner: mmuser; Tablespace: 
+--
+
+CREATE INDEX idx_publicchannels_displayname_lower ON public.publicchannels USING btree (lower((displayname)::text));
+
+
+--
+-- Name: idx_publicchannels_name; Type: INDEX; Schema: public; Owner: mmuser; Tablespace: 
+--
+
+CREATE INDEX idx_publicchannels_name ON public.publicchannels USING btree (name);
+
+
+--
+-- Name: idx_publicchannels_name_lower; Type: INDEX; Schema: public; Owner: mmuser; Tablespace: 
+--
+
+CREATE INDEX idx_publicchannels_name_lower ON public.publicchannels USING btree (lower((name)::text));
+
+
+--
+-- Name: idx_publicchannels_search_txt; Type: INDEX; Schema: public; Owner: mmuser; Tablespace: 
+--
+
+CREATE INDEX idx_publicchannels_search_txt ON public.publicchannels USING gin (to_tsvector('english'::regconfig, (((((name)::text || ' '::text) || (displayname)::text) || ' '::text) || (purpose)::text)));
+
+
+--
+-- Name: idx_publicchannels_team_id; Type: INDEX; Schema: public; Owner: mmuser; Tablespace: 
+--
+
+CREATE INDEX idx_publicchannels_team_id ON public.publicchannels USING btree (teamid);
+
+
+--
 -- Name: idx_sessions_create_at; Type: INDEX; Schema: public; Owner: mmuser; Tablespace: 
 --
 
@@ -1710,6 +1830,27 @@ CREATE INDEX idx_user_access_tokens_user_id ON public.useraccesstokens USING btr
 
 
 --
+-- Name: idx_user_terms_of_service_user_id; Type: INDEX; Schema: public; Owner: mmuser; Tablespace: 
+--
+
+CREATE INDEX idx_user_terms_of_service_user_id ON public.usertermsofservice USING btree (userid);
+
+
+--
+-- Name: idx_usergroups_delete_at; Type: INDEX; Schema: public; Owner: mmuser; Tablespace: 
+--
+
+CREATE INDEX idx_usergroups_delete_at ON public.usergroups USING btree (deleteat);
+
+
+--
+-- Name: idx_usergroups_remote_id; Type: INDEX; Schema: public; Owner: mmuser; Tablespace: 
+--
+
+CREATE INDEX idx_usergroups_remote_id ON public.usergroups USING btree (remoteid);
+
+
+--
 -- Name: idx_users_all_no_full_name_txt; Type: INDEX; Schema: public; Owner: mmuser; Tablespace: 
 --
 
@@ -1745,24 +1886,24 @@ CREATE INDEX idx_users_email ON public.users USING btree (email);
 
 
 --
--- Name: idx_users_email_lower; Type: INDEX; Schema: public; Owner: mmuser; Tablespace: 
+-- Name: idx_users_email_lower_textpattern; Type: INDEX; Schema: public; Owner: mmuser; Tablespace: 
 --
 
-CREATE INDEX idx_users_email_lower ON public.users USING btree (lower((email)::text));
-
-
---
--- Name: idx_users_firstname_lower; Type: INDEX; Schema: public; Owner: mmuser; Tablespace: 
---
-
-CREATE INDEX idx_users_firstname_lower ON public.users USING btree (lower((firstname)::text));
+CREATE INDEX idx_users_email_lower_textpattern ON public.users USING btree (lower((email)::text) text_pattern_ops);
 
 
 --
--- Name: idx_users_lastname_lower; Type: INDEX; Schema: public; Owner: mmuser; Tablespace: 
+-- Name: idx_users_firstname_lower_textpattern; Type: INDEX; Schema: public; Owner: mmuser; Tablespace: 
 --
 
-CREATE INDEX idx_users_lastname_lower ON public.users USING btree (lower((lastname)::text));
+CREATE INDEX idx_users_firstname_lower_textpattern ON public.users USING btree (lower((firstname)::text) text_pattern_ops);
+
+
+--
+-- Name: idx_users_lastname_lower_textpattern; Type: INDEX; Schema: public; Owner: mmuser; Tablespace: 
+--
+
+CREATE INDEX idx_users_lastname_lower_textpattern ON public.users USING btree (lower((lastname)::text) text_pattern_ops);
 
 
 --
@@ -1780,10 +1921,10 @@ CREATE INDEX idx_users_names_txt ON public.users USING gin (to_tsvector('english
 
 
 --
--- Name: idx_users_nickname_lower; Type: INDEX; Schema: public; Owner: mmuser; Tablespace: 
+-- Name: idx_users_nickname_lower_textpattern; Type: INDEX; Schema: public; Owner: mmuser; Tablespace: 
 --
 
-CREATE INDEX idx_users_nickname_lower ON public.users USING btree (lower((nickname)::text));
+CREATE INDEX idx_users_nickname_lower_textpattern ON public.users USING btree (lower((nickname)::text) text_pattern_ops);
 
 
 --
@@ -1794,10 +1935,10 @@ CREATE INDEX idx_users_update_at ON public.users USING btree (updateat);
 
 
 --
--- Name: idx_users_username_lower; Type: INDEX; Schema: public; Owner: mmuser; Tablespace: 
+-- Name: idx_users_username_lower_textpattern; Type: INDEX; Schema: public; Owner: mmuser; Tablespace: 
 --
 
-CREATE INDEX idx_users_username_lower ON public.users USING btree (lower((username)::text));
+CREATE INDEX idx_users_username_lower_textpattern ON public.users USING btree (lower((username)::text) text_pattern_ops);
 
 
 --

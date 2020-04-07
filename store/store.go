@@ -60,6 +60,7 @@ type Store interface {
 	CheckIntegrity() <-chan IntegrityCheckResult
 	SetContext(context context.Context)
 	Context() context.Context
+	ChannelCategory() ChannelCategoryStore
 }
 
 type TeamStore interface {
@@ -724,4 +725,11 @@ type RelationalIntegrityCheckData struct {
 type IntegrityCheckResult struct {
 	Data interface{}
 	Err  error
+}
+
+type ChannelCategoryStore interface {
+	SaveOrUpdate(cat *model.ChannelCategory) (*model.ChannelCategory, *model.AppError)
+	GetForUser(userId string) (*model.ChannelCategoriesList, *model.AppError)
+	Get(catId int32) (*model.ChannelCategory, *model.AppError)
+	Delete(userId string, catId int32) *model.AppError
 }

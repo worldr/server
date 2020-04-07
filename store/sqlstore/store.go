@@ -34,6 +34,7 @@ import (
 	fileInfo       FileInfoStore
 	reaction       ReactionStore
 	jobStatus      JobStatusStore
+	chatCategory   ChatCategoryStore
 	SchemaVersion  string
 	rrCounter      int64
 	srCounter      int64
@@ -99,4 +100,5 @@ type SqlStore interface {
 	UserTermsOfService() store.UserTermsOfServiceStore
 	LinkMetadata() store.LinkMetadataStore
 	getQueryBuilder() sq.StatementBuilderType
+	ChannelCategory() store.ChannelCategoryStore
 }
