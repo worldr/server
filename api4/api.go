@@ -16,12 +16,12 @@ import (
 )
 
 type Routes struct {
-	Root    *mux.Router // ''
-	ApiRoot *mux.Router // 'api/v4'
-
-	Worldr *mux.Router // 'api/v4/worldr'
+	Root       *mux.Router // ''
+	ApiRoot    *mux.Router // 'api/v4'
+	WorldrRoot *mux.Router // 'api/worldr/v1'
 
 	Users          *mux.Router // 'api/v4/users'
+	WUsers         *mux.Router // 'api/worldr/v1/users'
 	User           *mux.Router // 'api/v4/users/{user_id:[A-Za-z0-9]+}'
 	UserByUsername *mux.Router // 'api/v4/users/username/{username:[A-Za-z0-9_-\.]+}'
 	UserByEmail    *mux.Router // 'api/v4/users/email/{email}'
@@ -39,6 +39,7 @@ type Routes struct {
 	TeamMembersForUser *mux.Router // 'api/v4/users/{user_id:[A-Za-z0-9]+}/teams/members'
 
 	Channels                 *mux.Router // 'api/v4/channels'
+	WChannels                *mux.Router // 'api/worldr/v1/channels'
 	Channel                  *mux.Router // 'api/v4/channels/{channel_id:[A-Za-z0-9]+}'
 	ChannelForUser           *mux.Router // 'api/v4/users/{user_id:[A-Za-z0-9]+}/channels/{channel_id:[A-Za-z0-9]+}'
 	ChannelByName            *mux.Router // 'api/v4/teams/{team_id:[A-Za-z0-9]+}/channels/name/{channel_name:[A-Za-z0-9_-]+}'
@@ -131,9 +132,16 @@ func Init(configservice configservice.ConfigService, globalOptionsFunc app.AppOp
 	}
 
 	api.BaseRoutes.Root = root
-	api.BaseRoutes.ApiRoot = root.PathPrefix(model.API_URL_SUFFIX).Subrouter()
 
-	api.BaseRoutes.Worldr = api.BaseRoutes.ApiRoot.PathPrefix("/worldr").Subrouter()
+	// Worldr extensions
+
+	api.BaseRoutes.WorldrRoot = root.PathPrefix(model.API_URL_SUFFIX_WORLDR).Subrouter()
+	api.BaseRoutes.WChannels = api.BaseRoutes.WorldrRoot.PathPrefix("/channels").Subrouter()
+	api.BaseRoutes.WUsers = api.BaseRoutes.WorldrRoot.PathPrefix("/users").Subrouter()
+
+	// Mattermost original API
+
+	api.BaseRoutes.ApiRoot = root.PathPrefix(model.API_URL_SUFFIX).Subrouter()
 
 	api.BaseRoutes.Users = api.BaseRoutes.ApiRoot.PathPrefix("/users").Subrouter()
 	api.BaseRoutes.User = api.BaseRoutes.ApiRoot.PathPrefix("/users/{user_id:[A-Za-z0-9]+}").Subrouter()
@@ -221,9 +229,11 @@ func Init(configservice configservice.ConfigService, globalOptionsFunc app.AppOp
 	api.BaseRoutes.Groups = api.BaseRoutes.ApiRoot.PathPrefix("/groups").Subrouter()
 
 	api.InitUser()
+	api.InitWUser()
 	api.InitBot()
 	api.InitTeam()
 	api.InitChannel()
+	api.InitWChannel()
 	api.InitPost()
 	api.InitFile()
 	api.InitSystem()
@@ -234,8 +244,9 @@ func Init(configservice configservice.ConfigService, globalOptionsFunc app.AppOp
 	api.InitSaml()
 	api.InitCompliance()
 	api.InitCluster()
-	api.InitLdap()
-	api.InitElasticsearch()
+	// disabled intentionally
+	//api.InitLdap()
+	//api.InitElasticsearch()
 	api.InitDataRetention()
 	api.InitBrand()
 	api.InitJob()
@@ -255,6 +266,7 @@ func Init(configservice configservice.ConfigService, globalOptionsFunc app.AppOp
 	api.InitAction()
 
 	root.Handle("/api/v4/{anything:.*}", http.HandlerFunc(api.Handle404))
+	root.Handle("/api/worldr/v1/{anything:.*}", http.HandlerFunc(api.Handle404))
 
 	return api
 }

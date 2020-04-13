@@ -91,7 +91,7 @@
         "EnableLatex": false
     },
     "TeamSettings": {
-        "SiteName": "Mattermost",
+        "SiteName": "Worldr",
         "MaxUsersPerTeam": 50,
         "EnableTeamCreation": true,
         "EnableUserCreation": false,
@@ -149,9 +149,9 @@
         "ConsoleLevel": "DEBUG",
         "ConsoleJson": true,
         "EnableFile": true,
-        "FileLevel": "INFO",
-        "FileJson": true,
-        "FileLocation": "",
+        "FileLevel": "DEBUG",
+        "FileJson": false,
+        "FileLocation": "log/mattermost",
         "EnableWebhookDebugging": true,
         "EnableDiagnostics": true
     },
@@ -171,7 +171,7 @@
         "EnableFile": true,
         "FileLevel": "INFO",
         "FileJson": true,
-        "FileLocation": ""
+        "FileLocation": "/var/log/mattermost-notif"
     },
     "PasswordSettings": {
         "MinimumLength": 10,
@@ -201,7 +201,7 @@
         "AmazonS3Trace": false
     },
     "EmailSettings": {
-        "EnableSignUpWithEmail": true,
+        "EnableSignUpWithEmail": false,
         "EnableSignInWithEmail": true,
         "EnableSignInWithUsername": true,
         "SendEmailNotifications": true,
@@ -466,9 +466,6 @@
         "ClientDirectory": "./client/plugins",
         "Plugins": {},
         "PluginStates": {
-            "com.mattermost.nps": {
-                "Enable": true
-            },
             "com.worldr.main": {
                 "Enable": true
             }

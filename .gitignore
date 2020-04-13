@@ -19,6 +19,7 @@ config/active.dat
 config/config.json
 /plugins
 /bin
+/log
 
 # Enteprise imports file
 imports/imports.go
