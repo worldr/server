@@ -1229,6 +1229,24 @@ func (s *OpenTracingLayerChannelStore) GetMoreChannels(teamId string, userId str
 	return resultVar0, resultVar1
 }
 
+func (s *OpenTracingLayerChannelStore) GetPersonalChannels(teamId string, userId string) (*model.ChannelSnapshotList, *model.AppError) {
+	origCtx := s.Root.Store.Context()
+	span, newCtx := tracing.StartSpanWithParentByContext(s.Root.Store.Context(), "ChannelStore.GetPersonalChannels")
+	s.Root.Store.SetContext(newCtx)
+	defer func() {
+		s.Root.Store.SetContext(origCtx)
+	}()
+
+	defer span.Finish()
+	resultVar0, resultVar1 := s.ChannelStore.GetPersonalChannels(teamId, userId)
+	if resultVar1 != nil {
+		span.LogFields(spanlog.Error(resultVar1))
+		ext.Error.Set(span, true)
+	}
+
+	return resultVar0, resultVar1
+}
+
 func (s *OpenTracingLayerChannelStore) GetPinnedPostCount(channelId string, allowFromCache bool) (int64, *model.AppError) {
 	origCtx := s.Root.Store.Context()
 	span, newCtx := tracing.StartSpanWithParentByContext(s.Root.Store.Context(), "ChannelStore.GetPinnedPostCount")
@@ -6540,6 +6558,24 @@ func (s *OpenTracingLayerTeamStore) InvalidateAllTeamIdsForUser(userId string) {
 	defer span.Finish()
 	s.TeamStore.InvalidateAllTeamIdsForUser(userId)
 
+}
+
+func (s *OpenTracingLayerTeamStore) MainTeam() (*model.Team, *model.AppError) {
+	origCtx := s.Root.Store.Context()
+	span, newCtx := tracing.StartSpanWithParentByContext(s.Root.Store.Context(), "TeamStore.MainTeam")
+	s.Root.Store.SetContext(newCtx)
+	defer func() {
+		s.Root.Store.SetContext(origCtx)
+	}()
+
+	defer span.Finish()
+	resultVar0, resultVar1 := s.TeamStore.MainTeam()
+	if resultVar1 != nil {
+		span.LogFields(spanlog.Error(resultVar1))
+		ext.Error.Set(span, true)
+	}
+
+	return resultVar0, resultVar1
 }
 
 func (s *OpenTracingLayerTeamStore) MigrateTeamMembers(fromTeamId string, fromUserId string) (map[string]string, *model.AppError) {

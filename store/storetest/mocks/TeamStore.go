@@ -776,6 +776,31 @@ func (_m *TeamStore) InvalidateAllTeamIdsForUser(userId string) {
 	_m.Called(userId)
 }
 
+// MainTeam provides a mock function with given fields:
+func (_m *TeamStore) MainTeam() (*model.Team, *model.AppError) {
+	ret := _m.Called()
+
+	var r0 *model.Team
+	if rf, ok := ret.Get(0).(func() *model.Team); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*model.Team)
+		}
+	}
+
+	var r1 *model.AppError
+	if rf, ok := ret.Get(1).(func() *model.AppError); ok {
+		r1 = rf()
+	} else {
+		if ret.Get(1) != nil {
+			r1 = ret.Get(1).(*model.AppError)
+		}
+	}
+
+	return r0, r1
+}
+
 // MigrateTeamMembers provides a mock function with given fields: fromTeamId, fromUserId
 func (_m *TeamStore) MigrateTeamMembers(fromTeamId string, fromUserId string) (map[string]string, *model.AppError) {
 	ret := _m.Called(fromTeamId, fromUserId)

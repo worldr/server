@@ -1622,3 +1622,10 @@ func (a *App) ClearTeamMembersCache(teamID string) {
 		page++
 	}
 }
+
+// MainTeam returns the team object that is a sandbox for everything 
+// inside the Worldr service environment for current deployment.
+// Ths is the only "team" (in Mattermost terms) the users interact with.
+func (a *App) MainTeam() (*model.Team, *model.AppError) {
+	return a.srv.Store.Team().MainTeam()
+}

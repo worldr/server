@@ -2872,3 +2872,137 @@ func (s SqlChannelStore) GroupSyncedChannelCount() (int64, *model.AppError) {
 
 	return count, nil
 }
+
+func (s SqlChannelStore) getChannelInfos(teamId string, userId string) (*[]string, *map[string]*model.ChannelInfo, *model.AppError) {
+	// 1. Get ids of channels userId is a member of.
+	// Direct and Group-direct channels don't have teamId, get them anyway.
+	infos := &model.ChannelInfoList{}
+	_, err := s.GetReplica().Select(infos, `
+		SELECT 
+			cm.ChannelId as Id 
+		FROM ChannelMembers as cm, Channels as c 
+		WHERE 
+			cm.UserId = :UserId 
+			AND
+			c.DeleteAt = 0
+			AND
+			(
+				c.TeamId = :TeamId
+				OR
+				c.Type in ('D', 'G')
+			)
+		`,
+		map[string]interface{}{
+			"UserId": userId,
+			"TeamId": teamId,
+		},
+	)
+	if err != nil {
+		return nil, nil, model.NewAppError("SqlChannelStore.getMyChannels", "store.sql_channel.get_personal_channels.get_my_channels.app_error", nil, "userId="+userId+", err="+err.Error(), http.StatusInternalServerError)
+	}
+	channelIds := make([]string, len(*infos))
+	for i, v := range *infos {
+		channelIds[i] = v.Id
+	}
+
+	// 2. Get members counts for channels of userId found above
+	infos = &model.ChannelInfoList{}
+	_, err = s.GetReplica().Select(infos, `
+		SELECT DISTINCT ON (c1.ChannelId)
+			c1.ChannelId as Id, c2.Members, c1.MsgCount as Unread, c1.MentionCount as Mentions 			
+		FROM
+			ChannelMembers as c1
+		JOIN (
+			SELECT ChannelId, count(ChannelId) as Members
+			FROM ChannelMembers 
+			GROUP BY ChannelId 
+			HAVING ChannelId in ('`+strings.Join(channelIds, "','")+`')
+		) as c2
+		ON c1.ChannelId=c2.ChannelId
+		`,
+	)
+	if err != nil {
+		return nil, nil, model.NewAppError("SqlChannelStore.getMyChannels", "store.sql_channel.get_personal_channels.get_my_channels_members.app_error", nil, "userId="+userId+", err="+err.Error(), http.StatusInternalServerError)
+	}
+	infosMap := make(map[string]*model.ChannelInfo, len(*infos))
+	for _, v := range *infos {
+		infosMap[v.Id] = v
+	}
+
+	return &channelIds, &infosMap, nil
+}
+
+type lastMessages []*model.Post
+
+func (s SqlChannelStore) getLastMessages(channels *model.ChannelList) (*map[string]*model.Post, *model.AppError) {
+	channelIds := make([]string, len(*channels))
+	for i, v := range *channels {
+		channelIds[i] = v.Id
+	}
+
+	posts := &lastMessages{}
+	_, err := s.GetReplica().Select(posts, `
+		SELECT 
+			p.* 
+		FROM 
+			Posts as p
+		JOIN (
+			SELECT Id, LastPostAt FROM Channels
+			WHERE Id IN ('`+strings.Join(channelIds, "','")+`')
+		) as c
+		ON p.ChannelId=c.Id and c.LastPostAt=p.CreateAt`,
+	)
+	if err != nil {
+		return nil, model.NewAppError("SqlChannelStore.GetPersonalChannels", "store.sql_channel.get_personal_channels.get_last_messages.app_error", nil, "err="+err.Error(), http.StatusInternalServerError)
+	}
+	result := make(map[string]*model.Post, len(*posts))
+	for _, v := range *posts {
+		result[(*v).ChannelId] = v
+	}
+	return &result, nil
+}
+
+// GetPersonalChannels returns channels for personal screen.
+// These are direct messages and private chats with 'kind' value not equal to "team" or "work".
+func (s SqlChannelStore) GetPersonalChannels(teamId string, userId string) (*model.ChannelSnapshotList, *model.AppError) {
+
+	channelIds, channelInfos, err1 := s.getChannelInfos(teamId, userId)
+	if err1 != nil {
+		return nil, model.NewAppError("SqlChannelStore.GetPersonalChannels", "store.sql_channel.get_personal_channels.get_channel_infos.app_error", nil, "userId="+userId+", err="+err1.Error(), http.StatusInternalServerError)
+	}
+
+	channels := &model.ChannelList{}
+	_, err2 := s.GetReplica().Select(channels, `
+		SELECT 
+			*
+		FROM 
+			Channels
+		WHERE			
+			Kind = ''
+			AND
+			Type != 'O'
+			AND
+			Id IN ('`+strings.Join(*channelIds, "','")+`')
+		`,
+	)
+	if err2 != nil {
+		return nil, model.NewAppError("SqlChannelStore.GetPersonalChannels", "store.sql_channel.get_personal_channels.get_channels.app_error", nil, "userId="+userId+", err="+err2.Error(), http.StatusInternalServerError)
+	}
+
+	lastMessages, err3 := s.getLastMessages(channels)
+	if err3 != nil {
+		return nil, model.NewAppError("SqlChannelStore.GetPersonalChannels", "store.sql_channel.get_personal_channels.get_last_messages.app_error", nil, "userId="+userId+", err="+err3.Error(), http.StatusInternalServerError)
+	}
+
+	result := make([]*model.ChannelSnapshot, len(*channels))
+	for i, v := range *channels {
+		result[i] = &model.ChannelSnapshot{
+			Channel:     v,
+			Info:        (*channelInfos)[(*v).Id],
+			LastMessage: (*lastMessages)[(*v).Id],
+		}
+	}
+
+	list := model.ChannelSnapshotList(result)
+	return &list, nil
+}

@@ -89,6 +89,7 @@ func TestChannelStore(t *testing.T, ss store.Store, s SqlSupplier) {
 	t.Run("ExportAllDirectChannelsDeletedChannel", func(t *testing.T) { testChannelStoreExportAllDirectChannelsDeletedChannel(t, ss, s) })
 	t.Run("GetChannelsBatchForIndexing", func(t *testing.T) { testChannelStoreGetChannelsBatchForIndexing(t, ss) })
 	t.Run("GroupSyncedChannelCount", func(t *testing.T) { testGroupSyncedChannelCount(t, ss) })
+	t.Run("GetPersonalChannels", func(t *testing.T) { testChannelStoreGetPersonalChannels(t, ss) })
 }
 
 func testChannelStoreSave(t *testing.T, ss store.Store) {
@@ -4255,4 +4256,149 @@ func testGroupSyncedChannelCount(t *testing.T, ss store.Store) {
 	countAfter, err := ss.Channel().GroupSyncedChannelCount()
 	require.Nil(t, err)
 	require.GreaterOrEqual(t, countAfter, count+1)
+}
+
+func testChannelStoreGetPersonalChannels(t *testing.T, ss store.Store) {
+	teamId := model.NewId()
+	teamOther := model.NewId()
+
+	// target user and member, member of two teams
+	u1 := &model.User{}
+	u1.Email = MakeEmail()
+	u1.Nickname = model.NewId()
+	_, err := ss.User().Save(u1)
+	require.Nil(t, err)
+	_, err = ss.Team().SaveMember(&model.TeamMember{TeamId: teamId, UserId: u1.Id}, -1)
+	require.Nil(t, err)
+	_, err = ss.Team().SaveMember(&model.TeamMember{TeamId: teamOther, UserId: u1.Id}, -1)
+	require.Nil(t, err)
+	m1 := model.ChannelMember{}
+	m1.UserId = u1.Id
+	m1.NotifyProps = model.GetDefaultChannelNotifyProps()
+
+	// another user and member, member of one team
+	u2 := &model.User{}
+	u2.Email = MakeEmail()
+	u2.Nickname = model.NewId()
+	_, err = ss.User().Save(u2)
+	require.Nil(t, err)
+	_, err = ss.Team().SaveMember(&model.TeamMember{TeamId: teamId, UserId: u2.Id}, -1)
+	require.Nil(t, err)
+	m2 := model.ChannelMember{}
+	m2.UserId = u2.Id
+	m2.NotifyProps = model.GetDefaultChannelNotifyProps()
+
+	// Direct chat
+	d := model.Channel{}
+	d.DisplayName = "Direct channel"
+	d.Name = "zz" + model.NewId() + "b"
+	d.Type = model.CHANNEL_DIRECT
+	m1.ChannelId = d.Id
+	m2.ChannelId = d.Id
+	_, err = ss.Channel().SaveDirectChannel(&d, &m1, &m2)
+	require.Nil(t, err)
+
+	// Direct-group chat
+	g := model.Channel{}
+	g.DisplayName = "Direct group channel"
+	g.Name = "zz" + model.NewId() + "b"
+	g.Type = model.CHANNEL_DIRECT
+	_, err = ss.Channel().Save(&g, -1)
+	require.Nil(t, err)
+	m1.ChannelId = g.Id
+	m2.ChannelId = g.Id
+	_, err = ss.Channel().SaveMember(&m1)
+	require.Nil(t, err)
+	_, err = ss.Channel().SaveMember(&m2)
+	require.Nil(t, err)
+
+	// Open chat
+	o := model.Channel{}
+	o.TeamId = teamId
+	o.DisplayName = "Open channel"
+	o.Name = "zz" + model.NewId() + "b"
+	o.Type = model.CHANNEL_OPEN
+	_, err = ss.Channel().Save(&o, -1)
+	require.Nil(t, err)
+	m1.ChannelId = o.Id
+	m2.ChannelId = o.Id
+	_, err = ss.Channel().SaveMember(&m1)
+	require.Nil(t, err)
+	_, err = ss.Channel().SaveMember(&m2)
+	require.Nil(t, err)
+
+	// Private chat1
+	p0 := model.Channel{}
+	p0.TeamId = teamId
+	p0.DisplayName = "Private channel"
+	p0.Name = "zz" + model.NewId() + "b"
+	p0.Type = model.CHANNEL_PRIVATE
+	_, err = ss.Channel().Save(&p0, -1)
+	require.Nil(t, err)
+	m1.ChannelId = p0.Id
+	m2.ChannelId = p0.Id
+	_, err = ss.Channel().SaveMember(&m1)
+	require.Nil(t, err)
+	_, err = ss.Channel().SaveMember(&m2)
+	require.Nil(t, err)
+
+	// Private chat2
+	p1 := model.Channel{}
+	p1.TeamId = teamId
+	p1.DisplayName = "Private channel"
+	p1.Name = "zz" + model.NewId() + "b"
+	p1.Type = model.CHANNEL_PRIVATE
+	p1.Kind = "team"
+	_, err = ss.Channel().Save(&p1, -1)
+	require.Nil(t, err)
+	m1.ChannelId = p1.Id
+	m2.ChannelId = p1.Id
+	_, err = ss.Channel().SaveMember(&m1)
+	require.Nil(t, err)
+	_, err = ss.Channel().SaveMember(&m2)
+	require.Nil(t, err)
+
+	// Private chat3
+	p2 := model.Channel{}
+	p2.TeamId = teamId
+	p2.DisplayName = "Private channel"
+	p2.Name = "zz" + model.NewId() + "b"
+	p2.Type = model.CHANNEL_PRIVATE
+	p2.Kind = "work"
+	_, err = ss.Channel().Save(&p2, -1)
+	require.Nil(t, err)
+	m1.ChannelId = p2.Id
+	m2.ChannelId = p2.Id
+	_, err = ss.Channel().SaveMember(&m1)
+	require.Nil(t, err)
+	_, err = ss.Channel().SaveMember(&m2)
+	require.Nil(t, err)
+
+	// Private chat in another team
+	p3 := model.Channel{}
+	p3.TeamId = teamOther
+	p3.DisplayName = "Private channel"
+	p3.Name = "zz" + model.NewId() + "b"
+	p3.Type = model.CHANNEL_PRIVATE
+	_, err = ss.Channel().Save(&p3, -1)
+	require.Nil(t, err)
+	m1.ChannelId = p3.Id
+	m2.ChannelId = p3.Id
+	_, err = ss.Channel().SaveMember(&m1)
+	require.Nil(t, err)
+	_, err = ss.Channel().SaveMember(&m2)
+	require.Nil(t, err)
+
+	// test
+
+	list, err1 := ss.Channel().GetPersonalChannels(teamId, u1.Id)
+	require.Nil(t, err1)
+
+	assert.Equal(t, 3, len(*list))
+
+	for _, v := range *list {
+		assert.False(t, v.Channel.Type == "O")
+		assert.False(t, v.Channel.Kind == "team" || v.Channel.Kind == "work")
+		assert.True(t, v.Channel.TeamId == "" || v.Channel.TeamId == teamId)
+	}
 }

@@ -151,7 +151,7 @@
         "EnableFile": true,
         "FileLevel": "DEBUG",
         "FileJson": false,
-        "FileLocation": "log/mattermost",
+        "FileLocation": "./logs",
         "EnableWebhookDebugging": true,
         "EnableDiagnostics": true
     },

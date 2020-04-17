@@ -119,6 +119,12 @@ type TeamStore interface {
 
 	// GroupSyncedTeamCount returns the count of non-deleted group-constrained teams.
 	GroupSyncedTeamCount() (int64, *model.AppError)
+
+	// GetPersonalChannels returns everything needed to show the personal chats screen.
+	// These include direct messages, group direct messages and private channels
+	// the userId is a member of. Apart from the Channel structure itself,
+	// the ChannelSnapshot contains channel usage info and its last message.
+	MainTeam() (*model.Team, *model.AppError)
 }
 
 type ChannelStore interface {
@@ -210,6 +216,8 @@ type ChannelStore interface {
 
 	// GroupSyncedChannelCount returns the count of non-deleted group-constrained channels.
 	GroupSyncedChannelCount() (int64, *model.AppError)
+
+	GetPersonalChannels(teamId string, userId string) (*model.ChannelSnapshotList, *model.AppError)
 }
 
 type ChannelMemberHistoryStore interface {

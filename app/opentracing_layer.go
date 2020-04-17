@@ -6404,6 +6404,28 @@ func (a *OpenTracingAppLayer) GetPermalinkPost(postId string, userId string) (*m
 	return resultVar0, resultVar1
 }
 
+func (a *OpenTracingAppLayer) GetPersonalChannels(teamId string, userId string) (*model.ChannelSnapshotList, *model.AppError) {
+	origCtx := a.ctx
+	span, newCtx := tracing.StartSpanWithParentByContext(a.ctx, "app.GetPersonalChannels")
+
+	a.ctx = newCtx
+	a.app.Srv().Store.SetContext(newCtx)
+	defer func() {
+		a.app.Srv().Store.SetContext(origCtx)
+		a.ctx = origCtx
+	}()
+
+	defer span.Finish()
+	resultVar0, resultVar1 := a.app.GetPersonalChannels(teamId, userId)
+
+	if resultVar1 != nil {
+		span.LogFields(spanlog.Error(resultVar1))
+		ext.Error.Set(span, true)
+	}
+
+	return resultVar0, resultVar1
+}
+
 func (a *OpenTracingAppLayer) GetPinnedPosts(channelId string) (*model.PostList, *model.AppError) {
 	origCtx := a.ctx
 	span, newCtx := tracing.StartSpanWithParentByContext(a.ctx, "app.GetPinnedPosts")
@@ -9840,6 +9862,28 @@ func (a *OpenTracingAppLayer) LoginByOAuth(service string, userData io.Reader, t
 
 	defer span.Finish()
 	resultVar0, resultVar1 := a.app.LoginByOAuth(service, userData, teamId)
+
+	if resultVar1 != nil {
+		span.LogFields(spanlog.Error(resultVar1))
+		ext.Error.Set(span, true)
+	}
+
+	return resultVar0, resultVar1
+}
+
+func (a *OpenTracingAppLayer) MainTeam() (*model.Team, *model.AppError) {
+	origCtx := a.ctx
+	span, newCtx := tracing.StartSpanWithParentByContext(a.ctx, "app.MainTeam")
+
+	a.ctx = newCtx
+	a.app.Srv().Store.SetContext(newCtx)
+	defer func() {
+		a.app.Srv().Store.SetContext(origCtx)
+		a.ctx = origCtx
+	}()
+
+	defer span.Finish()
+	resultVar0, resultVar1 := a.app.MainTeam()
 
 	if resultVar1 != nil {
 		span.LogFields(spanlog.Error(resultVar1))

@@ -1138,6 +1138,22 @@ func (s *TimerLayerChannelStore) GetMoreChannels(teamId string, userId string, o
 	return resultVar0, resultVar1
 }
 
+func (s *TimerLayerChannelStore) GetPersonalChannels(teamId string, userId string) (*model.ChannelSnapshotList, *model.AppError) {
+	start := timemodule.Now()
+
+	resultVar0, resultVar1 := s.ChannelStore.GetPersonalChannels(teamId, userId)
+
+	elapsed := float64(timemodule.Since(start)) / float64(timemodule.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if resultVar1 == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("ChannelStore.GetPersonalChannels", success, elapsed)
+	}
+	return resultVar0, resultVar1
+}
+
 func (s *TimerLayerChannelStore) GetPinnedPostCount(channelId string, allowFromCache bool) (int64, *model.AppError) {
 	start := timemodule.Now()
 
@@ -5921,6 +5937,22 @@ func (s *TimerLayerTeamStore) InvalidateAllTeamIdsForUser(userId string) {
 		}
 		s.Root.Metrics.ObserveStoreMethodDuration("TeamStore.InvalidateAllTeamIdsForUser", success, elapsed)
 	}
+}
+
+func (s *TimerLayerTeamStore) MainTeam() (*model.Team, *model.AppError) {
+	start := timemodule.Now()
+
+	resultVar0, resultVar1 := s.TeamStore.MainTeam()
+
+	elapsed := float64(timemodule.Since(start)) / float64(timemodule.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if resultVar1 == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("TeamStore.MainTeam", success, elapsed)
+	}
+	return resultVar0, resultVar1
 }
 
 func (s *TimerLayerTeamStore) MigrateTeamMembers(fromTeamId string, fromUserId string) (map[string]string, *model.AppError) {

@@ -2491,3 +2491,15 @@ func (a *App) AssignCategory(channelId string, categoryId int32) (*model.Channel
 		return newChannel, nil
 	}
 }
+
+// GetPersonalChannels returns everything needed to show the personal chats screen.
+// These include direct messages, group direct messages and private channels
+// the userId is a member of. Apart from the Channel structure itself,
+// the ChannelSnapshot contains channel usage info and its last message.
+func (a *App) GetPersonalChannels(teamId string, userId string) (*model.ChannelSnapshotList, *model.AppError) {
+	if list, err := a.Srv().Store.Channel().GetPersonalChannels(teamId, userId); err != nil {
+		return nil, model.NewAppError("GetPersonalChannels", "api.channel.get_personal_channels.cant_get_personal_channels.app_error", nil, err.Message, http.StatusBadRequest)
+	} else {
+		return list, nil
+	}
+}

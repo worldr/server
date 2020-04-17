@@ -565,6 +565,7 @@ type AppIface interface {
 	GetOutgoingWebhooksPageByUser(userId string, page, perPage int) ([]*model.OutgoingWebhook, *model.AppError)
 	GetPasswordRecoveryToken(token string) (*model.Token, *model.AppError)
 	GetPermalinkPost(postId string, userId string) (*model.PostList, *model.AppError)
+	GetPersonalChannels(teamId string, userId string) (*model.ChannelSnapshotList, *model.AppError)
 	GetPinnedPosts(channelId string) (*model.PostList, *model.AppError)
 	GetPluginKey(pluginId string, key string) ([]byte, *model.AppError)
 	GetPlugins() (*model.PluginsResponse, *model.AppError)
@@ -720,6 +721,7 @@ type AppIface interface {
 	LoadLicense()
 	Log() *mlog.Logger
 	LoginByOAuth(service string, userData io.Reader, teamId string) (*model.User, *model.AppError)
+	MainTeam() (*model.Team, *model.AppError)
 	MakePermissionError(permission *model.Permission) *model.AppError
 	MarkChannelsAsViewed(channelIds []string, userId string, currentSessionId string) (map[string]int64, *model.AppError)
 	MaxPostSize() int

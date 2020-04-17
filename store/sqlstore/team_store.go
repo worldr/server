@@ -18,6 +18,7 @@ import (
 
 const (
 	TEAM_MEMBER_EXISTS_ERROR = "store.sql_team.save_member.exists.app_error"
+	MAIN_TEAM_NAME           = "worldr"
 )
 
 type SqlTeamStore struct {
@@ -60,6 +61,8 @@ type teamMemberWithSchemeRoles struct {
 }
 
 type teamMemberWithSchemeRolesList []teamMemberWithSchemeRoles
+
+var mainTeam *model.Team = nil
 
 func (db teamMemberWithSchemeRoles) ToModel() *model.TeamMember {
 	var roles []string
@@ -1217,4 +1220,38 @@ func (s SqlTeamStore) GroupSyncedTeamCount() (int64, *model.AppError) {
 	}
 
 	return count, nil
+}
+
+// MainTeam returns the sandbox team for Worldr app.
+// Gets it from the db every time. TODO: cache it somewhere as it is not supposed to change.
+func (s SqlTeamStore) MainTeam() (*model.Team, *model.AppError) {
+	if mainTeam != nil {
+		return mainTeam, nil
+	}
+	var teams []*model.Team
+	_, err := s.GetReplica().Select(&teams, "SELECT * FROM Teams WHERE Name = :Name", map[string]interface{}{"Name": MAIN_TEAM_NAME})
+	if err != nil || len(teams) != 1 {
+		found := "none"
+		errMsg := "none"
+		if teams != nil {
+			found = fmt.Sprint(len(teams))
+		}
+		if err != nil {
+			errMsg = err.Error()
+		}
+		details := []string{
+			"name=" + MAIN_TEAM_NAME,
+			"found:" + found,
+			"error=" + errMsg,
+		}
+		return nil, model.NewAppError(
+			"SqlTeamStore.MainTeam",
+			"store.sql_team.main_team.finding.app_error",
+			nil,
+			strings.Join(details, ","),
+			http.StatusInternalServerError,
+		)
+	}
+	mainTeam = teams[0]
+	return teams[0], nil
 }

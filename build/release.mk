@@ -1,7 +1,7 @@
 
 dist: | check-style test package
 
-build-linux: build-worldr-linux
+build-linux: # build-worldr-linux
 	@echo Build Linux amd64	
 ifeq ($(BUILDER_GOOS_GOARCH),"linux_amd64")
 	env GOOS=linux GOARCH=amd64 $(GO) build -o $(GOBIN) $(GOFLAGS) -trimpath -ldflags '$(LDFLAGS)' ./...
@@ -10,7 +10,7 @@ else
 	env GOOS=linux GOARCH=amd64 $(GO) build -o $(GOBIN)/linux_amd64 $(GOFLAGS) -trimpath -ldflags '$(LDFLAGS)' ./...
 endif
 
-build-osx: build-worldr-osx
+build-osx: # build-worldr-osx
 	@echo Build OSX amd64
 ifeq ($(BUILDER_GOOS_GOARCH),"darwin_amd64")
 	env GOOS=darwin GOARCH=amd64 $(GO) build -o $(GOBIN) $(GOFLAGS) -trimpath -ldflags '$(LDFLAGS)' ./...
@@ -19,7 +19,7 @@ else
 	env GOOS=darwin GOARCH=amd64 $(GO) build -o $(GOBIN)/darwin_amd64 $(GOFLAGS) -trimpath -ldflags '$(LDFLAGS)' ./...
 endif
 
-build-windows: build-worldr-windows
+build-windows: # build-worldr-windows
 	@echo Build Windows amd64
 ifeq ($(BUILDER_GOOS_GOARCH),"windows_amd64")
 	env GOOS=windows GOARCH=amd64 $(GO) build -o $(GOBIN) $(GOFLAGS) -trimpath -ldflags '$(LDFLAGS)' ./...
