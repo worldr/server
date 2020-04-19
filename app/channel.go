@@ -2497,9 +2497,21 @@ func (a *App) AssignCategory(channelId string, categoryId int32) (*model.Channel
 // the userId is a member of. Apart from the Channel structure itself,
 // the ChannelSnapshot contains channel usage info and its last message.
 func (a *App) GetPersonalChannels(teamId string, userId string) (*model.ChannelSnapshotList, *model.AppError) {
-	if list, err := a.Srv().Store.Channel().GetPersonalChannels(teamId, userId); err != nil {
-		return nil, model.NewAppError("GetPersonalChannels", "api.channel.get_personal_channels.cant_get_personal_channels.app_error", nil, err.Message, http.StatusBadRequest)
-	} else {
-		return list, nil
-	}
+	return a.Srv().Store.Channel().GetPersonalChannels(teamId, userId)
+}
+
+// GetWorkChannels returns everything needed to show the work chats screen.
+// These include chats marked as kind='team' or kind='work'
+// the userId is a member of. Apart from the Channel structure itself,
+// the ChannelSnapshot contains channel usage info and its last message.
+func (a *App) GetWorkChannels(teamId string, userId string) (*model.ChannelSnapshotList, *model.AppError) {
+	return a.Srv().Store.Channel().GetWorkChannels(teamId, userId)
+}
+
+// GetGlobalChannels returns everything needed to show the global chats screen.
+// These include chats available for everyone on the server, not just those
+// the userId is a member of. Apart from the Channel structure itself,
+// the ChannelSnapshot contains channel usage info and its last message.
+func (a *App) GetGlobalChannels(teamId string, userId string) (*model.ChannelSnapshotList, *model.AppError) {
+	return a.Srv().Store.Channel().GetGlobalChannels(teamId, userId)
 }

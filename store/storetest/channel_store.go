@@ -90,6 +90,8 @@ func TestChannelStore(t *testing.T, ss store.Store, s SqlSupplier) {
 	t.Run("GetChannelsBatchForIndexing", func(t *testing.T) { testChannelStoreGetChannelsBatchForIndexing(t, ss) })
 	t.Run("GroupSyncedChannelCount", func(t *testing.T) { testGroupSyncedChannelCount(t, ss) })
 	t.Run("GetPersonalChannels", func(t *testing.T) { testChannelStoreGetPersonalChannels(t, ss) })
+	t.Run("GetWorkChannels", func(t *testing.T) { testChannelStoreGetWorkChannels(t, ss) })
+	t.Run("GetGlobalChannels", func(t *testing.T) { testChannelStoreGetGlobalChannels(t, ss) })
 }
 
 func testChannelStoreSave(t *testing.T, ss store.Store) {
@@ -4262,7 +4264,7 @@ func testGroupSyncedChannelCount(t *testing.T, ss store.Store) {
 	require.GreaterOrEqual(t, countAfter, count+1)
 }
 
-func testChannelStoreGetPersonalChannels(t *testing.T, ss store.Store) {
+func prepareTestSpecificChats(t *testing.T, ss store.Store) (string, string) {
 	teamId := model.NewId()
 	teamOther := model.NewId()
 
@@ -4393,9 +4395,13 @@ func testChannelStoreGetPersonalChannels(t *testing.T, ss store.Store) {
 	_, err = ss.Channel().SaveMember(&m2)
 	require.Nil(t, err)
 
-	// test
+	return teamId, u1.Id
+}
 
-	list, err1 := ss.Channel().GetPersonalChannels(teamId, u1.Id)
+func testChannelStoreGetPersonalChannels(t *testing.T, ss store.Store) {
+	teamId, userId := prepareTestSpecificChats(t, ss)
+
+	list, err1 := ss.Channel().GetPersonalChannels(teamId, userId)
 	require.Nil(t, err1)
 
 	assert.Equal(t, 3, len(*list))
@@ -4404,5 +4410,33 @@ func testChannelStoreGetPersonalChannels(t *testing.T, ss store.Store) {
 		assert.False(t, v.Channel.Type == "O")
 		assert.False(t, v.Channel.Kind == "team" || v.Channel.Kind == "work")
 		assert.True(t, v.Channel.TeamId == "" || v.Channel.TeamId == teamId)
+	}
+}
+
+func testChannelStoreGetWorkChannels(t *testing.T, ss store.Store) {
+	teamId, userId := prepareTestSpecificChats(t, ss)
+
+	list, err1 := ss.Channel().GetWorkChannels(teamId, userId)
+	require.Nil(t, err1)
+
+	assert.Equal(t, 2, len(*list))
+
+	for _, v := range *list {
+		assert.True(t, v.Channel.Kind == "team" || v.Channel.Kind == "work")
+		assert.True(t, v.Channel.TeamId == teamId)
+	}
+}
+
+func testChannelStoreGetGlobalChannels(t *testing.T, ss store.Store) {
+	teamId, userId := prepareTestSpecificChats(t, ss)
+
+	list, err1 := ss.Channel().GetGlobalChannels(teamId, userId)
+	require.Nil(t, err1)
+
+	assert.Equal(t, 1, len(*list))
+
+	for _, v := range *list {
+		assert.True(t, v.Channel.Type == "O")
+		assert.True(t, v.Channel.TeamId == teamId)
 	}
 }

@@ -159,11 +159,21 @@ type AppIface interface {
 	GetEmojiStaticUrl(emojiName string) (string, *model.AppError)
 	// GetEnvironmentConfig returns a map of configuration keys whose values have been overridden by an environment variable.
 	GetEnvironmentConfig() map[string]interface{}
+	// GetGlobalChannels returns everything needed to show the global chats screen.
+	// These include chats available for everyone on the server, not just those
+	// the userId is a member of. Apart from the Channel structure itself,
+	// the ChannelSnapshot contains channel usage info and its last message.
+	GetGlobalChannels(teamId string, userId string) (*model.ChannelSnapshotList, *model.AppError)
 	// GetLdapGroup retrieves a single LDAP group by the given LDAP group id.
 	GetLdapGroup(ldapGroupID string) (*model.Group, *model.AppError)
 	// GetMarketplacePlugins returns a list of plugins from the marketplace-server,
 	// and plugins that are installed locally.
 	GetMarketplacePlugins(filter *model.MarketplacePluginFilter) ([]*model.MarketplacePlugin, *model.AppError)
+	// GetPersonalChannels returns everything needed to show the personal chats screen.
+	// These include direct messages, group direct messages and private channels
+	// the userId is a member of. Apart from the Channel structure itself,
+	// the ChannelSnapshot contains channel usage info and its last message.
+	GetPersonalChannels(teamId string, userId string) (*model.ChannelSnapshotList, *model.AppError)
 	// GetPluginPublicKeyFiles returns all public keys listed in the config.
 	GetPluginPublicKeyFiles() ([]string, *model.AppError)
 	// GetPluginStatus returns the status for a plugin installed on this server.
@@ -188,6 +198,11 @@ type AppIface interface {
 	GetTeamSchemeChannelRoles(teamId string) (string, string, string, *model.AppError)
 	// GetTotalUsersStats is used for the DM list total
 	GetTotalUsersStats(viewRestrictions *model.ViewUsersRestrictions) (*model.UsersStats, *model.AppError)
+	// GetWorkChannels returns everything needed to show the work chats screen.
+	// These include chats marked as kind='team' or kind='work'
+	// the userId is a member of. Apart from the Channel structure itself,
+	// the ChannelSnapshot contains channel usage info and its last message.
+	GetWorkChannels(teamId string, userId string) (*model.ChannelSnapshotList, *model.AppError)
 	// InstallMarketplacePlugin installs a plugin listed in the marketplace server. It will get the plugin bundle
 	// from the prepackaged folder, if available, or remotely if EnableRemoteMarketplace is true.
 	InstallMarketplacePlugin(request *model.InstallMarketplacePluginRequest) (*model.Manifest, *model.AppError)
@@ -201,6 +216,10 @@ type AppIface interface {
 	License() *model.License
 	// LimitedClientConfigWithComputed gets the configuration in a format suitable for sending to the client.
 	LimitedClientConfigWithComputed() map[string]string
+	// MainTeam returns the team object that is a sandbox for everything
+	// inside the Worldr service environment for current deployment.
+	// Ths is the only "team" (in Mattermost terms) the users interact with.
+	MainTeam() (*model.Team, *model.AppError)
 	// MarkChanelAsUnreadFromPost will take a post and set the channel as unread from that one.
 	MarkChannelAsUnreadFromPost(postID string, userID string) (*model.ChannelUnreadAt, *model.AppError)
 	// OverrideIconURLIfEmoji changes the post icon override URL prop, if it has an emoji icon,
@@ -565,7 +584,6 @@ type AppIface interface {
 	GetOutgoingWebhooksPageByUser(userId string, page, perPage int) ([]*model.OutgoingWebhook, *model.AppError)
 	GetPasswordRecoveryToken(token string) (*model.Token, *model.AppError)
 	GetPermalinkPost(postId string, userId string) (*model.PostList, *model.AppError)
-	GetPersonalChannels(teamId string, userId string) (*model.ChannelSnapshotList, *model.AppError)
 	GetPinnedPosts(channelId string) (*model.PostList, *model.AppError)
 	GetPluginKey(pluginId string, key string) ([]byte, *model.AppError)
 	GetPlugins() (*model.PluginsResponse, *model.AppError)
@@ -721,7 +739,6 @@ type AppIface interface {
 	LoadLicense()
 	Log() *mlog.Logger
 	LoginByOAuth(service string, userData io.Reader, teamId string) (*model.User, *model.AppError)
-	MainTeam() (*model.Team, *model.AppError)
 	MakePermissionError(permission *model.Permission) *model.AppError
 	MarkChannelsAsViewed(channelIds []string, userId string, currentSessionId string) (map[string]int64, *model.AppError)
 	MaxPostSize() int

@@ -769,6 +769,31 @@ func (_m *ChannelStore) GetFromMaster(id string) (*model.Channel, *model.AppErro
 	return r0, r1
 }
 
+// GetGlobalChannels provides a mock function with given fields: teamId, userId
+func (_m *ChannelStore) GetGlobalChannels(teamId string, userId string) (*model.ChannelSnapshotList, *model.AppError) {
+	ret := _m.Called(teamId, userId)
+
+	var r0 *model.ChannelSnapshotList
+	if rf, ok := ret.Get(0).(func(string, string) *model.ChannelSnapshotList); ok {
+		r0 = rf(teamId, userId)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*model.ChannelSnapshotList)
+		}
+	}
+
+	var r1 *model.AppError
+	if rf, ok := ret.Get(1).(func(string, string) *model.AppError); ok {
+		r1 = rf(teamId, userId)
+	} else {
+		if ret.Get(1) != nil {
+			r1 = ret.Get(1).(*model.AppError)
+		}
+	}
+
+	return r0, r1
+}
+
 // GetGuestCount provides a mock function with given fields: channelId, allowFromCache
 func (_m *ChannelStore) GetGuestCount(channelId string, allowFromCache bool) (int64, *model.AppError) {
 	ret := _m.Called(channelId, allowFromCache)
@@ -1143,6 +1168,31 @@ func (_m *ChannelStore) GetTeamChannels(teamId string) (*model.ChannelList, *mod
 	var r1 *model.AppError
 	if rf, ok := ret.Get(1).(func(string) *model.AppError); ok {
 		r1 = rf(teamId)
+	} else {
+		if ret.Get(1) != nil {
+			r1 = ret.Get(1).(*model.AppError)
+		}
+	}
+
+	return r0, r1
+}
+
+// GetWorkChannels provides a mock function with given fields: teamId, userId
+func (_m *ChannelStore) GetWorkChannels(teamId string, userId string) (*model.ChannelSnapshotList, *model.AppError) {
+	ret := _m.Called(teamId, userId)
+
+	var r0 *model.ChannelSnapshotList
+	if rf, ok := ret.Get(0).(func(string, string) *model.ChannelSnapshotList); ok {
+		r0 = rf(teamId, userId)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*model.ChannelSnapshotList)
+		}
+	}
+
+	var r1 *model.AppError
+	if rf, ok := ret.Get(1).(func(string, string) *model.AppError); ok {
+		r1 = rf(teamId, userId)
 	} else {
 		if ret.Get(1) != nil {
 			r1 = ret.Get(1).(*model.AppError)

@@ -218,6 +218,8 @@ type ChannelStore interface {
 	GroupSyncedChannelCount() (int64, *model.AppError)
 
 	GetPersonalChannels(teamId string, userId string) (*model.ChannelSnapshotList, *model.AppError)
+	GetWorkChannels(teamId string, userId string) (*model.ChannelSnapshotList, *model.AppError)
+	GetGlobalChannels(teamId string, userId string) (*model.ChannelSnapshotList, *model.AppError)
 }
 
 type ChannelMemberHistoryStore interface {

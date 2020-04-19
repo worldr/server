@@ -2964,13 +2964,10 @@ func (s SqlChannelStore) getLastMessages(channels *model.ChannelList) (*map[stri
 	return &result, nil
 }
 
-// GetPersonalChannels returns channels for personal screen.
-// These are direct messages and private chats with 'kind' value not equal to "team" or "work".
-func (s SqlChannelStore) GetPersonalChannels(teamId string, userId string) (*model.ChannelSnapshotList, *model.AppError) {
-
+func (s SqlChannelStore) getSpecificChannels(teamId string, userId string, clause string) (*model.ChannelSnapshotList, *model.AppError) {
 	channelIds, channelInfos, err1 := s.getChannelInfos(teamId, userId)
 	if err1 != nil {
-		return nil, model.NewAppError("SqlChannelStore.GetPersonalChannels", "store.sql_channel.get_personal_channels.get_channel_infos.app_error", nil, "userId="+userId+", err="+err1.Error(), http.StatusInternalServerError)
+		return nil, model.NewAppError("SqlChannelStore.getSpecificChannels", "store.sql_channel.get_specific_channels.get_channel_infos.app_error", nil, "userId="+userId+", clause="+clause+", err="+err1.Error(), http.StatusInternalServerError)
 	}
 
 	channels := &model.ChannelList{}
@@ -2980,20 +2977,18 @@ func (s SqlChannelStore) GetPersonalChannels(teamId string, userId string) (*mod
 		FROM 
 			Channels
 		WHERE			
-			Kind = ''
-			AND
-			Type != 'O'
+			`+clause+`
 			AND
 			Id IN ('`+strings.Join(*channelIds, "','")+`')
 		`,
 	)
 	if err2 != nil {
-		return nil, model.NewAppError("SqlChannelStore.GetPersonalChannels", "store.sql_channel.get_personal_channels.get_channels.app_error", nil, "userId="+userId+", err="+err2.Error(), http.StatusInternalServerError)
+		return nil, model.NewAppError("SqlChannelStore.getSpecificChannels", "store.sql_channel.get_specific_channels.get_channels.app_error", nil, "userId="+userId+", err="+err2.Error(), http.StatusInternalServerError)
 	}
 
 	lastMessages, err3 := s.getLastMessages(channels)
 	if err3 != nil {
-		return nil, model.NewAppError("SqlChannelStore.GetPersonalChannels", "store.sql_channel.get_personal_channels.get_last_messages.app_error", nil, "userId="+userId+", err="+err3.Error(), http.StatusInternalServerError)
+		return nil, model.NewAppError("SqlChannelStore.getSpecificChannels", "store.sql_channel.get_specific_channels.get_last_messages.app_error", nil, "userId="+userId+", err="+err3.Error(), http.StatusInternalServerError)
 	}
 
 	result := make([]*model.ChannelSnapshot, len(*channels))
@@ -3007,4 +3002,22 @@ func (s SqlChannelStore) GetPersonalChannels(teamId string, userId string) (*mod
 
 	list := model.ChannelSnapshotList(result)
 	return &list, nil
+}
+
+// GetPersonalChannels returns channels for personal screen.
+// These are direct messages and private chats with 'kind' value not equal to "team" or "work".
+func (s SqlChannelStore) GetPersonalChannels(teamId string, userId string) (*model.ChannelSnapshotList, *model.AppError) {
+	return s.getSpecificChannels(teamId, userId, "Kind = '' AND Type != 'O'")
+}
+
+// GetWorkChannels returns channels for team screen.
+// These are private chats with 'kind' value equal to "team" or "work".
+func (s SqlChannelStore) GetWorkChannels(teamId string, userId string) (*model.ChannelSnapshotList, *model.AppError) {
+	return s.getSpecificChannels(teamId, userId, "(Kind = 'team' OR Kind = 'work')")
+}
+
+// GetGlobalChannels returns channels for global screen.
+// These are public chats available to anybody on the server.
+func (s SqlChannelStore) GetGlobalChannels(teamId string, userId string) (*model.ChannelSnapshotList, *model.AppError) {
+	return s.getSpecificChannels(teamId, userId, "Kind = '' AND Type = 'O'")
 }

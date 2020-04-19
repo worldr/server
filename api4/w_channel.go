@@ -13,6 +13,8 @@ import (
 func (api *API) InitWChannel() {
 	api.BaseRoutes.WChannels.Handle("/categories", api.ApiSessionRequired(getChannelsCategories)).Methods("GET")
 	api.BaseRoutes.WChannels.Handle("/personal", api.ApiSessionRequired(getPersonalChannels)).Methods("GET")
+	api.BaseRoutes.WChannels.Handle("/work", api.ApiSessionRequired(getWorkChannels)).Methods("GET")
+	api.BaseRoutes.WChannels.Handle("/global", api.ApiSessionRequired(getGlobalChannels)).Methods("GET")
 }
 
 func getChannelsCategories(c *Context, w http.ResponseWriter, r *http.Request) {
@@ -57,14 +59,16 @@ func fillLastUsers(c *Context, list *model.ChannelSnapshotList) *model.AppError 
 	return nil
 }
 
-func getPersonalChannels(c *Context, w http.ResponseWriter, r *http.Request) {
+type specChannelsGetter func(string, string) (*model.ChannelSnapshotList, *model.AppError)
+
+func getSpecificChannels(c *Context, w http.ResponseWriter, r *http.Request, getter specChannelsGetter) {
 	team, err := c.App.MainTeam()
 	if err != nil {
 		c.Err = err
 		return
 	}
 	uid := c.App.Session().UserId
-	if list, err := c.App.GetPersonalChannels(team.Id, uid); err != nil {
+	if list, err := getter(team.Id, uid); err != nil {
 		c.Err = err
 	} else {
 		if err := fillLastUsers(c, list); err != nil {
@@ -73,4 +77,16 @@ func getPersonalChannels(c *Context, w http.ResponseWriter, r *http.Request) {
 			w.Write([]byte(list.ChannelSnapshotListToJson()))
 		}
 	}
+}
+
+func getPersonalChannels(c *Context, w http.ResponseWriter, r *http.Request) {
+	getSpecificChannels(c, w, r, c.App.GetPersonalChannels)
+}
+
+func getWorkChannels(c *Context, w http.ResponseWriter, r *http.Request) {
+	getSpecificChannels(c, w, r, c.App.GetWorkChannels)
+}
+
+func getGlobalChannels(c *Context, w http.ResponseWriter, r *http.Request) {
+	getSpecificChannels(c, w, r, c.App.GetGlobalChannels)
 }
