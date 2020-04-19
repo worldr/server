@@ -45,6 +45,8 @@ require (
 	github.com/jmoiron/sqlx v1.2.0
 	github.com/jonboulle/clockwork v0.1.0
 	github.com/konsorten/go-windows-terminal-sequences v1.0.2 // indirect
+	github.com/kyoh86/richgo v0.3.3 // indirect
+	github.com/kyoh86/xdg v1.2.0 // indirect
 	github.com/lib/pq v1.3.0
 	github.com/magiconair/properties v1.8.1 // indirect
 	github.com/mailru/easyjson v0.7.0 // indirect
@@ -60,6 +62,7 @@ require (
 	github.com/miekg/dns v1.1.27 // indirect
 	github.com/minio/minio-go/v6 v6.0.45
 	github.com/mitchellh/go-testing-interface v1.0.0 // indirect
+	github.com/morikuni/aec v1.0.0 // indirect
 	github.com/muesli/smartcrop v0.3.0 // indirect
 	github.com/oklog/run v1.1.0 // indirect
 	github.com/olekukonko/tablewriter v0.0.4 // indirect
@@ -90,6 +93,7 @@ require (
 	github.com/tylerb/graceful v1.2.15
 	github.com/uber/jaeger-client-go v2.22.1+incompatible
 	github.com/uber/jaeger-lib v2.2.0+incompatible
+	github.com/wacul/ptr v1.0.0 // indirect
 	github.com/wiggin77/logr v1.0.3
 	github.com/wiggin77/merror v1.0.2
 	github.com/xtgo/uuid v0.0.0-20140804021211-a0b114877d4c // indirect
@@ -102,7 +106,7 @@ require (
 	golang.org/x/lint v0.0.0-20191125180803-fdd1cda4f05f // indirect
 	golang.org/x/mod v0.2.0 // indirect
 	golang.org/x/net v0.0.0-20200114155413-6afb5195e5aa
-	golang.org/x/sys v0.0.0-20200124204421-9fbb57f87de9 // indirect
+	golang.org/x/sys v0.0.0-20200413165638-669c56c373c4 // indirect
 	golang.org/x/text v0.3.2
 	golang.org/x/tools v0.0.0-20200213050514-49b8ac185c84
 	google.golang.org/genproto v0.0.0-20200128133413-58ce757ed39b // indirect

@@ -2882,6 +2882,8 @@ func (s SqlChannelStore) getChannelInfos(teamId string, userId string) (*[]strin
 			cm.ChannelId as Id 
 		FROM ChannelMembers as cm, Channels as c 
 		WHERE 
+			cm.ChannelId = c.Id
+			AND
 			cm.UserId = :UserId 
 			AND
 			c.DeleteAt = 0
@@ -2889,7 +2891,7 @@ func (s SqlChannelStore) getChannelInfos(teamId string, userId string) (*[]strin
 			(
 				c.TeamId = :TeamId
 				OR
-				c.Type in ('D', 'G')
+				c.Type IN ('D', 'G')
 			)
 		`,
 		map[string]interface{}{

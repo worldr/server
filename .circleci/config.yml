@@ -355,7 +355,7 @@ workflows:
           filters:
             branches:
               ignore:
-                - master
+                #- master  # We want to build master so we can install it!
                 - /^release-.*/
       # - check-i18n:
       #     requires:
@@ -400,7 +400,7 @@ workflows:
           context: matterbuild-circleci-token
           requires:
             #- test-mysql
-            - test-postgres
+            #- test-postgres
             - test-schema
             # - upload-s3
             # - upload-s3-sha

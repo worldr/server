@@ -112,11 +112,90 @@ endif
 
 EE_PACKAGES=$(shell $(GO) list ./enterprise/...)
 
-ifeq ($(BUILD_ENTERPRISE_READY),true)
-ALL_PACKAGES=$(TE_PACKAGES) $(EE_PACKAGES)
-else
-ALL_PACKAGES=$(TE_PACKAGES)
-endif
+# ifeq ($(BUILD_ENTERPRISE_READY),true)
+# ALL_PACKAGES=$(TE_PACKAGES) $(EE_PACKAGES)
+# else
+# ALL_PACKAGES=$(TE_PACKAGES)
+# endif
+# ALL_PACKAGES?=github.com/mattermost/mattermost-server/v5/api4
+# ALL_PACKAGES += github.com/mattermost/mattermost-server/v5/app
+# ALL_PACKAGES += github.com/mattermost/mattermost-server/v5/app/layer_generators
+# ALL_PACKAGES += github.com/mattermost/mattermost-server/v5/app/plugin_api_tests
+# ALL_PACKAGES += github.com/mattermost/mattermost-server/v5/app/plugin_api_tests/manual.test_load_configuration_defaults_plugin
+# ALL_PACKAGES += github.com/mattermost/mattermost-server/v5/app/plugin_api_tests/manual.test_load_configuration_plugin
+# ALL_PACKAGES += github.com/mattermost/mattermost-server/v5/app/plugin_api_tests/test_bots_plugin
+# ALL_PACKAGES += github.com/mattermost/mattermost-server/v5/app/plugin_api_tests/test_call_log_api_plugin
+# ALL_PACKAGES += github.com/mattermost/mattermost-server/v5/app/plugin_api_tests/test_get_bundle_path_plugin
+# ALL_PACKAGES += github.com/mattermost/mattermost-server/v5/app/plugin_api_tests/test_get_channels_for_team_for_user_plugin
+# ALL_PACKAGES += github.com/mattermost/mattermost-server/v5/app/plugin_api_tests/test_get_direct_channel_plugin
+# ALL_PACKAGES += github.com/mattermost/mattermost-server/v5/app/plugin_api_tests/test_get_profile_image_plugin
+# ALL_PACKAGES += github.com/mattermost/mattermost-server/v5/app/plugin_api_tests/test_member_channels_plugin
+# ALL_PACKAGES += github.com/mattermost/mattermost-server/v5/app/plugin_api_tests/test_members_plugin
+# ALL_PACKAGES += github.com/mattermost/mattermost-server/v5/app/plugin_api_tests/test_search_channels_plugin
+# ALL_PACKAGES += github.com/mattermost/mattermost-server/v5/app/plugin_api_tests/test_search_posts_in_team_plugin
+# ALL_PACKAGES += github.com/mattermost/mattermost-server/v5/app/plugin_api_tests/test_search_teams_plugin
+# ALL_PACKAGES += github.com/mattermost/mattermost-server/v5/app/plugin_api_tests/test_send_mail_plugin
+# ALL_PACKAGES += github.com/mattermost/mattermost-server/v5/app/plugin_api_tests/test_set_profile_image_plugin
+# ALL_PACKAGES += github.com/mattermost/mattermost-server/v5/app/plugin_api_tests/test_update_user_active_plugin
+# ALL_PACKAGES += github.com/mattermost/mattermost-server/v5/app/plugin_api_tests/test_update_user_status_plugin
+ALL_PACKAGES?=github.com/mattermost/mattermost-server/v5/audit
+# ALL_PACKAGES += github.com/mattermost/mattermost-server/v5/cmd/mattermost
+# ALL_PACKAGES += github.com/mattermost/mattermost-server/v5/cmd/mattermost/commands
+# ALL_PACKAGES += github.com/mattermost/mattermost-server/v5/cmd/platform
+ALL_PACKAGES += github.com/mattermost/mattermost-server/v5/config
+ALL_PACKAGES += github.com/mattermost/mattermost-server/v5/config/config_generator
+ALL_PACKAGES += github.com/mattermost/mattermost-server/v5/config/config_generator/generator
+ALL_PACKAGES += github.com/mattermost/mattermost-server/v5/einterfaces
+ALL_PACKAGES += github.com/mattermost/mattermost-server/v5/einterfaces/jobs
+ALL_PACKAGES += github.com/mattermost/mattermost-server/v5/einterfaces/mocks
+ALL_PACKAGES += github.com/mattermost/mattermost-server/v5/imports
+ALL_PACKAGES += github.com/mattermost/mattermost-server/v5/jobs
+ALL_PACKAGES += github.com/mattermost/mattermost-server/v5/jobs/interfaces
+ALL_PACKAGES += github.com/mattermost/mattermost-server/v5/manualtesting
+ALL_PACKAGES += github.com/mattermost/mattermost-server/v5/migrations
+ALL_PACKAGES += github.com/mattermost/mattermost-server/v5/mlog
+ALL_PACKAGES += github.com/mattermost/mattermost-server/v5/mlog/human
+ALL_PACKAGES += github.com/mattermost/mattermost-server/v5/model
+ALL_PACKAGES += github.com/mattermost/mattermost-server/v5/model/gitlab
+ALL_PACKAGES += github.com/mattermost/mattermost-server/v5/plugin
+ALL_PACKAGES += github.com/mattermost/mattermost-server/v5/plugin/checker
+ALL_PACKAGES += github.com/mattermost/mattermost-server/v5/plugin/checker/internal/asthelpers
+ALL_PACKAGES += github.com/mattermost/mattermost-server/v5/plugin/checker/internal/test/invalid
+ALL_PACKAGES += github.com/mattermost/mattermost-server/v5/plugin/checker/internal/test/missing
+ALL_PACKAGES += github.com/mattermost/mattermost-server/v5/plugin/checker/internal/test/valid
+ALL_PACKAGES += github.com/mattermost/mattermost-server/v5/plugin/checker/internal/version
+ALL_PACKAGES += github.com/mattermost/mattermost-server/v5/plugin/interface_generator
+ALL_PACKAGES += github.com/mattermost/mattermost-server/v5/plugin/plugintest
+ALL_PACKAGES += github.com/mattermost/mattermost-server/v5/plugin/plugintest/mock
+ALL_PACKAGES += github.com/mattermost/mattermost-server/v5/plugin/scheduler
+ALL_PACKAGES += github.com/mattermost/mattermost-server/v5/services/cache
+ALL_PACKAGES += github.com/mattermost/mattermost-server/v5/services/cache/lru
+ALL_PACKAGES += github.com/mattermost/mattermost-server/v5/services/configservice
+ALL_PACKAGES += github.com/mattermost/mattermost-server/v5/services/filesstore
+ALL_PACKAGES += github.com/mattermost/mattermost-server/v5/services/filesstore/mocks
+ALL_PACKAGES += github.com/mattermost/mattermost-server/v5/services/httpservice
+ALL_PACKAGES += github.com/mattermost/mattermost-server/v5/services/imageproxy
+ALL_PACKAGES += github.com/mattermost/mattermost-server/v5/services/mailservice
+ALL_PACKAGES += github.com/mattermost/mattermost-server/v5/services/marketplace
+ALL_PACKAGES += github.com/mattermost/mattermost-server/v5/services/mfa
+ALL_PACKAGES += github.com/mattermost/mattermost-server/v5/services/timezones
+ALL_PACKAGES += github.com/mattermost/mattermost-server/v5/services/tracing
+ALL_PACKAGES += github.com/mattermost/mattermost-server/v5/store
+ALL_PACKAGES += github.com/mattermost/mattermost-server/v5/store/layer_generators
+ALL_PACKAGES += github.com/mattermost/mattermost-server/v5/store/localcachelayer
+ALL_PACKAGES += github.com/mattermost/mattermost-server/v5/store/sqlstore
+ALL_PACKAGES += github.com/mattermost/mattermost-server/v5/store/storetest
+ALL_PACKAGES += github.com/mattermost/mattermost-server/v5/store/storetest/mocks
+ALL_PACKAGES += github.com/mattermost/mattermost-server/v5/testlib
+ALL_PACKAGES += github.com/mattermost/mattermost-server/v5/utils
+ALL_PACKAGES += github.com/mattermost/mattermost-server/v5/utils/fileutils
+ALL_PACKAGES += github.com/mattermost/mattermost-server/v5/utils/imgutils
+ALL_PACKAGES += github.com/mattermost/mattermost-server/v5/utils/jsonutils
+ALL_PACKAGES += github.com/mattermost/mattermost-server/v5/utils/markdown
+ALL_PACKAGES += github.com/mattermost/mattermost-server/v5/utils/testutils
+ALL_PACKAGES += github.com/mattermost/mattermost-server/v5/web
+ALL_PACKAGES += github.com/mattermost/mattermost-server/v5/worldr/com.worldr.main
+ALL_PACKAGES += github.com/mattermost/mattermost-server/v5/wsapi
 
 # Decide what version of prebuilt binaries to download. This will use the release-* branch names or change to the latest.
 MMCTL_REL_TO_DOWNLOAD = $(shell scripts/get_latest_release.sh 'mattermost/mmctl' 'release-')

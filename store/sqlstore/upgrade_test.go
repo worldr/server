@@ -60,7 +60,9 @@ func TestStoreUpgrade(t *testing.T) {
 			saveSchemaVersion(sqlStore, "5.29.0")
 			err := upgradeDatabase(sqlStore, "5.8.0")
 			require.NoError(t, err)
-			require.Equal(t, "5.29.0", sqlStore.GetCurrentSchemaVersion())
+			//require.Equal(t, "5.29.0", sqlStore.GetCurrentSchemaVersion())
+			require.Equal(t, "6.0.0", sqlStore.GetCurrentSchemaVersion())
+			// Worldr does not use 5.29.0.
 		})
 
 		t.Run("upgrade schema running earlier major version", func(t *testing.T) {

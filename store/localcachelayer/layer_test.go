@@ -62,10 +62,11 @@ func initStores() {
 	if testing.Short() {
 		return
 	}
-	storeTypes = append(storeTypes, &storeType{
-		Name:        "LocalCache+MySQL",
-		SqlSettings: storetest.MakeSqlSettings(model.DATABASE_DRIVER_MYSQL),
-	})
+	// Worldr is not using MySQL.
+	// storeTypes = append(storeTypes, &storeType{
+	// 	Name:        "LocalCache+MySQL",
+	// 	SqlSettings: storetest.MakeSqlSettings(model.DATABASE_DRIVER_MYSQL),
+	// })
 	storeTypes = append(storeTypes, &storeType{
 		Name:        "LocalCache+PostgreSQL",
 		SqlSettings: storetest.MakeSqlSettings(model.DATABASE_DRIVER_POSTGRES),

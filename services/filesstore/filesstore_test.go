@@ -5,7 +5,6 @@ package filesstore
 
 import (
 	"bytes"
-	"fmt"
 	"io/ioutil"
 	"os"
 	"testing"
@@ -47,40 +46,41 @@ func TestLocalFileBackendTestSuite(t *testing.T) {
 	})
 }
 
-func TestS3FileBackendTestSuite(t *testing.T) {
-	runBackendTest(t, false)
-}
-
-func TestS3FileBackendTestSuiteWithEncryption(t *testing.T) {
-	runBackendTest(t, true)
-}
-
-func runBackendTest(t *testing.T, encrypt bool) {
-	s3Host := os.Getenv("CI_MINIO_HOST")
-	if s3Host == "" {
-		s3Host = "localhost"
-	}
-
-	s3Port := os.Getenv("CI_MINIO_PORT")
-	if s3Port == "" {
-		s3Port = "9000"
-	}
-
-	s3Endpoint := fmt.Sprintf("%s:%s", s3Host, s3Port)
-
-	suite.Run(t, &FileBackendTestSuite{
-		settings: model.FileSettings{
-			DriverName:              model.NewString(model.IMAGE_DRIVER_S3),
-			AmazonS3AccessKeyId:     model.NewString(model.MINIO_ACCESS_KEY),
-			AmazonS3SecretAccessKey: model.NewString(model.MINIO_SECRET_KEY),
-			AmazonS3Bucket:          model.NewString(model.MINIO_BUCKET),
-			AmazonS3Region:          model.NewString(""),
-			AmazonS3Endpoint:        model.NewString(s3Endpoint),
-			AmazonS3SSL:             model.NewBool(false),
-			AmazonS3SSE:             model.NewBool(encrypt),
-		},
-	})
-}
+// Worldr No S3 testing needed.
+// func TestS3FileBackendTestSuite(t *testing.T) {
+// 	runBackendTest(t, false)
+// }
+//
+// func TestS3FileBackendTestSuiteWithEncryption(t *testing.T) {
+// 	runBackendTest(t, true)
+// }
+//
+// func runBackendTest(t *testing.T, encrypt bool) {
+// 	s3Host := os.Getenv("CI_MINIO_HOST")
+// 	if s3Host == "" {
+// 		s3Host = "localhost"
+// 	}
+//
+// 	s3Port := os.Getenv("CI_MINIO_PORT")
+// 	if s3Port == "" {
+// 		s3Port = "9000"
+// 	}
+//
+// 	s3Endpoint := fmt.Sprintf("%s:%s", s3Host, s3Port)
+//
+// 	suite.Run(t, &FileBackendTestSuite{
+// 		settings: model.FileSettings{
+// 			DriverName:              model.NewString(model.IMAGE_DRIVER_S3),
+// 			AmazonS3AccessKeyId:     model.NewString(model.MINIO_ACCESS_KEY),
+// 			AmazonS3SecretAccessKey: model.NewString(model.MINIO_SECRET_KEY),
+// 			AmazonS3Bucket:          model.NewString(model.MINIO_BUCKET),
+// 			AmazonS3Region:          model.NewString(""),
+// 			AmazonS3Endpoint:        model.NewString(s3Endpoint),
+// 			AmazonS3SSL:             model.NewBool(false),
+// 			AmazonS3SSE:             model.NewBool(encrypt),
+// 		},
+// 	})
+// }
 
 func (s *FileBackendTestSuite) SetupTest() {
 	utils.TranslationsPreInit()
