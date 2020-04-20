@@ -15,6 +15,7 @@ func (api *API) InitWChannel() {
 	api.BaseRoutes.WChannels.Handle("/personal", api.ApiSessionRequired(getPersonalChannels)).Methods("GET")
 	api.BaseRoutes.WChannels.Handle("/work", api.ApiSessionRequired(getWorkChannels)).Methods("GET")
 	api.BaseRoutes.WChannels.Handle("/global", api.ApiSessionRequired(getGlobalChannels)).Methods("GET")
+	api.BaseRoutes.WChannels.Handle("/overview", api.ApiSessionRequired(getOverview)).Methods("GET")
 }
 
 func getChannelsCategories(c *Context, w http.ResponseWriter, r *http.Request) {
@@ -89,4 +90,36 @@ func getWorkChannels(c *Context, w http.ResponseWriter, r *http.Request) {
 
 func getGlobalChannels(c *Context, w http.ResponseWriter, r *http.Request) {
 	getSpecificChannels(c, w, r, c.App.GetGlobalChannels)
+}
+
+func getOverview(c *Context, w http.ResponseWriter, r *http.Request) {
+	team, err := c.App.MainTeam()
+	if err != nil {
+		c.Err = err
+		return
+	}
+	uid := c.App.Session().UserId
+	// Get channels visible to user and their members
+	if channels, membersByChannel, uids, err := c.App.GetOverview(team.Id, uid); err != nil {
+		c.Err = err
+	} else {
+		// Get users
+		users, err := c.App.GetUsersByIds(*uids, &store.UserGetByIdsOpts{})
+		if err != nil {
+			c.Err = err
+		}
+		// Get statuses
+		statuses, err := c.App.GetUserStatusesByIds(*uids)
+		if err != nil {
+			c.Err = err
+		}
+
+		o := &model.ChannelOverview{
+			Channels: channels,
+			Members:  membersByChannel,
+			Users:    &users,
+			Statuses: &statuses,
+		}
+		w.Write([]byte(o.ToJson()))
+	}
 }

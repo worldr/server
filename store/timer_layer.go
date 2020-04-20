@@ -1154,6 +1154,22 @@ func (s *TimerLayerChannelStore) GetMoreChannels(teamId string, userId string, o
 	return resultVar0, resultVar1
 }
 
+func (s *TimerLayerChannelStore) GetOverview(teamId string, userId string) (*model.ChannelList, *map[string][]string, *[]string, *model.AppError) {
+	start := timemodule.Now()
+
+	resultVar0, resultVar1, resultVar2, resultVar3 := s.ChannelStore.GetOverview(teamId, userId)
+
+	elapsed := float64(timemodule.Since(start)) / float64(timemodule.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if resultVar3 == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("ChannelStore.GetOverview", success, elapsed)
+	}
+	return resultVar0, resultVar1, resultVar2, resultVar3
+}
+
 func (s *TimerLayerChannelStore) GetPersonalChannels(teamId string, userId string) (*model.ChannelSnapshotList, *model.AppError) {
 	start := timemodule.Now()
 

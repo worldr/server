@@ -169,6 +169,11 @@ type AppIface interface {
 	// GetMarketplacePlugins returns a list of plugins from the marketplace-server,
 	// and plugins that are installed locally.
 	GetMarketplacePlugins(filter *model.MarketplacePluginFilter) ([]*model.MarketplacePlugin, *model.AppError)
+	// GetOverview returns everything needed to show the overview screen.
+	// These are all of the channels visible to user with all of their members.
+	// XXX: later we may need to separate getting the list of channels and the list of
+	// members for each channel because otherwise this could mean getting all of the users in the system.
+	GetOverview(teamId string, userId string) (*model.ChannelList, *map[string][]string, *[]string, *model.AppError)
 	// GetPersonalChannels returns everything needed to show the personal chats screen.
 	// These include direct messages, group direct messages and private channels
 	// the userId is a member of. Apart from the Channel structure itself,

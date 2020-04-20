@@ -2515,3 +2515,11 @@ func (a *App) GetWorkChannels(teamId string, userId string) (*model.ChannelSnaps
 func (a *App) GetGlobalChannels(teamId string, userId string) (*model.ChannelSnapshotList, *model.AppError) {
 	return a.Srv().Store.Channel().GetGlobalChannels(teamId, userId)
 }
+
+// GetOverview returns everything needed to show the overview screen.
+// These are all of the channels visible to user with all of their members.
+// XXX: later we may need to separate getting the list of channels and the list of
+// members for each channel because otherwise this could mean getting all of the users in the system.
+func (a *App) GetOverview(teamId string, userId string) (*model.ChannelList, *map[string][]string, *[]string, *model.AppError) {
+	return a.Srv().Store.Channel().GetOverview(teamId, userId)
+}

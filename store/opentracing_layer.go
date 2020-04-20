@@ -1247,6 +1247,24 @@ func (s *OpenTracingLayerChannelStore) GetMoreChannels(teamId string, userId str
 	return resultVar0, resultVar1
 }
 
+func (s *OpenTracingLayerChannelStore) GetOverview(teamId string, userId string) (*model.ChannelList, *map[string][]string, *[]string, *model.AppError) {
+	origCtx := s.Root.Store.Context()
+	span, newCtx := tracing.StartSpanWithParentByContext(s.Root.Store.Context(), "ChannelStore.GetOverview")
+	s.Root.Store.SetContext(newCtx)
+	defer func() {
+		s.Root.Store.SetContext(origCtx)
+	}()
+
+	defer span.Finish()
+	resultVar0, resultVar1, resultVar2, resultVar3 := s.ChannelStore.GetOverview(teamId, userId)
+	if resultVar3 != nil {
+		span.LogFields(spanlog.Error(resultVar3))
+		ext.Error.Set(span, true)
+	}
+
+	return resultVar0, resultVar1, resultVar2, resultVar3
+}
+
 func (s *OpenTracingLayerChannelStore) GetPersonalChannels(teamId string, userId string) (*model.ChannelSnapshotList, *model.AppError) {
 	origCtx := s.Root.Store.Context()
 	span, newCtx := tracing.StartSpanWithParentByContext(s.Root.Store.Context(), "ChannelStore.GetPersonalChannels")

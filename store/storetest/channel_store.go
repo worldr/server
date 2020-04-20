@@ -92,6 +92,7 @@ func TestChannelStore(t *testing.T, ss store.Store, s SqlSupplier) {
 	t.Run("GetPersonalChannels", func(t *testing.T) { testChannelStoreGetPersonalChannels(t, ss) })
 	t.Run("GetWorkChannels", func(t *testing.T) { testChannelStoreGetWorkChannels(t, ss) })
 	t.Run("GetGlobalChannels", func(t *testing.T) { testChannelStoreGetGlobalChannels(t, ss) })
+	t.Run("GetOverview", func(t *testing.T) { testChannelsOverview(t, ss) })
 }
 
 func testChannelStoreSave(t *testing.T, ss store.Store) {
@@ -4439,4 +4440,15 @@ func testChannelStoreGetGlobalChannels(t *testing.T, ss store.Store) {
 		assert.True(t, v.Channel.Type == "O")
 		assert.True(t, v.Channel.TeamId == teamId)
 	}
+}
+
+func testChannelsOverview(t *testing.T, ss store.Store) {
+	teamId, userId := prepareTestSpecificChats(t, ss)
+
+	list, members, uids, err1 := ss.Channel().GetOverview(teamId, userId)
+	require.Nil(t, err1)
+
+	assert.Equal(t, 6, len(*list))
+	assert.Equal(t, 6, len(*members))
+	assert.Equal(t, 2, len(*uids))
 }

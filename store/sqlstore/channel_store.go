@@ -2873,43 +2873,51 @@ func (s SqlChannelStore) GroupSyncedChannelCount() (int64, *model.AppError) {
 	return count, nil
 }
 
-func (s SqlChannelStore) getChannelInfos(teamId string, userId string) (*[]string, *map[string]*model.ChannelInfo, *model.AppError) {
-	// 1. Get ids of channels userId is a member of.
+func (s SqlChannelStore) getRelevantChannelIds(teamId string, userId string) (*[]string, *model.AppError) {
 	// Direct and Group-direct channels don't have teamId, get them anyway.
 	infos := &model.ChannelInfoList{}
 	_, err := s.GetReplica().Select(infos, `
-		SELECT 
-			cm.ChannelId as Id 
-		FROM ChannelMembers as cm, Channels as c 
-		WHERE 
-			cm.ChannelId = c.Id
-			AND
-			cm.UserId = :UserId 
-			AND
-			c.DeleteAt = 0
-			AND
-			(
-				c.TeamId = :TeamId
-				OR
-				c.Type IN ('D', 'G')
-			)
-		`,
+			SELECT 
+				cm.ChannelId as Id 
+			FROM ChannelMembers as cm, Channels as c 
+			WHERE 
+				cm.ChannelId = c.Id
+				AND
+				cm.UserId = :UserId 
+				AND
+				c.DeleteAt = 0
+				AND
+				(
+					c.TeamId = :TeamId
+					OR
+					c.Type IN ('D', 'G')
+				)
+			`,
 		map[string]interface{}{
 			"UserId": userId,
 			"TeamId": teamId,
 		},
 	)
 	if err != nil {
-		return nil, nil, model.NewAppError("SqlChannelStore.getMyChannels", "store.sql_channel.get_personal_channels.get_my_channels.app_error", nil, "userId="+userId+", err="+err.Error(), http.StatusInternalServerError)
+		return nil, model.NewAppError("SqlChannelStore.getRelevantChannelIds", "store.sql_channel.get_relevant_channels.app_error", nil, "userId="+userId+", err="+err.Error(), http.StatusInternalServerError)
 	}
 	channelIds := make([]string, len(*infos))
 	for i, v := range *infos {
 		channelIds[i] = v.Id
 	}
+	return &channelIds, nil
+}
+
+func (s SqlChannelStore) getChannelInfos(teamId string, userId string) (*[]string, *map[string]*model.ChannelInfo, *model.AppError) {
+	// 1. Get ids of channels userId is a member of.
+	channelIds, err1 := s.getRelevantChannelIds(teamId, userId)
+	if err1 != nil {
+		return nil, nil, model.NewAppError("SqlChannelStore.getChannelInfos", "store.sql_channel.get_infos.get_relevant_channels_ids.app_error", nil, "userId="+userId+", err="+err1.Error(), http.StatusInternalServerError)
+	}
 
 	// 2. Get members counts for channels of userId found above
-	infos = &model.ChannelInfoList{}
-	_, err = s.GetReplica().Select(infos, `
+	infos := &model.ChannelInfoList{}
+	_, err2 := s.GetReplica().Select(infos, `
 		SELECT DISTINCT ON (c1.ChannelId)
 			c1.ChannelId as Id, c2.Members, c1.MsgCount as Unread, c1.MentionCount as Mentions 			
 		FROM
@@ -2918,20 +2926,20 @@ func (s SqlChannelStore) getChannelInfos(teamId string, userId string) (*[]strin
 			SELECT ChannelId, count(ChannelId) as Members
 			FROM ChannelMembers 
 			GROUP BY ChannelId 
-			HAVING ChannelId in ('`+strings.Join(channelIds, "','")+`')
+			HAVING ChannelId in ('`+strings.Join(*channelIds, "','")+`')
 		) as c2
 		ON c1.ChannelId=c2.ChannelId
 		`,
 	)
-	if err != nil {
-		return nil, nil, model.NewAppError("SqlChannelStore.getMyChannels", "store.sql_channel.get_personal_channels.get_my_channels_members.app_error", nil, "userId="+userId+", err="+err.Error(), http.StatusInternalServerError)
+	if err2 != nil {
+		return nil, nil, model.NewAppError("SqlChannelStore.getChannelInfos", "store.sql_channel.get_personal_channels.get_my_channels_members.app_error", nil, "userId="+userId+", err="+err2.Error(), http.StatusInternalServerError)
 	}
 	infosMap := make(map[string]*model.ChannelInfo, len(*infos))
 	for _, v := range *infos {
 		infosMap[v.Id] = v
 	}
 
-	return &channelIds, &infosMap, nil
+	return channelIds, &infosMap, nil
 }
 
 type lastMessages []*model.Post
@@ -3020,4 +3028,67 @@ func (s SqlChannelStore) GetWorkChannels(teamId string, userId string) (*model.C
 // These are public chats available to anybody on the server.
 func (s SqlChannelStore) GetGlobalChannels(teamId string, userId string) (*model.ChannelSnapshotList, *model.AppError) {
 	return s.getSpecificChannels(teamId, userId, "Kind = '' AND Type = 'O'")
+}
+
+// GetOverview returns channels for global screen.
+// These are all of channels visible to userId along with their members.
+func (s SqlChannelStore) GetOverview(teamId string, userId string) (*model.ChannelList, *map[string][]string, *[]string, *model.AppError) {
+	// Get all channel ids visible to userId
+	channelIds, err1 := s.getRelevantChannelIds(teamId, userId)
+	if err1 != nil {
+		return nil, nil, nil, model.NewAppError("SqlChannelStore.GetOverview", "store.sql_channel.get_overview.get_relevant_channels_ids.app_error", nil, "userId="+userId+", teamId="+teamId+", err="+err1.Error(), http.StatusInternalServerError)
+	}
+
+	// Get channels structures
+	channels := &model.ChannelList{}
+	_, err2 := s.GetReplica().Select(channels, `
+		SELECT 
+			*
+		FROM 
+			Channels
+		WHERE			
+			Id IN ('`+strings.Join(*channelIds, "','")+`')
+		`,
+	)
+	if err2 != nil {
+		return nil, nil, nil, model.NewAppError("SqlChannelStore.GetOverview", "store.sql_channel.get_overview.get_channels.app_error", nil, "userId="+userId+", err="+err2.Error(), http.StatusInternalServerError)
+	}
+
+	// Get member ids for all channels
+	members := &[]struct {
+		ChannelId string
+		UserId    string
+	}{}
+	_, err3 := s.GetReplica().Select(members, `
+		SELECT 
+			cm.ChannelId, u.Id as UserId
+		FROM 
+			Users as u
+		JOIN (
+			SELECT ChannelId, UserId 
+			FROM ChannelMembers
+			WHERE ChannelId IN ('`+strings.Join(*channelIds, "','")+`')
+		) as cm
+		ON cm.UserId=u.Id	
+		`,
+	)
+	if err3 != nil {
+		return nil, nil, nil, model.NewAppError("SqlChannelStore.GetOverview", "store.sql_channel.get_overview.get_members.app_error", nil, "userId="+userId+", err="+err3.Error(), http.StatusInternalServerError)
+	}
+	membersMap := make(map[string][]string, len(*channels))
+	distinctUsers := make(map[string]bool)
+	for _, v := range *members {
+		if _, exists := membersMap[v.ChannelId]; !exists {
+			membersMap[v.ChannelId] = make([]string, 0)
+		}
+		membersMap[v.ChannelId] = append(membersMap[v.ChannelId], v.UserId)
+		distinctUsers[v.UserId] = true
+	}
+	uids := make([]string, len(distinctUsers))
+	count := 0
+	for k := range distinctUsers {
+		uids[count] = k
+		count = count + 1
+	}
+	return channels, &membersMap, &uids, nil
 }

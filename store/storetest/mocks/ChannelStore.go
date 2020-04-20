@@ -1029,6 +1029,49 @@ func (_m *ChannelStore) GetMoreChannels(teamId string, userId string, offset int
 	return r0, r1
 }
 
+// GetOverview provides a mock function with given fields: teamId, userId
+func (_m *ChannelStore) GetOverview(teamId string, userId string) (*model.ChannelList, *map[string][]string, *[]string, *model.AppError) {
+	ret := _m.Called(teamId, userId)
+
+	var r0 *model.ChannelList
+	if rf, ok := ret.Get(0).(func(string, string) *model.ChannelList); ok {
+		r0 = rf(teamId, userId)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*model.ChannelList)
+		}
+	}
+
+	var r1 *map[string][]string
+	if rf, ok := ret.Get(1).(func(string, string) *map[string][]string); ok {
+		r1 = rf(teamId, userId)
+	} else {
+		if ret.Get(1) != nil {
+			r1 = ret.Get(1).(*map[string][]string)
+		}
+	}
+
+	var r2 *[]string
+	if rf, ok := ret.Get(2).(func(string, string) *[]string); ok {
+		r2 = rf(teamId, userId)
+	} else {
+		if ret.Get(2) != nil {
+			r2 = ret.Get(2).(*[]string)
+		}
+	}
+
+	var r3 *model.AppError
+	if rf, ok := ret.Get(3).(func(string, string) *model.AppError); ok {
+		r3 = rf(teamId, userId)
+	} else {
+		if ret.Get(3) != nil {
+			r3 = ret.Get(3).(*model.AppError)
+		}
+	}
+
+	return r0, r1, r2, r3
+}
+
 // GetPersonalChannels provides a mock function with given fields: teamId, userId
 func (_m *ChannelStore) GetPersonalChannels(teamId string, userId string) (*model.ChannelSnapshotList, *model.AppError) {
 	ret := _m.Called(teamId, userId)
