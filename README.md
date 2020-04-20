@@ -1,3 +1,10 @@
+# Worldr Server
+
+
+[![CircleCI](https://circleci.com/gh/worldr/server.svg?style=shield&circle-token=66990f08c761df247eafc0a19fc2f975ffed14a6)](https://app.circleci.com/pipelines/github/worldr/server)
+
+## Documentation links
+
 -   [Review product documentation](http://docs.mattermost.com/).
 -   [Review developer documentation](http://developers.mattermost.com/).
 -   [Download compiled version](https://mattermost.com/download).
