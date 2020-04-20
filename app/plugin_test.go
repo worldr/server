@@ -7,7 +7,6 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"encoding/base64"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -479,30 +478,30 @@ func TestPluginSync(t *testing.T) {
 				cfg.FileSettings.DriverName = model.NewString(model.IMAGE_DRIVER_LOCAL)
 			},
 		},
-		{
-			"s3",
-			func(cfg *model.Config) {
-				s3Host := os.Getenv("CI_MINIO_HOST")
-				if s3Host == "" {
-					s3Host = "localhost"
-				}
+		// {
+		// 	"s3",
+		// 	func(cfg *model.Config) {
+		// 		s3Host := os.Getenv("CI_MINIO_HOST")
+		// 		if s3Host == "" {
+		// 			s3Host = "localhost"
+		// 		}
 
-				s3Port := os.Getenv("CI_MINIO_PORT")
-				if s3Port == "" {
-					s3Port = "9000"
-				}
+		// 		s3Port := os.Getenv("CI_MINIO_PORT")
+		// 		if s3Port == "" {
+		// 			s3Port = "9000"
+		// 		}
 
-				s3Endpoint := fmt.Sprintf("%s:%s", s3Host, s3Port)
-				cfg.FileSettings.DriverName = model.NewString(model.IMAGE_DRIVER_S3)
-				cfg.FileSettings.AmazonS3AccessKeyId = model.NewString(model.MINIO_ACCESS_KEY)
-				cfg.FileSettings.AmazonS3SecretAccessKey = model.NewString(model.MINIO_SECRET_KEY)
-				cfg.FileSettings.AmazonS3Bucket = model.NewString(model.MINIO_BUCKET)
-				cfg.FileSettings.AmazonS3Endpoint = model.NewString(s3Endpoint)
-				cfg.FileSettings.AmazonS3Region = model.NewString("")
-				cfg.FileSettings.AmazonS3SSL = model.NewBool(false)
+		// 		s3Endpoint := fmt.Sprintf("%s:%s", s3Host, s3Port)
+		// 		cfg.FileSettings.DriverName = model.NewString(model.IMAGE_DRIVER_S3)
+		// 		cfg.FileSettings.AmazonS3AccessKeyId = model.NewString(model.MINIO_ACCESS_KEY)
+		// 		cfg.FileSettings.AmazonS3SecretAccessKey = model.NewString(model.MINIO_SECRET_KEY)
+		// 		cfg.FileSettings.AmazonS3Bucket = model.NewString(model.MINIO_BUCKET)
+		// 		cfg.FileSettings.AmazonS3Endpoint = model.NewString(s3Endpoint)
+		// 		cfg.FileSettings.AmazonS3Region = model.NewString("")
+		// 		cfg.FileSettings.AmazonS3SSL = model.NewBool(false)
 
-			},
-		},
+		// 	},
+		// },
 	}
 
 	for _, testCase := range testCases {

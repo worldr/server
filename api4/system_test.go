@@ -379,72 +379,73 @@ func TestGetAnalyticsOld(t *testing.T) {
 	CheckUnauthorizedStatus(t, resp)
 }
 
-func TestS3TestConnection(t *testing.T) {
-	th := Setup(t).InitBasic()
-	defer th.TearDown()
-	Client := th.Client
-
-	s3Host := os.Getenv("CI_MINIO_HOST")
-	if s3Host == "" {
-		s3Host = "localhost"
-	}
-
-	s3Port := os.Getenv("CI_MINIO_PORT")
-	if s3Port == "" {
-		s3Port = "9000"
-	}
-
-	s3Endpoint := fmt.Sprintf("%s:%s", s3Host, s3Port)
-	config := model.Config{
-		FileSettings: model.FileSettings{
-			DriverName:              model.NewString(model.IMAGE_DRIVER_S3),
-			AmazonS3AccessKeyId:     model.NewString(model.MINIO_ACCESS_KEY),
-			AmazonS3SecretAccessKey: model.NewString(model.MINIO_SECRET_KEY),
-			AmazonS3Bucket:          model.NewString(""),
-			AmazonS3Endpoint:        model.NewString(s3Endpoint),
-			AmazonS3Region:          model.NewString(""),
-			AmazonS3SSL:             model.NewBool(false),
-		},
-	}
-
-	t.Run("as system user", func(t *testing.T) {
-		_, resp := Client.TestS3Connection(&config)
-		CheckForbiddenStatus(t, resp)
-	})
-
-	t.Run("as system admin", func(t *testing.T) {
-		_, resp := th.SystemAdminClient.TestS3Connection(&config)
-		CheckBadRequestStatus(t, resp)
-		require.Equal(t, resp.Error.Message, "S3 Bucket is required", "should return error - missing s3 bucket")
-		// If this fails, check the test configuration to ensure minio is setup with the
-		// `mattermost-test` bucket defined by model.MINIO_BUCKET.
-		*config.FileSettings.AmazonS3Bucket = model.MINIO_BUCKET
-		*config.FileSettings.AmazonS3Region = "us-east-1"
-		_, resp = th.SystemAdminClient.TestS3Connection(&config)
-		CheckOKStatus(t, resp)
-
-		config.FileSettings.AmazonS3Region = model.NewString("")
-		_, resp = th.SystemAdminClient.TestS3Connection(&config)
-		CheckOKStatus(t, resp)
-
-		config.FileSettings.AmazonS3Bucket = model.NewString("Wrong_bucket")
-		_, resp = th.SystemAdminClient.TestS3Connection(&config)
-		CheckInternalErrorStatus(t, resp)
-		assert.Equal(t, "Unable to create bucket.", resp.Error.Message)
-
-		*config.FileSettings.AmazonS3Bucket = "shouldcreatenewbucket"
-		_, resp = th.SystemAdminClient.TestS3Connection(&config)
-		CheckOKStatus(t, resp)
-	})
-
-	t.Run("as restricted system admin", func(t *testing.T) {
-		th.App.UpdateConfig(func(cfg *model.Config) { *cfg.ExperimentalSettings.RestrictSystemAdmin = true })
-
-		_, resp := th.SystemAdminClient.TestS3Connection(&config)
-		CheckForbiddenStatus(t, resp)
-	})
-
-}
+// Worldr does not use S£.
+// func TestS3TestConnection(t *testing.T) {
+// 	th := Setup(t).InitBasic()
+// 	defer th.TearDown()
+// 	Client := th.Client
+//
+// 	s3Host := os.Getenv("CI_MINIO_HOST")
+// 	if s3Host == "" {
+// 		s3Host = "localhost"
+// 	}
+//
+// 	s3Port := os.Getenv("CI_MINIO_PORT")
+// 	if s3Port == "" {
+// 		s3Port = "9000"
+// 	}
+//
+// 	s3Endpoint := fmt.Sprintf("%s:%s", s3Host, s3Port)
+// 	config := model.Config{
+// 		FileSettings: model.FileSettings{
+// 			DriverName:              model.NewString(model.IMAGE_DRIVER_S3),
+// 			AmazonS3AccessKeyId:     model.NewString(model.MINIO_ACCESS_KEY),
+// 			AmazonS3SecretAccessKey: model.NewString(model.MINIO_SECRET_KEY),
+// 			AmazonS3Bucket:          model.NewString(""),
+// 			AmazonS3Endpoint:        model.NewString(s3Endpoint),
+// 			AmazonS3Region:          model.NewString(""),
+// 			AmazonS3SSL:             model.NewBool(false),
+// 		},
+// 	}
+//
+// 	t.Run("as system user", func(t *testing.T) {
+// 		_, resp := Client.TestS3Connection(&config)
+// 		CheckForbiddenStatus(t, resp)
+// 	})
+//
+// 	t.Run("as system admin", func(t *testing.T) {
+// 		_, resp := th.SystemAdminClient.TestS3Connection(&config)
+// 		CheckBadRequestStatus(t, resp)
+// 		require.Equal(t, resp.Error.Message, "S3 Bucket is required", "should return error - missing s3 bucket")
+// 		// If this fails, check the test configuration to ensure minio is setup with the
+// 		// `mattermost-test` bucket defined by model.MINIO_BUCKET.
+// 		*config.FileSettings.AmazonS3Bucket = model.MINIO_BUCKET
+// 		*config.FileSettings.AmazonS3Region = "us-east-1"
+// 		_, resp = th.SystemAdminClient.TestS3Connection(&config)
+// 		CheckOKStatus(t, resp)
+//
+// 		config.FileSettings.AmazonS3Region = model.NewString("")
+// 		_, resp = th.SystemAdminClient.TestS3Connection(&config)
+// 		CheckOKStatus(t, resp)
+//
+// 		config.FileSettings.AmazonS3Bucket = model.NewString("Wrong_bucket")
+// 		_, resp = th.SystemAdminClient.TestS3Connection(&config)
+// 		CheckInternalErrorStatus(t, resp)
+// 		assert.Equal(t, "Unable to create bucket.", resp.Error.Message)
+//
+// 		*config.FileSettings.AmazonS3Bucket = "shouldcreatenewbucket"
+// 		_, resp = th.SystemAdminClient.TestS3Connection(&config)
+// 		CheckOKStatus(t, resp)
+// 	})
+//
+// 	t.Run("as restricted system admin", func(t *testing.T) {
+// 		th.App.UpdateConfig(func(cfg *model.Config) { *cfg.ExperimentalSettings.RestrictSystemAdmin = true })
+//
+// 		_, resp := th.SystemAdminClient.TestS3Connection(&config)
+// 		CheckForbiddenStatus(t, resp)
+// 	})
+//
+// }
 
 func TestSupportedTimezones(t *testing.T) {
 	th := Setup(t).InitBasic()
