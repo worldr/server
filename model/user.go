@@ -46,16 +46,23 @@ const (
 	DEFAULT_LOCALE          = "en"
 	USER_AUTH_SERVICE_EMAIL = "email"
 
-	USER_EMAIL_MAX_LENGTH     = 128
-	USER_NICKNAME_MAX_RUNES   = 64
-	USER_POSITION_MAX_RUNES   = 128
-	USER_FIRST_NAME_MAX_RUNES = 64
-	USER_LAST_NAME_MAX_RUNES  = 64
-	USER_AUTH_DATA_MAX_LENGTH = 128
-	USER_NAME_MAX_LENGTH      = 64
-	USER_NAME_MIN_LENGTH      = 1
-	USER_PASSWORD_MAX_LENGTH  = 72
-	USER_LOCALE_MAX_LENGTH    = 5
+	DEFAULT_USER_LOCATION = "Undefined"
+
+	USER_AUTH_DATA_MAX_LENGTH    = 128
+	USER_BIOGRAPHY_MAX_LENGTH    = 512
+	USER_EMAIL_MAX_LENGTH        = 128
+	USER_FIRST_NAME_MAX_RUNES    = 64
+	USER_LAST_NAME_MAX_RUNES     = 64
+	USER_LOCALE_MAX_LENGTH       = 5
+	USER_LOCATION_MAX_LENGTH     = 256
+	USER_NAME_MAX_LENGTH         = 64
+	USER_NAME_MIN_LENGTH         = 1
+	USER_NICKNAME_MAX_RUNES      = 64
+	USER_PASSWORD_MAX_LENGTH     = 72
+	USER_PHONE_NUMBER_MAX_LENGTH = 64
+	USER_POSITION_MAX_RUNES      = 128
+	USER_SOCIAL_MEDIA_MAX_LENGTH = 128
+	USER_WORK_ROLE_MAX_LENGTH    = 128
 )
 
 type User struct {
@@ -82,6 +89,11 @@ type User struct {
 	FailedAttempts         int       `json:"failed_attempts,omitempty"`
 	Locale                 string    `json:"locale"`
 	Timezone               StringMap `json:"timezone"`
+	Location               string    `json:"location"`
+	PhoneNumber            string    `json:"phone_number"`
+	WorkRole               string    `json:"work_role"`
+	SocialMedia            string    `json:"social_media"`
+	Biography              string    `json:"biography"`
 	MfaActive              bool      `json:"mfa_active,omitempty"`
 	MfaSecret              string    `json:"mfa_secret,omitempty"`
 	LastActivityAt         int64     `db:"-" json:"last_activity_at,omitempty"`
@@ -109,6 +121,11 @@ type UserPatch struct {
 	NotifyProps StringMap `json:"notify_props,omitempty"`
 	Locale      *string   `json:"locale"`
 	Timezone    StringMap `json:"timezone"`
+	Location    *string   `json:"location"`
+	PhoneNumber *string   `json:"phone_number"`
+	WorkRole    *string   `json:"work_role"`
+	SocialMedia *string   `json:"social_media"`
+	Biography   *string   `json:"biography"`
 }
 
 type UserAuth struct {
@@ -293,6 +310,26 @@ func (u *User) IsValid() *AppError {
 		return InvalidUserError("locale", u.Id)
 	}
 
+	if !IsValidLocation(u.Location) {
+		return InvalidUserError("location", u.Id)
+	}
+
+	if !IsValidPhoneNumber(u.PhoneNumber) {
+		return InvalidUserError("phone_number", u.Id)
+	}
+
+	if !IsValidWorkRole(u.WorkRole) {
+		return InvalidUserError("work_role", u.Id)
+	}
+
+	if !IsValidSocialMedia(u.SocialMedia) {
+		return InvalidUserError("social_media", u.Id)
+	}
+
+	if !IsValidBiography(u.Biography) {
+		return InvalidUserError("biography", u.Id)
+	}
+
 	return nil
 }
 
@@ -353,6 +390,10 @@ func (u *User) PreSave() {
 
 	if u.Timezone == nil {
 		u.Timezone = timezones.DefaultUserTimezone()
+	}
+
+	if u.Location == "" {
+		u.Location = DEFAULT_USER_LOCATION
 	}
 
 	if len(u.Password) > 0 {
@@ -627,7 +668,7 @@ func IsValidUserRoles(userRoles string) bool {
 	return true
 }
 
-// Make sure you acually want to use this function. In context.go there are functions to check permissions
+// Make sure you actually want to use this function. In context.go there are functions to check permissions
 // This function should not be used to check permissions.
 func (u *User) IsGuest() bool {
 	return IsInRole(u.Roles, SYSTEM_GUEST_ROLE_ID)
@@ -637,13 +678,13 @@ func (u *User) IsSystemAdmin() bool {
 	return IsInRole(u.Roles, SYSTEM_ADMIN_ROLE_ID)
 }
 
-// Make sure you acually want to use this function. In context.go there are functions to check permissions
+// Make sure you actually want to use this function. In context.go there are functions to check permissions
 // This function should not be used to check permissions.
 func (u *User) IsInRole(inRole string) bool {
 	return IsInRole(u.Roles, inRole)
 }
 
-// Make sure you acually want to use this function. In context.go there are functions to check permissions
+// Make sure you actually want to use this function. In context.go there are functions to check permissions
 // This function should not be used to check permissions.
 func IsInRole(userRoles string, inRole string) bool {
 	roles := strings.Split(userRoles, " ")
@@ -764,6 +805,26 @@ func IsValidUsername(s string) bool {
 	}
 
 	return true
+}
+
+func IsValidLocation(s string) bool {
+	return !(len(s) > USER_LOCATION_MAX_LENGTH)
+}
+
+func IsValidPhoneNumber(s string) bool {
+	return !(len(s) > USER_PHONE_NUMBER_MAX_LENGTH)
+}
+
+func IsValidWorkRole(s string) bool {
+	return !(len(s) > USER_WORK_ROLE_MAX_LENGTH)
+}
+
+func IsValidSocialMedia(s string) bool {
+	return !(len(s) > USER_SOCIAL_MEDIA_MAX_LENGTH)
+}
+
+func IsValidBiography(s string) bool {
+	return !(len(s) > USER_BIOGRAPHY_MAX_LENGTH)
 }
 
 func CleanUsername(s string) string {

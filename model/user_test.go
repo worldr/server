@@ -27,7 +27,13 @@ func TestUserDeepCopy(t *testing.T) {
 	mapKey := "key"
 	mapValue := "key"
 
-	user := &User{Id: id, AuthData: NewString(authData), Props: map[string]string{}, NotifyProps: map[string]string{}, Timezone: map[string]string{}}
+	user := &User{Id: id, AuthData: NewString(authData), Props: map[string]string{}, NotifyProps: map[string]string{}, Timezone: map[string]string{},
+		Location:    "Kaer Morhen",
+		PhoneNumber: "+44 1234 567 890",
+		WorkRole:    "Developer",
+		SocialMedia: "Reddit /u/test",
+		Biography:   "None to speak of",
+	}
 	user.Props[mapKey] = mapValue
 	user.NotifyProps[mapKey] = mapValue
 	user.Timezone[mapKey] = mapValue
@@ -44,6 +50,11 @@ func TestUserDeepCopy(t *testing.T) {
 	assert.Equal(t, mapValue, user.Props[mapKey])
 	assert.Equal(t, mapValue, user.NotifyProps[mapKey])
 	assert.Equal(t, mapValue, user.Timezone[mapKey])
+	assert.Equal(t, "Kaer Morhen", user.Location)
+	assert.Equal(t, "+44 1234 567 890", user.PhoneNumber)
+	assert.Equal(t, "Developer", user.WorkRole)
+	assert.Equal(t, "Reddit /u/test", user.SocialMedia)
+	assert.Equal(t, "None to speak of", user.Biography)
 
 	user = &User{Id: id}
 	copyUser = user.DeepCopy()
@@ -148,6 +159,34 @@ func TestUserIsValid(t *testing.T) {
 	user.Position = strings.Repeat("a", 129)
 	err = user.IsValid()
 	require.True(t, HasExpectedUserIsValidError(err, "position", user.Id), "expected user is valid error: %s", err.Error())
+
+	user.Position = "valid"
+
+	user.Location = strings.Repeat("a", 257)
+	err = user.IsValid()
+	require.True(t, HasExpectedUserIsValidError(err, "location", user.Id), "expected user is valid error: %s", err.Error())
+	user.Location = "valid"
+
+	user.PhoneNumber = strings.Repeat("a", 65)
+	err = user.IsValid()
+	require.True(t, HasExpectedUserIsValidError(err, "phone_number", user.Id), "expected user is valid error: %s", err.Error())
+	user.PhoneNumber = "valid"
+
+	user.WorkRole = strings.Repeat("a", 129)
+	err = user.IsValid()
+	require.True(t, HasExpectedUserIsValidError(err, "work_role", user.Id), "expected user is valid error: %s", err.Error())
+	user.WorkRole = "valid"
+
+	user.SocialMedia = strings.Repeat("a", 129)
+	err = user.IsValid()
+	require.True(t, HasExpectedUserIsValidError(err, "social_media", user.Id), "expected user is valid error: %s", err.Error())
+	user.SocialMedia = "valid"
+
+	user.Biography = strings.Repeat("a", 513)
+	err = user.IsValid()
+	require.True(t, HasExpectedUserIsValidError(err, "biography", user.Id), "expected user is valid error: %s", err.Error())
+	user.Biography = "valid"
+
 }
 
 func HasExpectedUserIsValidError(err *AppError, fieldName string, userId string) bool {

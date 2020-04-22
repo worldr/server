@@ -1,0 +1,28 @@
+################################################################################
+# Usefull stuff you do WANT for all repositories.
+repos:
+-   repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v2.5.0
+    hooks:
+    -   id: trailing-whitespace
+    -   id: end-of-file-fixer
+    -   id: check-yaml
+    -   id: check-json
+    -   id: check-toml
+-   repo: https://github.com/codespell-project/codespell
+    rev: v1.16.0
+    hooks:
+    -   id: codespell
+        args: [-L, "usig,persistant,independent,THE,BE"]
+################################################################################
+# Go lang specific.
+- repo: git://github.com/dnephin/pre-commit-golang
+  rev: v0.3.5
+  hooks:
+    - id: go-fmt
+    - id: go-imports
+    #- id: go-cyclo
+    #  args: [-over=24]  # 17 is a reasonable number, maybe?
+    - id: golangci-lint
+      args: ["--new-from-rev=HEAD~1"]
+#    - id: go-unit-tests
