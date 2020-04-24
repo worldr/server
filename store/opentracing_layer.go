@@ -1994,7 +1994,7 @@ func (s *OpenTracingLayerChannelStore) UserBelongsToChannels(userId string, chan
 	return resultVar0, resultVar1
 }
 
-func (s *OpenTracingLayerChannelCategoryStore) Delete(userId string, catId int32) *model.AppError {
+func (s *OpenTracingLayerChannelCategoryStore) Delete(userId string, channelId string) *model.AppError {
 	origCtx := s.Root.Store.Context()
 	span, newCtx := tracing.StartSpanWithParentByContext(s.Root.Store.Context(), "ChannelCategoryStore.Delete")
 	s.Root.Store.SetContext(newCtx)
@@ -2003,7 +2003,7 @@ func (s *OpenTracingLayerChannelCategoryStore) Delete(userId string, catId int32
 	}()
 
 	defer span.Finish()
-	resultVar0 := s.ChannelCategoryStore.Delete(userId, catId)
+	resultVar0 := s.ChannelCategoryStore.Delete(userId, channelId)
 	if resultVar0 != nil {
 		span.LogFields(spanlog.Error(resultVar0))
 		ext.Error.Set(span, true)
@@ -2012,7 +2012,7 @@ func (s *OpenTracingLayerChannelCategoryStore) Delete(userId string, catId int32
 	return resultVar0
 }
 
-func (s *OpenTracingLayerChannelCategoryStore) Get(catId int32) (*model.ChannelCategory, *model.AppError) {
+func (s *OpenTracingLayerChannelCategoryStore) Get(userId string, channelId string) (*model.ChannelCategory, *model.AppError) {
 	origCtx := s.Root.Store.Context()
 	span, newCtx := tracing.StartSpanWithParentByContext(s.Root.Store.Context(), "ChannelCategoryStore.Get")
 	s.Root.Store.SetContext(newCtx)
@@ -2021,7 +2021,7 @@ func (s *OpenTracingLayerChannelCategoryStore) Get(catId int32) (*model.ChannelC
 	}()
 
 	defer span.Finish()
-	resultVar0, resultVar1 := s.ChannelCategoryStore.Get(catId)
+	resultVar0, resultVar1 := s.ChannelCategoryStore.Get(userId, channelId)
 	if resultVar1 != nil {
 		span.LogFields(spanlog.Error(resultVar1))
 		ext.Error.Set(span, true)

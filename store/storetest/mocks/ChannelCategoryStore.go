@@ -14,13 +14,13 @@ type ChannelCategoryStore struct {
 	mock.Mock
 }
 
-// Delete provides a mock function with given fields: userId, catId
-func (_m *ChannelCategoryStore) Delete(userId string, catId int32) *model.AppError {
-	ret := _m.Called(userId, catId)
+// Delete provides a mock function with given fields: userId, channelId
+func (_m *ChannelCategoryStore) Delete(userId string, channelId string) *model.AppError {
+	ret := _m.Called(userId, channelId)
 
 	var r0 *model.AppError
-	if rf, ok := ret.Get(0).(func(string, int32) *model.AppError); ok {
-		r0 = rf(userId, catId)
+	if rf, ok := ret.Get(0).(func(string, string) *model.AppError); ok {
+		r0 = rf(userId, channelId)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*model.AppError)
@@ -30,13 +30,13 @@ func (_m *ChannelCategoryStore) Delete(userId string, catId int32) *model.AppErr
 	return r0
 }
 
-// Get provides a mock function with given fields: catId
-func (_m *ChannelCategoryStore) Get(catId int32) (*model.ChannelCategory, *model.AppError) {
-	ret := _m.Called(catId)
+// Get provides a mock function with given fields: userId, channelId
+func (_m *ChannelCategoryStore) Get(userId string, channelId string) (*model.ChannelCategory, *model.AppError) {
+	ret := _m.Called(userId, channelId)
 
 	var r0 *model.ChannelCategory
-	if rf, ok := ret.Get(0).(func(int32) *model.ChannelCategory); ok {
-		r0 = rf(catId)
+	if rf, ok := ret.Get(0).(func(string, string) *model.ChannelCategory); ok {
+		r0 = rf(userId, channelId)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*model.ChannelCategory)
@@ -44,8 +44,8 @@ func (_m *ChannelCategoryStore) Get(catId int32) (*model.ChannelCategory, *model
 	}
 
 	var r1 *model.AppError
-	if rf, ok := ret.Get(1).(func(int32) *model.AppError); ok {
-		r1 = rf(catId)
+	if rf, ok := ret.Get(1).(func(string, string) *model.AppError); ok {
+		r1 = rf(userId, channelId)
 	} else {
 		if ret.Get(1) != nil {
 			r1 = ret.Get(1).(*model.AppError)

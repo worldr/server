@@ -26,23 +26,25 @@ func newSqlChannelCategoryStore(sqlStore SqlStore) store.ChannelCategoryStore {
 	s := &SqlChannelCategoryStore{sqlStore}
 
 	for _, db := range sqlStore.GetAllConns() {
-		table := db.AddTableWithName(model.ChannelCategory{}, tableName).SetKeys(true, "Id")
-		table.ColMap("UserId").SetMaxSize(26)
+		table := db.AddTableWithName(model.ChannelCategory{}, tableName).SetKeys(false, "UserId", "ChannelId")
+		table.ColMap("UserId").SetMaxSize(26).SetNotNull(true)
+		table.ColMap("ChannelId").SetMaxSize(26).SetNotNull(true)
 		table.ColMap("Name").SetMaxSize(100).SetNotNull(true)
+		table.SetUniqueTogether("UserId", "ChannelId")
 	}
 
 	return s
 }
 
 func (s SqlChannelCategoryStore) createIndexesIfNotExists() {
-	s.CreateIndexIfNotExists("idx_channel_cat_user_id", tableName, "UserId")
+	s.CreateCompositeIndexIfNotExists("idx_channel_cat_id", tableName, []string{"UserId", "ChannelId"})
 }
 
 func (s SqlChannelCategoryStore) SaveOrUpdate(cat *model.ChannelCategory) (*model.ChannelCategory, *model.AppError) {
 	err := s.GetReplica().SelectOne(
 		&model.ChannelCategory{},
-		"SELECT * FROM ChannelCategories WHERE Id = :Id",
-		map[string]interface{}{"Id": cat.Id},
+		"SELECT * FROM ChannelCategories WHERE ChannelId = :ChannelId AND UserId = :UserId",
+		map[string]interface{}{"UserId": cat.UserId, "ChannelId": cat.ChannelId},
 	)
 	if err == nil {
 		if _, err := s.GetMaster().Update(cat); err != nil {
@@ -53,7 +55,7 @@ func (s SqlChannelCategoryStore) SaveOrUpdate(cat *model.ChannelCategory) (*mode
 			return nil, model.NewAppError("SqlChannelCategoryStore.SaveOrUpdate", SAVE_ERROR, nil, err.Error(), http.StatusInternalServerError)
 		}
 	}
-	return s.Get(cat.Id)
+	return s.Get(cat.UserId, cat.ChannelId)
 }
 
 func (s SqlChannelCategoryStore) GetForUser(userId string) (*model.ChannelCategoriesList, *model.AppError) {
@@ -71,7 +73,7 @@ func (s SqlChannelCategoryStore) GetForUser(userId string) (*model.ChannelCatego
 	return cats, nil
 }
 
-func (s SqlChannelCategoryStore) Get(catId int32) (*model.ChannelCategory, *model.AppError) {
+func (s SqlChannelCategoryStore) Get(userId string, channelId string) (*model.ChannelCategory, *model.AppError) {
 	var cat *model.ChannelCategory
 
 	if err := s.GetReplica().SelectOne(&cat,
@@ -80,17 +82,19 @@ func (s SqlChannelCategoryStore) Get(catId int32) (*model.ChannelCategory, *mode
 		FROM
 			ChannelCategories
 		WHERE
-			Id = :Id`, map[string]interface{}{"Id": catId}); err != nil {
+			ChannelId = :ChannelId
+			AND
+			UserId = :UserId`, map[string]interface{}{"UserId": userId, "ChannelId": channelId}); err != nil {
 		return nil, model.NewAppError("SqlChannelCategoryStore.Get", GET_ERROR, nil, err.Error(), http.StatusInternalServerError)
 	}
 
 	return cat, nil
 }
 
-func (s SqlChannelCategoryStore) Delete(userId string, catId int32) *model.AppError {
+func (s SqlChannelCategoryStore) Delete(userId string, channelId string) *model.AppError {
 	_, err := s.GetMaster().Exec(
-		"DELETE FROM ChannelCategories WHERE UserId = :UserId AND Id = :Id",
-		map[string]interface{}{"UserId": userId, "Id": catId},
+		"DELETE FROM ChannelCategories WHERE UserId = :UserId AND ChannelId = :ChannelId",
+		map[string]interface{}{"UserId": userId, "ChannelId": channelId},
 	)
 	if err != nil {
 		return model.NewAppError("SqlChannelCategoryStore.Delete", DELETE_ERROR, nil, "", http.StatusInternalServerError)

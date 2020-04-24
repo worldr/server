@@ -12,6 +12,7 @@ type LineImportData struct {
 	Scheme        *SchemeImportData        `json:"scheme,omitempty"`
 	Team          *TeamImportData          `json:"team,omitempty"`
 	Channel       *ChannelImportData       `json:"channel,omitempty"`
+	Category      *CategoryImportData      `json:"category,omitempty"`
 	User          *UserImportData          `json:"user,omitempty"`
 	Post          *PostImportData          `json:"post,omitempty"`
 	DirectChannel *DirectChannelImportData `json:"direct_channel,omitempty"`
@@ -34,9 +35,16 @@ type ChannelImportData struct {
 	Name        *string `json:"name"`
 	DisplayName *string `json:"display_name"`
 	Type        *string `json:"type"`
+	Kind        *string `json:"kind"`
 	Header      *string `json:"header,omitempty"`
 	Purpose     *string `json:"purpose,omitempty"`
 	Scheme      *string `json:"scheme,omitempty"`
+}
+
+type CategoryImportData struct {
+	Channel *string `json:"channel"`
+	Name    *string `json:"name"`
+	Sort    *int32  `json:"sort"`
 }
 
 type UserImportData struct {
@@ -67,6 +75,12 @@ type UserImportData struct {
 	TutorialStep       *string `json:"tutorial_step,omitempty"`
 	EmailInterval      *string `json:"email_interval,omitempty"`
 
+	Location    *string `json:"location,omitempty"`
+	PhoneNumber *string `json:"phone_number,omitempty"`
+	WorkRole    *string `json:"work_role,omitempty"`
+	SocialMedia *string `json:"social_media,omitempty"`
+	Biography   *string `json:"biography,omitempty"`
+
 	NotifyProps *UserNotifyPropsImportData `json:"notify_props,omitempty"`
 }
 
@@ -85,10 +99,11 @@ type UserNotifyPropsImportData struct {
 }
 
 type UserTeamImportData struct {
-	Name     *string                  `json:"name"`
-	Roles    *string                  `json:"roles"`
-	Theme    *string                  `json:"theme,omitempty"`
-	Channels *[]UserChannelImportData `json:"channels,omitempty"`
+	Name       *string                  `json:"name"`
+	Roles      *string                  `json:"roles"`
+	Theme      *string                  `json:"theme,omitempty"`
+	Channels   *[]UserChannelImportData `json:"channels,omitempty"`
+	Categories *[]CategoryImportData    `json:"categories,omitempty"`
 }
 
 type UserChannelImportData struct {

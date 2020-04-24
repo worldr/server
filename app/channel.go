@@ -2476,20 +2476,19 @@ func (a *App) ClearChannelMembersCache(channelID string) {
 	}
 }
 
-// AssignCategory sets the category_id field for a channel
-func (a *App) AssignCategory(channelId string, categoryId int32) (*model.Channel, *model.AppError) {
-	if ch, err := a.GetChannel(channelId); err != nil {
+func (a *App) AssignCategory(channelId string, userId string, category string) (*model.ChannelCategory, *model.AppError) {
+	if _, err := a.GetChannel(channelId); err != nil {
 		return nil, model.NewAppError("AssignCategory", "api.channel.assign_category.cant_assign_category.app_error", nil, err.Message, http.StatusBadRequest)
-	} else if _, err := a.Srv().Store.ChannelCategory().Get(categoryId); err != nil {
-		return nil, model.NewAppError("AssignCategory", "api.channel.assign_category.cant_assign_category.app_error", nil, err.Message, http.StatusBadRequest)
-	} else {
-		ch.CategoryId = categoryId
-		newChannel, err := a.UpdateChannel(ch)
-		if err != nil {
-			return nil, err
-		}
-		return newChannel, nil
 	}
+	cat, err := a.Srv().Store.ChannelCategory().SaveOrUpdate(&model.ChannelCategory{
+		UserId:    userId,
+		ChannelId: channelId,
+		Name:      category,
+	})
+	if err != nil {
+		return nil, model.NewAppError("AssignCategory", "api.channel.assign_category.cant_assign_category.app_error", nil, err.Message, http.StatusBadRequest)
+	}
+	return cat, nil
 }
 
 // GetPersonalChannels returns everything needed to show the personal chats screen.

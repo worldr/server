@@ -3,7 +3,7 @@
 --
 
 -- Dumped from database version 9.4.26
--- Dumped by pg_dump version 11.7
+-- Dumped by pg_dump version 11.5
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -59,35 +59,14 @@ ALTER TABLE public.bots OWNER TO mmuser;
 --
 
 CREATE TABLE public.channelcategories (
-    id integer NOT NULL,
-    userid character varying(26),
+    userid character varying(26) NOT NULL,
+    channelid character varying(26) NOT NULL,
     name character varying(100) NOT NULL,
     sort integer
 );
 
 
 ALTER TABLE public.channelcategories OWNER TO mmuser;
-
---
--- Name: channelcategories_id_seq; Type: SEQUENCE; Schema: public; Owner: mmuser
---
-
-CREATE SEQUENCE public.channelcategories_id_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
-ALTER TABLE public.channelcategories_id_seq OWNER TO mmuser;
-
---
--- Name: channelcategories_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: mmuser
---
-
-ALTER SEQUENCE public.channelcategories_id_seq OWNED BY public.channelcategories.id;
-
 
 --
 -- Name: channelmemberhistory; Type: TABLE; Schema: public; Owner: mmuser
@@ -145,8 +124,7 @@ CREATE TABLE public.channels (
     creatorid character varying(26),
     schemeid character varying(26),
     groupconstrained boolean,
-    kind character varying(26),
-    categoryid integer
+    kind character varying(26)
 );
 
 
@@ -791,7 +769,7 @@ CREATE TABLE public.users (
     phonenumber character varying(64),
     workrole character varying(128),
     socialmedia character varying(128),
-    biography character varying(512),
+    biography character varying(1024),
     mfaactive boolean,
     mfasecret character varying(128)
 );
@@ -811,13 +789,6 @@ CREATE TABLE public.usertermsofservice (
 
 
 ALTER TABLE public.usertermsofservice OWNER TO mmuser;
-
---
--- Name: channelcategories id; Type: DEFAULT; Schema: public; Owner: mmuser
---
-
-ALTER TABLE ONLY public.channelcategories ALTER COLUMN id SET DEFAULT nextval('public.channelcategories_id_seq'::regclass);
-
 
 --
 -- Name: audits audits_pkey; Type: CONSTRAINT; Schema: public; Owner: mmuser
@@ -840,7 +811,7 @@ ALTER TABLE ONLY public.bots
 --
 
 ALTER TABLE ONLY public.channelcategories
-    ADD CONSTRAINT channelcategories_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT channelcategories_pkey PRIMARY KEY (userid, channelid);
 
 
 --
@@ -1259,10 +1230,10 @@ CREATE INDEX idx_audits_user_id ON public.audits USING btree (userid);
 
 
 --
--- Name: idx_channel_cat_user_id; Type: INDEX; Schema: public; Owner: mmuser
+-- Name: idx_channel_cat_id; Type: INDEX; Schema: public; Owner: mmuser
 --
 
-CREATE INDEX idx_channel_cat_user_id ON public.channelcategories USING btree (userid);
+CREATE INDEX idx_channel_cat_id ON public.channelcategories USING btree (userid, channelid);
 
 
 --
@@ -1957,3 +1928,4 @@ GRANT ALL ON SCHEMA public TO PUBLIC;
 --
 -- PostgreSQL database dump complete
 --
+

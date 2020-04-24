@@ -32,13 +32,12 @@ func fillLastUsers(c *Context, list *model.ChannelSnapshotList) *model.AppError 
 	// Get a list of distinct uids
 	uids := make([]string, len(*list))[:0]
 	distinct := make(map[string]bool)
-	for i, v := range *list {
+	for _, v := range *list {
 		m := (*v).LastMessage
 		if m != nil {
 			if _, exists := distinct[m.UserId]; !exists {
 				distinct[m.UserId] = true
-				uids = uids[:len(uids)+1]
-				uids[i] = m.UserId
+				uids = append(uids, m.UserId)
 			}
 		}
 	}

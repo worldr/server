@@ -9,10 +9,10 @@ import (
 )
 
 type ChannelCategory struct {
-	Id     int32  `json:"id"`
-	UserId string `json:"user_id"`
-	Name   string `json:"name"`
-	Sort   int32  `json:"sort"`
+	UserId    string `json:"user_id"`
+	ChannelId string `json:"channel_id"`
+	Name      string `json:"name"`
+	Sort      int32  `json:"sort"`
 }
 
 type ChannelCategoriesList []*ChannelCategory

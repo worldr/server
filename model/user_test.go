@@ -182,11 +182,10 @@ func TestUserIsValid(t *testing.T) {
 	require.True(t, HasExpectedUserIsValidError(err, "social_media", user.Id), "expected user is valid error: %s", err.Error())
 	user.SocialMedia = "valid"
 
-	user.Biography = strings.Repeat("a", 513)
+	user.Biography = strings.Repeat("a", 1025)
 	err = user.IsValid()
 	require.True(t, HasExpectedUserIsValidError(err, "biography", user.Id), "expected user is valid error: %s", err.Error())
 	user.Biography = "valid"
-
 }
 
 func HasExpectedUserIsValidError(err *AppError, fieldName string, userId string) bool {

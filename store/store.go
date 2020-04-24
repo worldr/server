@@ -741,6 +741,6 @@ type IntegrityCheckResult struct {
 type ChannelCategoryStore interface {
 	SaveOrUpdate(cat *model.ChannelCategory) (*model.ChannelCategory, *model.AppError)
 	GetForUser(userId string) (*model.ChannelCategoriesList, *model.AppError)
-	Get(catId int32) (*model.ChannelCategory, *model.AppError)
-	Delete(userId string, catId int32) *model.AppError
+	Get(userId string, channelId string) (*model.ChannelCategory, *model.AppError)
+	Delete(userId string, channelId string) *model.AppError
 }

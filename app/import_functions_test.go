@@ -613,6 +613,7 @@ func TestImportImportChannel(t *testing.T) {
 		Team:        &teamName,
 		DisplayName: ptrStr("Display Name"),
 		Type:        ptrStr("O"),
+		Kind:        ptrStr(""),
 		Header:      ptrStr("Channe Header"),
 		Purpose:     ptrStr("Channel Purpose"),
 		Scheme:      &scheme1.Name,
@@ -877,6 +878,7 @@ func TestImportImportUser(t *testing.T) {
 		Name:        &channelName,
 		DisplayName: ptrStr("Display Name"),
 		Type:        ptrStr("O"),
+		Kind:        ptrStr(""),
 	}, false)
 	channel, err := th.App.GetChannelByName(channelName, team.Id, false)
 	require.Nil(t, err, "Failed to get channel from database.")
@@ -1395,6 +1397,7 @@ func TestImportImportUser(t *testing.T) {
 		Name:        ptrStr(model.NewId()),
 		DisplayName: ptrStr("Display Name"),
 		Type:        ptrStr("O"),
+		Kind:        ptrStr(""),
 		Header:      ptrStr("Channe Header"),
 		Purpose:     ptrStr("Channel Purpose"),
 	}
@@ -1586,6 +1589,7 @@ func TestImportimportMultiplePosts(t *testing.T) {
 		Name:        &channelName,
 		DisplayName: ptrStr("Display Name"),
 		Type:        ptrStr("O"),
+		Kind:        ptrStr(""),
 	}, false)
 	channel, err := th.App.GetChannelByName(channelName, team.Id, false)
 	require.Nil(t, err, "Failed to get channel from database.")
@@ -1959,6 +1963,7 @@ func TestImportImportPost(t *testing.T) {
 		Name:        &channelName,
 		DisplayName: ptrStr("Display Name"),
 		Type:        ptrStr("O"),
+		Kind:        ptrStr(""),
 	}, false)
 	channel, appErr := th.App.GetChannelByName(channelName, team.Id, false)
 	require.Nil(t, appErr, "Failed to get channel from database.")
@@ -3162,6 +3167,7 @@ func TestImportPostAndRepliesWithAttachments(t *testing.T) {
 		Name:        &channelName,
 		DisplayName: ptrStr("Display Name"),
 		Type:        ptrStr("O"),
+		Kind:        ptrStr(""),
 	}, false)
 	_, appErr = th.App.GetChannelByName(channelName, team.Id, false)
 	require.Nil(t, appErr, "Failed to get channel from database.")

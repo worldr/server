@@ -361,6 +361,7 @@ func TestImportValidateChannelImportData(t *testing.T) {
 		Name:        ptrStr("channelname"),
 		DisplayName: ptrStr("Display Name"),
 		Type:        ptrStr("O"),
+		Kind:        ptrStr(""),
 	}
 	err := validateChannelImportData(&data)
 	require.Nil(t, err, "Validation failed but should have been valid.")
@@ -370,6 +371,7 @@ func TestImportValidateChannelImportData(t *testing.T) {
 		Name:        ptrStr("channelname"),
 		DisplayName: ptrStr("Display Name"),
 		Type:        ptrStr("O"),
+		Kind:        ptrStr(""),
 	}
 	err = validateChannelImportData(&data)
 	require.NotNil(t, err, "Should have failed due to missing team.")
@@ -379,6 +381,7 @@ func TestImportValidateChannelImportData(t *testing.T) {
 		Team:        ptrStr("teamname"),
 		DisplayName: ptrStr("Display Name"),
 		Type:        ptrStr("O"),
+		Kind:        ptrStr(""),
 	}
 	err = validateChannelImportData(&data)
 	require.NotNil(t, err, "Should have failed due to missing name.")
@@ -400,6 +403,7 @@ func TestImportValidateChannelImportData(t *testing.T) {
 		Team: ptrStr("teamname"),
 		Name: ptrStr("channelname"),
 		Type: ptrStr("O"),
+		Kind: ptrStr(""),
 	}
 	err = validateChannelImportData(&data)
 	require.NotNil(t, err, "Should have failed due to missing display_name.")

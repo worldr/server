@@ -24,6 +24,7 @@ import (
 const (
 	DEACTIVATED_USER = "deactivated"
 	GUEST_USER       = "guest"
+	ADMIN            = "admin"
 )
 
 var SampleDataCmd = &cobra.Command{
@@ -608,11 +609,14 @@ func createChannel(idx int, teamName string) app.LineImportData {
 		channelType = "O"
 	}
 
+	kind := ""
+
 	channel := app.ChannelImportData{
 		Team:        &teamName,
 		Name:        &name,
 		DisplayName: &displayName,
 		Type:        &channelType,
+		Kind:        &kind,
 		Header:      &header,
 		Purpose:     &purpose,
 	}

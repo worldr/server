@@ -22,20 +22,20 @@ func testSaveOrUpdateCategory(t *testing.T, ss store.Store) {
 	cat, err := createCategory(t, ss)
 	require.Nil(t, err)
 
-	cat, err = ss.ChannelCategory().Get(cat.Id)
+	cat, err = ss.ChannelCategory().Get(cat.UserId, cat.ChannelId)
 	assert.Nil(t, err)
 
 	newName := cat.Name + "-updated"
 	var newSort int32 = 2
 	updated := model.ChannelCategory{
-		Id:     cat.Id,
-		Name:   newName,
-		UserId: cat.UserId,
-		Sort:   newSort,
+		UserId:    cat.UserId,
+		ChannelId: cat.ChannelId,
+		Name:      newName,
+		Sort:      newSort,
 	}
 	_, err = ss.ChannelCategory().SaveOrUpdate(&updated)
 	require.Nil(t, err)
-	cat, err = ss.ChannelCategory().Get(cat.Id)
+	cat, err = ss.ChannelCategory().Get(cat.UserId, cat.ChannelId)
 	require.Nil(t, err)
 	assert.EqualValues(t, newSort, cat.Sort)
 	assert.EqualValues(t, newName, cat.Name)
@@ -46,9 +46,10 @@ func testGetCategoriesForUser(t *testing.T, ss store.Store) {
 	require.Nil(t, err)
 
 	cat2 := model.ChannelCategory{
-		Name:   "Category " + model.NewId(),
-		UserId: cat1.UserId,
-		Sort:   2,
+		UserId:    cat1.UserId,
+		ChannelId: model.NewId(),
+		Name:      "Category " + model.NewId(),
+		Sort:      2,
 	}
 	_, err = ss.ChannelCategory().SaveOrUpdate(&cat2)
 	require.Nil(t, err)
@@ -63,10 +64,10 @@ func testDeleteCategory(t *testing.T, ss store.Store) {
 	cat, err := createCategory(t, ss)
 	require.Nil(t, err)
 
-	err = ss.ChannelCategory().Delete(cat.UserId, cat.Id)
+	err = ss.ChannelCategory().Delete(cat.UserId, cat.ChannelId)
 	require.Nil(t, err)
 
-	cat, err = ss.ChannelCategory().Get(cat.Id)
+	cat, err = ss.ChannelCategory().Get(cat.UserId, cat.ChannelId)
 	require.NotNil(t, err)
 	assert.EqualValues(t, "sql: no rows in result set", err.DetailedError)
 }
@@ -83,10 +84,12 @@ func createCategory(t *testing.T, ss store.Store) (*model.ChannelCategory, *mode
 	user = *userPtr
 
 	// create a test category
+	name := model.NewId()
 	cat := model.ChannelCategory{
-		Name:   "Category " + model.NewId(),
-		UserId: user.Id,
-		Sort:   1,
+		UserId:    user.Id,
+		ChannelId: model.NewId(),
+		Name:      name,
+		Sort:      1,
 	}
 	return ss.ChannelCategory().SaveOrUpdate(&cat)
 }

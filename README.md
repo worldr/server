@@ -3,25 +3,32 @@
 
 [![CircleCI](https://circleci.com/gh/worldr/server.svg?style=shield&circle-token=66990f08c761df247eafc0a19fc2f975ffed14a6)](https://app.circleci.com/pipelines/github/worldr/server)
 
-## Documentation links
+# Populating server with sample data
 
--   [Review product documentation](http://docs.mattermost.com/).
--   [Review developer documentation](http://developers.mattermost.com/).
--   [Download compiled version](https://mattermost.com/download).
+```bash
+# run in the server directory
+./bin/mattermost populatesample --admins "nox,max,hans,yann,sean,dz,tanel"
+```
 
-## Deploy on Heroku
+```bash
+./bin/mattermost populatesample --help
 
-[![Deploy a Preview](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy?template=https://github.com/mattermost/mattermost-heroku)
+Generate sample data
 
-_Note: Heroku preview does not include email or persistent storage_
+Usage:
+  mattermost populatesample [flags]
 
-## Deploy on a Cloud Platform via Bitnami
+Flags:
+      --admins strings          Server admins.
+      --deactivated-users int   The number of deactivated users.
+  -g, --guests int              The number of sample guests.
+  -h, --help                    help for populatesample
+      --posts-per-channel int   The number of sample post per channel. (default 40)
+      --profile-images string   Optional. Path to folder with images to randomly pick as user profile image.
+  -s, --seed int                Seed used for generating the random data (Different seeds generate different data). (default 3)
+  -u, --users int               The number of sample users. (default 15)
 
-[Auto-deploy Mattermost](https://mattermost.com/download/#bitnami) to Amazon Web Services, Azure, Google Cloud Platform, or Oracle Cloud Platform via Bitnami.
-
-## Install on Your Own Machine
-
--   [One-line Docker Preview](http://docs.mattermost.com/install/docker-local-machine.html#one-line-docker-install)
--   [Developer Machine Setup](https://docs.mattermost.com/developer/dev-setup.html)
--   [Production Install Guides using Linux Binary](https://mattermost.com/download/)
--   [Production Docker Install](https://docs.mattermost.com/install/prod-docker.html)
+Global Flags:
+  -c, --config string        Configuration file to use. (default "config.json")
+      --disableconfigwatch   When set config.json will not be loaded from disk when the file is changed.
+```

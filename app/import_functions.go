@@ -238,6 +238,10 @@ func (a *App) importChannel(data *ChannelImportData, dryRun bool) *model.AppErro
 	channel.DisplayName = *data.DisplayName
 	channel.Type = *data.Type
 
+	if data.Kind != nil {
+		channel.Kind = *data.Kind
+	}
+
 	if data.Header != nil {
 		channel.Header = *data.Header
 	}
@@ -393,6 +397,41 @@ func (a *App) importUser(data *UserImportData, dryRun bool) *model.AppError {
 	if data.DeleteAt != nil {
 		if user.DeleteAt != *data.DeleteAt {
 			user.DeleteAt = *data.DeleteAt
+			hasUserChanged = true
+		}
+	}
+
+	if data.Location != nil {
+		if user.Location != *data.Location {
+			user.Location = *data.Location
+			hasUserChanged = true
+		}
+	}
+
+	if data.PhoneNumber != nil {
+		if user.PhoneNumber != *data.PhoneNumber {
+			user.PhoneNumber = *data.PhoneNumber
+			hasUserChanged = true
+		}
+	}
+
+	if data.WorkRole != nil {
+		if user.WorkRole != *data.WorkRole {
+			user.WorkRole = *data.WorkRole
+			hasUserChanged = true
+		}
+	}
+
+	if data.SocialMedia != nil {
+		if user.SocialMedia != *data.SocialMedia {
+			user.SocialMedia = *data.SocialMedia
+			hasUserChanged = true
+		}
+	}
+
+	if data.Biography != nil {
+		if user.Biography != *data.Biography {
+			user.Biography = *data.Biography
 			hasUserChanged = true
 		}
 	}
@@ -718,11 +757,45 @@ func (a *App) importUserTeams(user *model.User, data *[]UserTeamImportData) *mod
 		if err := a.importUserChannels(user, team, member, tdata.Channels); err != nil {
 			return err
 		}
+
+		if err := a.importUserChannelsCategories(team.Id, user.Id, tdata.Categories); err != nil {
+			return err
+		}
 	}
 
 	if len(teamThemePreferences) > 0 {
 		if err := a.Srv().Store.Preference().Save(&teamThemePreferences); err != nil {
 			return model.NewAppError("BulkImport", "app.import.import_user_teams.save_preferences.error", nil, err.Error(), http.StatusInternalServerError)
+		}
+	}
+
+	return nil
+}
+
+func (a *App) importUserChannelsCategories(teamId string, userId string, data *[]CategoryImportData) *model.AppError {
+	if data == nil {
+		return nil
+	}
+	for _, v := range *data {
+		ci := v
+		if err := validateCategoryImportData(&ci); err != nil {
+			return err
+		}
+	}
+
+	for i, cdata := range *data {
+		channel, err := a.GetChannelByName(*cdata.Channel, teamId, true)
+		if err != nil {
+			return err
+		}
+		_, err = a.Srv().Store.ChannelCategory().SaveOrUpdate(&model.ChannelCategory{
+			UserId:    userId,
+			ChannelId: channel.Id,
+			Name:      *cdata.Name,
+			Sort:      int32(i),
+		})
+		if err != nil {
+			return err
 		}
 	}
 

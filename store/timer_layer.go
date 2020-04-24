@@ -1851,10 +1851,10 @@ func (s *TimerLayerChannelStore) UserBelongsToChannels(userId string, channelIds
 	return resultVar0, resultVar1
 }
 
-func (s *TimerLayerChannelCategoryStore) Delete(userId string, catId int32) *model.AppError {
+func (s *TimerLayerChannelCategoryStore) Delete(userId string, channelId string) *model.AppError {
 	start := timemodule.Now()
 
-	resultVar0 := s.ChannelCategoryStore.Delete(userId, catId)
+	resultVar0 := s.ChannelCategoryStore.Delete(userId, channelId)
 
 	elapsed := float64(timemodule.Since(start)) / float64(timemodule.Second)
 	if s.Root.Metrics != nil {
@@ -1867,10 +1867,10 @@ func (s *TimerLayerChannelCategoryStore) Delete(userId string, catId int32) *mod
 	return resultVar0
 }
 
-func (s *TimerLayerChannelCategoryStore) Get(catId int32) (*model.ChannelCategory, *model.AppError) {
+func (s *TimerLayerChannelCategoryStore) Get(userId string, channelId string) (*model.ChannelCategory, *model.AppError) {
 	start := timemodule.Now()
 
-	resultVar0, resultVar1 := s.ChannelCategoryStore.Get(catId)
+	resultVar0, resultVar1 := s.ChannelCategoryStore.Get(userId, channelId)
 
 	elapsed := float64(timemodule.Since(start)) / float64(timemodule.Second)
 	if s.Root.Metrics != nil {

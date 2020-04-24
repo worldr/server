@@ -151,6 +151,16 @@ func validateTeamImportData(data *TeamImportData) *model.AppError {
 	return nil
 }
 
+func validateCategoryImportData(data *CategoryImportData) *model.AppError {
+	if data.Name == nil || len(*data.Name) == 0 {
+		return model.NewAppError("BulkImport", "app.import.validate_category_import_data.name_missing.error", nil, "", http.StatusBadRequest)
+	}
+	if data.Channel == nil || len(*data.Channel) == 0 {
+		return model.NewAppError("BulkImport", "app.import.validate_category_import_data.channelid_missing.error", nil, "", http.StatusBadRequest)
+	}
+	return nil
+}
+
 func validateChannelImportData(data *ChannelImportData) *model.AppError {
 
 	if data.Team == nil {

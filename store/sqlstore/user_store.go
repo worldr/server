@@ -78,7 +78,7 @@ func newSqlUserStore(sqlStore SqlStore, metrics einterfaces.MetricsInterface) st
 		table.ColMap("PhoneNumber").SetMaxSize(64)
 		table.ColMap("WorkRole").SetMaxSize(128)
 		table.ColMap("SocialMedia").SetMaxSize(128)
-		table.ColMap("Biography").SetMaxSize(512)
+		table.ColMap("Biography").SetMaxSize(1024)
 	}
 
 	return us

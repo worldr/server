@@ -561,7 +561,7 @@ func (a *OpenTracingAppLayer) AllowOAuthAppAccessToUser(userId string, authReque
 	return resultVar0, resultVar1
 }
 
-func (a *OpenTracingAppLayer) AssignCategory(channelId string, categoryId int32) (*model.Channel, *model.AppError) {
+func (a *OpenTracingAppLayer) AssignCategory(channelId string, userId string, category string) (*model.ChannelCategory, *model.AppError) {
 	origCtx := a.ctx
 	span, newCtx := tracing.StartSpanWithParentByContext(a.ctx, "app.AssignCategory")
 
@@ -573,7 +573,7 @@ func (a *OpenTracingAppLayer) AssignCategory(channelId string, categoryId int32)
 	}()
 
 	defer span.Finish()
-	resultVar0, resultVar1 := a.app.AssignCategory(channelId, categoryId)
+	resultVar0, resultVar1 := a.app.AssignCategory(channelId, userId, category)
 
 	if resultVar1 != nil {
 		span.LogFields(spanlog.Error(resultVar1))
