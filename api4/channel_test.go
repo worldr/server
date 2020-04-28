@@ -26,6 +26,8 @@ func TestCreateChannel(t *testing.T) {
 
 	channel := &model.Channel{DisplayName: "Test API Name", Name: GenerateTestChannelName(), Type: model.CHANNEL_OPEN, TeamId: team.Id}
 	private := &model.Channel{DisplayName: "Test API Name", Name: GenerateTestChannelName(), Type: model.CHANNEL_PRIVATE, TeamId: team.Id}
+	wteam := &model.Channel{DisplayName: "Test Worldr team", Name: GenerateTestChannelName(), Type: model.CHANNEL_PRIVATE, TeamId: team.Id, Kind: model.CHANNEL_KIND_TEAM}
+	wproject := &model.Channel{DisplayName: "Test Worldr project", Name: GenerateTestChannelName(), Type: model.CHANNEL_PRIVATE, TeamId: team.Id, Kind: model.CHANNEL_KIND_PROJECT}
 
 	rchannel, resp := Client.CreateChannel(channel)
 	CheckNoError(t, resp)
@@ -41,6 +43,23 @@ func TestCreateChannel(t *testing.T) {
 	require.Equal(t, private.Name, rprivate.Name, "names did not match")
 	require.Equal(t, model.CHANNEL_PRIVATE, rprivate.Type, "wrong channel type")
 	require.Equal(t, th.BasicUser.Id, rprivate.CreatorId, "wrong creator id")
+
+	// Worldr specific
+	rteam, resp := Client.CreateChannel(wteam)
+	CheckNoError(t, resp)
+
+	require.Equal(t, wteam.Kind, rteam.Kind, "Channel is not a team chat.")
+	require.Equal(t, wteam.Name, rteam.Name, "names did not match")
+	require.Equal(t, model.CHANNEL_PRIVATE, rteam.Type, "wrong channel type")
+	require.Equal(t, th.BasicUser.Id, rteam.CreatorId, "wrong creator id")
+
+	rproject, resp := Client.CreateChannel(wproject)
+	CheckNoError(t, resp)
+
+	require.Equal(t, wproject.Kind, rproject.Kind, "Channel is not a project chat.")
+	require.Equal(t, wproject.Name, rproject.Name, "names did not match")
+	require.Equal(t, model.CHANNEL_PRIVATE, rproject.Type, "wrong channel type")
+	require.Equal(t, th.BasicUser.Id, rproject.CreatorId, "wrong creator id")
 
 	_, resp = Client.CreateChannel(channel)
 	CheckErrorMessage(t, resp, "store.sql_channel.save_channel.exists.app_error")
@@ -133,9 +152,13 @@ func TestUpdateChannel(t *testing.T) {
 
 	channel := &model.Channel{DisplayName: "Test API Name", Name: GenerateTestChannelName(), Type: model.CHANNEL_OPEN, TeamId: team.Id}
 	private := &model.Channel{DisplayName: "Test API Name", Name: GenerateTestChannelName(), Type: model.CHANNEL_PRIVATE, TeamId: team.Id}
+	wteam := &model.Channel{DisplayName: "Test Worldr team", Name: GenerateTestChannelName(), Type: model.CHANNEL_PRIVATE, TeamId: team.Id, Kind: model.CHANNEL_KIND_TEAM}
+	wproject := &model.Channel{DisplayName: "Test Worldr project", Name: GenerateTestChannelName(), Type: model.CHANNEL_PRIVATE, TeamId: team.Id, Kind: model.CHANNEL_KIND_PROJECT}
 
 	channel, _ = Client.CreateChannel(channel)
 	private, _ = Client.CreateChannel(private)
+	wteam, _ = Client.CreateChannel(wteam)
+	wproject, _ = Client.CreateChannel(wproject)
 
 	//Update a open channel
 	channel.DisplayName = "My new display name"
@@ -157,7 +180,7 @@ func TestUpdateChannel(t *testing.T) {
 
 	require.Equal(t, *channel.GroupConstrained, *rchannel.GroupConstrained, "GroupConstrained flags do not match")
 
-	//Update a private channel
+	// Update a private channel
 	private.DisplayName = "My new display name for private channel"
 	private.Header = "My fancy private header"
 	private.Purpose = "Mattermost ftw! in private mode"
@@ -168,6 +191,40 @@ func TestUpdateChannel(t *testing.T) {
 	require.Equal(t, private.DisplayName, newPrivateChannel.DisplayName, "Update failed for DisplayName in private channel")
 	require.Equal(t, private.Header, newPrivateChannel.Header, "Update failed for Header in private channel")
 	require.Equal(t, private.Purpose, newPrivateChannel.Purpose, "Update failed for Purpose in private channel")
+
+	// Update a Worldr private channel of kind "team".
+	wteam.DisplayName = "My new display name for private channel"
+	wteam.Header = "My fancy private header"
+	wteam.Purpose = "Mattermost ftw! in private mode"
+
+	newTeamChannel, resp := Client.UpdateChannel(wteam)
+	CheckNoError(t, resp)
+
+	require.Equal(t, wteam.Kind, newTeamChannel.Kind, "Channel is not a team chat.")
+	require.Equal(t, wteam.DisplayName, newTeamChannel.DisplayName, "Update failed for DisplayName in private channel")
+	require.Equal(t, wteam.Header, newTeamChannel.Header, "Update failed for Header in private channel")
+	require.Equal(t, wteam.Purpose, newTeamChannel.Purpose, "Update failed for Purpose in private channel")
+
+	// Update a Worldr private channel of kind "project".
+	wproject.DisplayName = "My new display name for private channel"
+	wproject.Header = "My fancy private header"
+	wproject.Purpose = "Mattermost ftw! in private mode"
+
+	newProjectChannel, resp := Client.UpdateChannel(wproject)
+	CheckNoError(t, resp)
+
+	require.Equal(t, wproject.Kind, newProjectChannel.Kind, "Channel is not a project chat.")
+	require.Equal(t, wproject.DisplayName, newProjectChannel.DisplayName, "Update failed for DisplayName in private channel")
+	require.Equal(t, wproject.Header, newProjectChannel.Header, "Update failed for Header in private channel")
+	require.Equal(t, wproject.Purpose, newProjectChannel.Purpose, "Update failed for Purpose in private channel")
+
+	// Update a worldr team to worldr project./
+	wteam.Kind = "project"
+
+	newConvertedProjectChannel, resp := Client.UpdateChannel(wproject)
+	CheckNoError(t, resp)
+
+	require.Equal(t, wproject.Kind, newConvertedProjectChannel.Kind, "Channel is not a project chat.")
 
 	// Test that changing the type fails and returns error
 
@@ -313,6 +370,99 @@ func TestPatchChannel(t *testing.T) {
 	Client.Login(user3.Email, user3.Password)
 	_, resp = Client.PatchChannel(directChannel.Id, channelPatch)
 	CheckForbiddenStatus(t, resp)
+}
+
+func TestPatchWorldrChannelSuccess(t *testing.T) {
+	testCases := []struct {
+		Name    string
+		Kind    string
+		NewKind string
+	}{
+		{"Testing Worldr team channels", model.CHANNEL_KIND_TEAM, model.CHANNEL_KIND_PROJECT},
+		{"Testing Worldr project channels", model.CHANNEL_KIND_PROJECT, model.CHANNEL_KIND_TEAM},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.Name, func(t *testing.T) {
+
+			th := Setup(t).InitBasic()
+			defer th.TearDown()
+			Client := th.Client
+			team := th.BasicTeam
+
+			channel := &model.Channel{DisplayName: "Test Worldr chat", Name: GenerateTestChannelName(), Type: model.CHANNEL_PRIVATE, TeamId: team.Id, Kind: tc.Kind}
+
+			worldrChannel, resp := Client.CreateChannel(channel)
+			CheckNoError(t, resp)
+
+			patch := &model.ChannelPatch{}
+			patch.Kind = &tc.NewKind
+
+			patchedChannel, resp := Client.PatchChannel(worldrChannel.Id, patch)
+			CheckNoError(t, resp)
+
+			require.Equal(t, *patch.Kind, patchedChannel.Kind, "do not match")
+
+			patch.Name = nil
+			oldName := patchedChannel.Name
+			patchedChannel, resp = Client.PatchChannel(worldrChannel.Id, patch)
+			CheckNoError(t, resp)
+
+			require.Equal(t, oldName, patchedChannel.Name, "should not have updated")
+
+		})
+	}
+}
+
+func TestPatchWorldrChannelFailures(t *testing.T) {
+	th := Setup(t).InitBasic()
+	defer th.TearDown()
+	Client := th.Client
+	team := th.BasicTeam
+
+	patch := &model.ChannelPatch{
+		Kind: new(string),
+	}
+
+	// Private channel, garbage kind.
+	*patch.Kind = "garbage"
+	channel := &model.Channel{DisplayName: "Test open chat", Name: GenerateTestChannelName(), Type: model.CHANNEL_PRIVATE, TeamId: team.Id}
+	channel, resp := Client.CreateChannel(channel)
+	CheckNoError(t, resp)
+
+	_, resp = Client.PatchChannel(channel.Id, patch)
+	CheckStatusNotAcceptable(t, resp)
+
+	// Set a valid kind for the rest of the test.
+	*patch.Kind = model.CHANNEL_KIND_TEAM
+
+	// Open channel.
+	channel = &model.Channel{DisplayName: "Test open chat", Name: GenerateTestChannelName(), Type: model.CHANNEL_OPEN, TeamId: team.Id}
+	channel, resp = Client.CreateChannel(channel)
+	CheckNoError(t, resp)
+
+	_, resp = Client.PatchChannel(channel.Id, patch)
+	CheckStatusNotAcceptable(t, resp)
+
+	// Direct channel
+	user1 := th.BasicUser
+	user2 := th.BasicUser2
+	dm, resp := Client.CreateDirectChannel(user1.Id, user2.Id)
+	CheckNoError(t, resp)
+
+	_, resp = Client.PatchChannel(dm.Id, patch)
+	CheckStatusNotAcceptable(t, resp)
+
+	// Group channel
+	user3 := th.CreateUser()
+	userIds := []string{user1.Id, user2.Id, user3.Id}
+
+	rgc, resp := Client.CreateGroupChannel(userIds)
+	CheckNoError(t, resp)
+	CheckCreatedStatus(t, resp)
+	require.NotNil(t, rgc, "should have created a group channel")
+
+	_, resp = Client.PatchChannel(dm.Id, patch)
+	CheckStatusNotAcceptable(t, resp)
 }
 
 func TestCreateDirectChannel(t *testing.T) {
@@ -1199,6 +1349,17 @@ func TestDeleteChannel(t *testing.T) {
 	// successful delete of private channel
 	privateChannel2 := th.CreatePrivateChannel()
 	_, resp = Client.DeleteChannel(privateChannel2.Id)
+	CheckNoError(t, resp)
+
+	// Delete Worldr team and project channels.
+	wteam := &model.Channel{DisplayName: "Test Worldr team", Name: GenerateTestChannelName(), Type: model.CHANNEL_PRIVATE, TeamId: team.Id, Kind: "team"}
+	rteam, _ := Client.CreateChannel(wteam)
+	_, resp = Client.DeleteChannel(rteam.Id)
+	CheckNoError(t, resp)
+
+	wproject := &model.Channel{DisplayName: "Test Worldr project", Name: GenerateTestChannelName(), Type: model.CHANNEL_PRIVATE, TeamId: team.Id, Kind: "project"}
+	rteam, _ = Client.CreateChannel(wproject)
+	_, resp = Client.DeleteChannel(rteam.Id)
 	CheckNoError(t, resp)
 
 	// successful delete of channel with multiple members

@@ -770,6 +770,11 @@ func CheckServiceUnavailableStatus(t *testing.T, resp *model.Response) {
 	checkHTTPStatus(t, resp, http.StatusServiceUnavailable, true)
 }
 
+func CheckStatusNotAcceptable(t *testing.T, resp *model.Response) {
+	t.Helper()
+	checkHTTPStatus(t, resp, http.StatusNotAcceptable, true)
+}
+
 func CheckErrorMessage(t *testing.T, resp *model.Response, errorId string) {
 	t.Helper()
 

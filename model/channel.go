@@ -31,6 +31,10 @@ const (
 
 	CHANNEL_SORT_BY_USERNAME = "username"
 	CHANNEL_SORT_BY_STATUS   = "status"
+
+	CHANNEL_KIND_NONE    = ""
+	CHANNEL_KIND_TEAM    = "team"
+	CHANNEL_KIND_PROJECT = "project"
 )
 
 type Channel struct {
@@ -72,7 +76,7 @@ type ChannelPatch struct {
 	Header           *string `json:"header"`
 	Purpose          *string `json:"purpose"`
 	GroupConstrained *bool   `json:"group_constrained"`
-	Kind             string  `json:"kind"`
+	Kind             *string `json:"kind"`
 }
 
 type ChannelForExport struct {
@@ -268,6 +272,10 @@ func (o *Channel) Patch(patch *ChannelPatch) {
 
 	if patch.GroupConstrained != nil {
 		o.GroupConstrained = patch.GroupConstrained
+	}
+
+	if patch.Kind != nil {
+		o.Kind = *patch.Kind
 	}
 }
 

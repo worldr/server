@@ -52,9 +52,9 @@ services:
     networks:
       - mm-test
     depends_on:
-      #- mysql
+      - mysql
       - postgres
-      #- minio
+      - minio
       - inbucket
       # - openldap
       # - elasticsearch

@@ -5,6 +5,7 @@ package api4
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -64,6 +65,19 @@ func (api *API) InitChannel() {
 	api.BaseRoutes.ChannelModerations.Handle("/patch", api.ApiSessionRequired(patchChannelModerations)).Methods("PUT")
 }
 
+// Checks that the channel "kind" is sensible and makes sense in its context.
+func checkWorldrChannelKindIsValid(channelType string, channelKind string) (int, error) {
+	if channelType != model.CHANNEL_PRIVATE {
+		// Channel kind is not needed for that message type.
+		return 1, fmt.Errorf("%s channel, not a private channel", channelType)
+	}
+	if channelKind != model.CHANNEL_KIND_TEAM && channelKind != model.CHANNEL_KIND_PROJECT {
+		// Channel kind is erroneous, it makes no sense.
+		return 2, fmt.Errorf("Kind %s is erroneous", channelKind)
+	}
+	return 0, nil // Success.
+}
+
 func createChannel(c *Context, w http.ResponseWriter, r *http.Request) {
 	channel := model.ChannelFromJson(r.Body)
 	if channel == nil {
@@ -83,6 +97,16 @@ func createChannel(c *Context, w http.ResponseWriter, r *http.Request) {
 	if channel.Type == model.CHANNEL_PRIVATE && !c.App.SessionHasPermissionToTeam(*c.App.Session(), channel.TeamId, model.PERMISSION_CREATE_PRIVATE_CHANNEL) {
 		c.SetPermissionError(model.PERMISSION_CREATE_PRIVATE_CHANNEL)
 		return
+	}
+
+	// Check for worldr kind.
+	// TODO: Add unit tests to check this. Not strictly necessary as the
+	// 	     function is tested in TestPatchWorldrChannel*
+	if channel.Kind != model.CHANNEL_KIND_NONE {
+		if _, err := checkWorldrChannelKindIsValid(channel.Type, channel.Kind); err != nil {
+			c.Err = model.NewAppError("createChannel", "api.channel.create_channel.forbidden.kind", nil, err.Error(), http.StatusNotAcceptable)
+			return
+		}
 	}
 
 	sc, err := c.App.CreateChannelWithUser(channel, c.App.Session().UserId)
@@ -169,6 +193,16 @@ func updateChannel(c *Context, w http.ResponseWriter, r *http.Request) {
 	if oldChannel.Name == model.DEFAULT_CHANNEL {
 		if len(channel.Name) > 0 && channel.Name != oldChannel.Name {
 			c.Err = model.NewAppError("updateChannel", "api.channel.update_channel.tried.app_error", map[string]interface{}{"Channel": model.DEFAULT_CHANNEL}, "", http.StatusBadRequest)
+			return
+		}
+	}
+
+	// Check for worldr kind.
+	// TODO: Add unit tests to check this. Not strictly necessary as the
+	// 	     function is tested in TestPatchWorldrChannel*
+	if channel.Kind != model.CHANNEL_KIND_NONE {
+		if _, err := checkWorldrChannelKindIsValid(channel.Type, channel.Kind); err != nil {
+			c.Err = model.NewAppError("createChannel", "api.channel.create_channel.forbidden.kind", nil, err.Error(), http.StatusNotAcceptable)
 			return
 		}
 	}
@@ -363,6 +397,14 @@ func patchChannel(c *Context, w http.ResponseWriter, r *http.Request) {
 	default:
 		c.Err = model.NewAppError("patchChannel", "api.channel.patch_update_channel.forbidden.app_error", nil, "", http.StatusForbidden)
 		return
+	}
+
+	// Check for worldr kind.
+	if patch.Kind != nil {
+		if _, err := checkWorldrChannelKindIsValid(oldChannel.Type, *patch.Kind); err != nil {
+			c.Err = model.NewAppError("patchChannel", "api.channel.patch_update_channel.forbidden.kind", nil, err.Error(), http.StatusNotAcceptable)
+			return
+		}
 	}
 
 	rchannel, err := c.App.PatchChannel(oldChannel, patch, c.App.Session().UserId)
