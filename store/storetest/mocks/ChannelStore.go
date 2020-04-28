@@ -1030,7 +1030,7 @@ func (_m *ChannelStore) GetMoreChannels(teamId string, userId string, offset int
 }
 
 // GetOverview provides a mock function with given fields: teamId, userId
-func (_m *ChannelStore) GetOverview(teamId string, userId string) (*model.ChannelList, *map[string][]string, *[]string, *model.AppError) {
+func (_m *ChannelStore) GetOverview(teamId string, userId string) (*model.ChannelList, *map[string]*model.ChannelMembersShort, *[]string, *model.AppError) {
 	ret := _m.Called(teamId, userId)
 
 	var r0 *model.ChannelList
@@ -1042,12 +1042,12 @@ func (_m *ChannelStore) GetOverview(teamId string, userId string) (*model.Channe
 		}
 	}
 
-	var r1 *map[string][]string
-	if rf, ok := ret.Get(1).(func(string, string) *map[string][]string); ok {
+	var r1 *map[string]*model.ChannelMembersShort
+	if rf, ok := ret.Get(1).(func(string, string) *map[string]*model.ChannelMembersShort); ok {
 		r1 = rf(teamId, userId)
 	} else {
 		if ret.Get(1) != nil {
-			r1 = ret.Get(1).(*map[string][]string)
+			r1 = ret.Get(1).(*map[string]*model.ChannelMembersShort)
 		}
 	}
 

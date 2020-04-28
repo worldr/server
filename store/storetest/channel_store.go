@@ -4265,7 +4265,7 @@ func testGroupSyncedChannelCount(t *testing.T, ss store.Store) {
 	require.GreaterOrEqual(t, countAfter, count+1)
 }
 
-func prepareTestSpecificChats(t *testing.T, ss store.Store) (string, string) {
+func prepareTestSpecificChats(t *testing.T, ss store.Store) (team string, user1 string, user2 string) {
 	teamId := model.NewId()
 	teamOther := model.NewId()
 
@@ -4396,11 +4396,11 @@ func prepareTestSpecificChats(t *testing.T, ss store.Store) (string, string) {
 	_, err = ss.Channel().SaveMember(&m2)
 	require.Nil(t, err)
 
-	return teamId, u1.Id
+	return teamId, u1.Id, u2.Id
 }
 
 func testChannelStoreGetPersonalChannels(t *testing.T, ss store.Store) {
-	teamId, userId := prepareTestSpecificChats(t, ss)
+	teamId, userId, _ := prepareTestSpecificChats(t, ss)
 
 	list, err1 := ss.Channel().GetPersonalChannels(teamId, userId)
 	require.Nil(t, err1)
@@ -4415,7 +4415,7 @@ func testChannelStoreGetPersonalChannels(t *testing.T, ss store.Store) {
 }
 
 func testChannelStoreGetWorkChannels(t *testing.T, ss store.Store) {
-	teamId, userId := prepareTestSpecificChats(t, ss)
+	teamId, userId, _ := prepareTestSpecificChats(t, ss)
 
 	list, err1 := ss.Channel().GetWorkChannels(teamId, userId)
 	require.Nil(t, err1)
@@ -4429,7 +4429,7 @@ func testChannelStoreGetWorkChannels(t *testing.T, ss store.Store) {
 }
 
 func testChannelStoreGetGlobalChannels(t *testing.T, ss store.Store) {
-	teamId, userId := prepareTestSpecificChats(t, ss)
+	teamId, userId, _ := prepareTestSpecificChats(t, ss)
 
 	list, err1 := ss.Channel().GetGlobalChannels(teamId, userId)
 	require.Nil(t, err1)
@@ -4443,12 +4443,22 @@ func testChannelStoreGetGlobalChannels(t *testing.T, ss store.Store) {
 }
 
 func testChannelsOverview(t *testing.T, ss store.Store) {
-	teamId, userId := prepareTestSpecificChats(t, ss)
+	teamId, user1Id, user2Id := prepareTestSpecificChats(t, ss)
 
-	list, members, uids, err1 := ss.Channel().GetOverview(teamId, userId)
+	list, members, uids, err1 := ss.Channel().GetOverview(teamId, user1Id)
 	require.Nil(t, err1)
 
 	assert.Equal(t, 6, len(*list))
 	assert.Equal(t, 6, len(*members))
 	assert.Equal(t, 2, len(*uids))
+
+	for _, channel := range *list {
+		users, exists := (*members)[channel.Id]
+		assert.True(t, exists)
+		assert.Equal(t, 2, len(*users))
+		for _, u := range *users {
+			assert.Equal(t, channel.Id, u.ChannelId)
+			assert.True(t, u.UserId == user1Id || u.UserId == user2Id)
+		}
+	}
 }

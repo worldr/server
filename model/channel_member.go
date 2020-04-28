@@ -58,6 +58,16 @@ type ChannelMember struct {
 
 type ChannelMembers []ChannelMember
 
+type ChannelMemberShort struct {
+	ChannelId   string `json:"channel_id"`
+	UserId      string `json:"user_id"`
+	SchemeGuest bool   `json:"scheme_guest"`
+	SchemeUser  bool   `json:"scheme_user"`
+	SchemeAdmin bool   `json:"scheme_admin"`
+}
+
+type ChannelMembersShort []ChannelMemberShort
+
 type ChannelMemberForExport struct {
 	ChannelMember
 	ChannelName string
@@ -65,6 +75,14 @@ type ChannelMemberForExport struct {
 }
 
 func (o *ChannelMembers) ToJson() string {
+	if b, err := json.Marshal(o); err != nil {
+		return "[]"
+	} else {
+		return string(b)
+	}
+}
+
+func (o *ChannelMembersShort) ToJson() string {
 	if b, err := json.Marshal(o); err != nil {
 		return "[]"
 	} else {
@@ -88,6 +106,12 @@ func ChannelMembersFromJson(data io.Reader) *ChannelMembers {
 	return o
 }
 
+func ChannelMembersShortFromJson(data io.Reader) *ChannelMembersShort {
+	var o *ChannelMembersShort
+	json.NewDecoder(data).Decode(&o)
+	return o
+}
+
 func ChannelUnreadFromJson(data io.Reader) *ChannelUnread {
 	var o *ChannelUnread
 	json.NewDecoder(data).Decode(&o)
@@ -101,6 +125,11 @@ func ChannelUnreadAtFromJson(data io.Reader) *ChannelUnreadAt {
 }
 
 func (o *ChannelMember) ToJson() string {
+	b, _ := json.Marshal(o)
+	return string(b)
+}
+
+func (o *ChannelMemberShort) ToJson() string {
 	b, _ := json.Marshal(o)
 	return string(b)
 }

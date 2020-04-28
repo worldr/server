@@ -8,10 +8,10 @@ import (
 )
 
 type ChannelOverview struct {
-	Channels *ChannelList         `json:"channels"`
-	Members  *map[string][]string `json:"members"`
-	Users    *[]*User             `json:"users"`
-	Statuses *[]*Status           `json:"statuses"`
+	Channels *ChannelList                     `json:"channels"`
+	Members  *map[string]*ChannelMembersShort `json:"members"`
+	Users    *[]*User                         `json:"users"`
+	Statuses *[]*Status                       `json:"statuses"`
 }
 
 func (o *ChannelOverview) ToJson() string {

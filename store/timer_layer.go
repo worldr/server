@@ -1154,7 +1154,7 @@ func (s *TimerLayerChannelStore) GetMoreChannels(teamId string, userId string, o
 	return resultVar0, resultVar1
 }
 
-func (s *TimerLayerChannelStore) GetOverview(teamId string, userId string) (*model.ChannelList, *map[string][]string, *[]string, *model.AppError) {
+func (s *TimerLayerChannelStore) GetOverview(teamId string, userId string) (*model.ChannelList, *map[string]*model.ChannelMembersShort, *[]string, *model.AppError) {
 	start := timemodule.Now()
 
 	resultVar0, resultVar1, resultVar2, resultVar3 := s.ChannelStore.GetOverview(teamId, userId)

@@ -3032,9 +3032,9 @@ func (s SqlChannelStore) GetGlobalChannels(teamId string, userId string) (*model
 
 // GetOverview returns channels for global screen.
 // These are all of channels visible to userId along with their members.
-func (s SqlChannelStore) GetOverview(teamId string, userId string) (*model.ChannelList, *map[string][]string, *[]string, *model.AppError) {
+func (s SqlChannelStore) GetOverview(teamId string, userId string) (*model.ChannelList, *map[string]*model.ChannelMembersShort, *[]string, *model.AppError) {
 	// Get all channel ids visible to userId
-	channelIds, err1 := s.getRelevantChannelIds(teamId, userId)
+	channelIds, infos, err1 := s.getChannelInfos(teamId, userId)
 	if err1 != nil {
 		return nil, nil, nil, model.NewAppError("SqlChannelStore.GetOverview", "store.sql_channel.get_overview.get_relevant_channels_ids.app_error", nil, "userId="+userId+", teamId="+teamId+", err="+err1.Error(), http.StatusInternalServerError)
 	}
@@ -3055,33 +3055,28 @@ func (s SqlChannelStore) GetOverview(teamId string, userId string) (*model.Chann
 	}
 
 	// Get member ids for all channels
-	members := &[]struct {
-		ChannelId string
-		UserId    string
-	}{}
+	members := &model.ChannelMembersShort{}
 	_, err3 := s.GetReplica().Select(members, `
 		SELECT 
-			cm.ChannelId, u.Id as UserId
+			ChannelId,UserId,SchemeGuest,SchemeUser,SchemeAdmin
 		FROM 
-			Users as u
-		JOIN (
-			SELECT ChannelId, UserId 
-			FROM ChannelMembers
-			WHERE ChannelId IN ('`+strings.Join(*channelIds, "','")+`')
-		) as cm
-		ON cm.UserId=u.Id	
+			ChannelMembers
+		WHERE ChannelId IN ('`+strings.Join(*channelIds, "','")+`')
 		`,
 	)
 	if err3 != nil {
 		return nil, nil, nil, model.NewAppError("SqlChannelStore.GetOverview", "store.sql_channel.get_overview.get_members.app_error", nil, "userId="+userId+", err="+err3.Error(), http.StatusInternalServerError)
 	}
-	membersMap := make(map[string][]string, len(*channels))
+	membersMap := make(map[string]*model.ChannelMembersShort, len(*channels))
 	distinctUsers := make(map[string]bool)
 	for _, v := range *members {
 		if _, exists := membersMap[v.ChannelId]; !exists {
-			membersMap[v.ChannelId] = make([]string, 0)
+			info := (*infos)[v.ChannelId]
+			var empty model.ChannelMembersShort = make([]model.ChannelMemberShort, info.Members)[:0]
+			membersMap[v.ChannelId] = &empty
 		}
-		membersMap[v.ChannelId] = append(membersMap[v.ChannelId], v.UserId)
+		updated := append(*membersMap[v.ChannelId], v)
+		membersMap[v.ChannelId] = &updated
 		distinctUsers[v.UserId] = true
 	}
 	uids := make([]string, len(distinctUsers))
