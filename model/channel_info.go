@@ -8,10 +8,10 @@ import (
 )
 
 type ChannelInfo struct {
-	Id       string `json:"id"`
-	Members  int    `json:"members"`
-	Unread   int    `json:"unread"`
-	Mentions int    `json:"mentions"`
+	Id           string `json:"id"`
+	Members      int    `json:"members"`
+	MsgCount     int    `json:"msg_count"`
+	MentionCount int    `json:"mention_count"`
 }
 
 type ChannelInfoList []*ChannelInfo
