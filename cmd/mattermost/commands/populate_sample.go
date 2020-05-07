@@ -12,6 +12,7 @@ import (
 	"os"
 	"path"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/icrowley/fake"
@@ -29,6 +30,7 @@ var PopulateSampleCmd = &cobra.Command{
 
 const (
 	PARAM_ADMINS            = "admins"
+	PARAM_ADMIN_NAMES       = "admin-names"
 	PARAM_SEED              = "seed"
 	PARAM_USERS             = "users"
 	PARAM_GUESTS            = "guests"
@@ -39,6 +41,7 @@ const (
 
 func init() {
 	PopulateSampleCmd.Flags().StringSlice(PARAM_ADMINS, []string{}, "Server admins.")
+	PopulateSampleCmd.Flags().StringSlice(PARAM_ADMIN_NAMES, []string{}, "Server admin names.")
 	PopulateSampleCmd.Flags().Int64P(PARAM_SEED, "s", 1, "Seed used for generating the random data (Different seeds generate different data).")
 	PopulateSampleCmd.Flags().IntP(PARAM_USERS, "u", 15, "The number of sample users.")
 	PopulateSampleCmd.Flags().IntP(PARAM_GUESTS, "g", 0, "The number of sample guests.")
@@ -60,14 +63,15 @@ func createChannelsW(
 	category string,
 	channelNames *[]string,
 	count int,
+	index int,
 ) *[]string {
 	for i := 0; i < count; i++ {
 		var line app.LineImportData
 		if i < len(*channelNames) {
-			line = createChannelW(team, channelType, kind, category, (*channelNames)[i])
+			line = createChannelW(team, channelType, kind, category, (*channelNames)[i], index+i)
 			(*channelNames)[i] = *line.Channel.Name
 		} else {
-			line = createChannelW(team, channelType, kind, category, "")
+			line = createChannelW(team, channelType, kind, category, "", index+i)
 			cn := append(*channelNames, *line.Channel.Name)
 			channelNames = &cn
 		}
@@ -97,6 +101,7 @@ func populateSampleCmdF(command *cobra.Command, args []string) error {
 	if err != nil || len(admins) == 0 {
 		return paramError(PARAM_ADMINS)
 	}
+	adminNames, err := command.Flags().GetStringSlice(PARAM_ADMIN_NAMES)
 	seed, err := command.Flags().GetInt64(PARAM_SEED)
 	if err != nil {
 		return paramError(PARAM_SEED)
@@ -126,6 +131,7 @@ func populateSampleCmdF(command *cobra.Command, args []string) error {
 		return paramError(PARAM_AVATARS)
 	}
 	profileImages := []string{}
+	profileImagesMap := map[string]string{}
 	if profileImagesPath != "" {
 		var profileImagesStat os.FileInfo
 		profileImagesStat, err = os.Stat(profileImagesPath)
@@ -141,7 +147,14 @@ func populateSampleCmdF(command *cobra.Command, args []string) error {
 			return errors.New("Invalid profile-images parameter")
 		}
 		for _, profileImage := range profileImagesFiles {
-			profileImages = append(profileImages, path.Join(profileImagesPath, profileImage.Name()))
+			var fileName string = profileImage.Name()
+			file := path.Join(profileImagesPath, fileName)
+			profileImages = append(profileImages, file)
+			dot := strings.LastIndex(fileName, ".")
+			if dot > 0 {
+				fileName = fileName[0:dot]
+			}
+			profileImagesMap[fileName] = file
 		}
 		sort.Strings(profileImages)
 	}
@@ -161,12 +174,10 @@ func populateSampleCmdF(command *cobra.Command, args []string) error {
 	mainTeam := sqlstore.MAIN_TEAM_NAME
 
 	fmt.Println("ADMINS:", admins)
+	fmt.Println("ADMIN NAMES:", adminNames)
 	fmt.Println("MAIN TEAM:", mainTeam)
 
 	encoder.Encode(createMainTeam(mainTeam, "I"))
-
-	// Number of additional random channels of every kind
-	additionalChannels := 10
 
 	// Create open channels
 	openChannelsNames := &[]string{
@@ -174,6 +185,9 @@ func populateSampleCmdF(command *cobra.Command, args []string) error {
 		"General",
 		"Random",
 		"Announcements",
+		"Briefings",
+		"Special reports",
+		"Indicators",
 	}
 	openChannelsNames = createChannelsW(
 		encoder,
@@ -182,7 +196,8 @@ func populateSampleCmdF(command *cobra.Command, args []string) error {
 		"",
 		"",
 		openChannelsNames,
-		len(*openChannelsNames)+additionalChannels,
+		len(*openChannelsNames),
+		0,
 	)
 
 	// Create team channels
@@ -191,6 +206,9 @@ func populateSampleCmdF(command *cobra.Command, args []string) error {
 		"London Devs",
 		"QA team",
 		"DevOps",
+		"Leaders",
+		"International",
+		"Ministry of silly walks",
 	}
 	teamChannelsNames = createChannelsW(
 		encoder,
@@ -200,6 +218,7 @@ func populateSampleCmdF(command *cobra.Command, args []string) error {
 		"",
 		teamChannelsNames,
 		len(*teamChannelsNames),
+		50,
 	)
 
 	// Create work channels
@@ -210,6 +229,10 @@ func populateSampleCmdF(command *cobra.Command, args []string) error {
 		"Website v1",
 		"HR - Looking For Devs",
 		"Quarantine Lifting Celebration",
+		"Letters",
+		"Obituaries",
+		"Graphic detail",
+		"Calls recap",
 	}
 	workChannelsNames = createChannelsW(
 		encoder,
@@ -218,11 +241,32 @@ func populateSampleCmdF(command *cobra.Command, args []string) error {
 		"work",
 		"",
 		workChannelsNames,
-		len(*workChannelsNames)+additionalChannels,
+		len(*workChannelsNames),
+		100,
 	)
 
+	personalChannelsNames := &[]string{
+		"Puzzling Muzzle",
+		"Buzzing Embezzlement",
+		"Nitwit Blubber Oddment Tweak",
+		"Weather In Llanfairpwllgwyngyllgogerychwyrndrobwllllantysiliogogogoch",
+		"The Witcher 3 endings",
+		"Elvis Lives",
+		"Paul Is Dead",
+		"Cthulhu Rises",
+	}
+
 	// Create private channels
-	personalChannelsNames := createChannelsW(encoder, mainTeam, "P", "", "", &[]string{}, 10)
+	personalChannelsNames = createChannelsW(
+		encoder,
+		mainTeam,
+		"P",
+		"",
+		"",
+		personalChannelsNames,
+		len(*personalChannelsNames),
+		150,
+	)
 
 	allChannels := append(*openChannelsNames, *teamChannelsNames...)
 	allChannels = append(allChannels, *workChannelsNames...)
@@ -231,7 +275,7 @@ func populateSampleCmdF(command *cobra.Command, args []string) error {
 	fmt.Println("OPEN:", *openChannelsNames)
 	fmt.Println("TEAM:", *teamChannelsNames)
 	fmt.Println("WORK:", *workChannelsNames)
-	fmt.Println("PRIVATE:", *personalChannelsNames)
+	fmt.Println("PERSONAL:", *personalChannelsNames)
 	fmt.Println("ALL:", allChannels)
 
 	adminUsers := []app.LineImportData{}
@@ -239,7 +283,7 @@ func populateSampleCmdF(command *cobra.Command, args []string) error {
 		"Everyday",
 		"Friday drinks",
 		"Banter",
-		"",
+		"Tech guys",
 		"",
 	}
 	catsOpen := []string{
@@ -247,13 +291,11 @@ func populateSampleCmdF(command *cobra.Command, args []string) error {
 		"General",
 		"Emergencies",
 		"",
-		"",
 	}
 	catsWork := []string{
 		"ASAP",
 		"Ongoing",
 		"External",
-		"",
 		"",
 	}
 
@@ -266,7 +308,21 @@ func populateSampleCmdF(command *cobra.Command, args []string) error {
 		add = createCategories(&catsOpen, openChannelsNames)
 		categories = append(categories, add...)
 
-		user := createUserW(i, mainTeam, &allChannels, &categories, profileImages, ADMIN, v)
+		var name string
+		if len(adminNames) > i {
+			name = adminNames[i]
+		} else {
+			name = v
+		}
+
+		var avatars *[]string
+		if file, exists := profileImagesMap[v]; exists {
+			avatars = &[]string{file}
+		} else {
+			avatars = &profileImages
+		}
+
+		user := createUserW(i, mainTeam, &allChannels, &categories, avatars, ADMIN, v, name)
 		adminUsers = append(adminUsers, user)
 		encoder.Encode(user)
 	}
@@ -282,7 +338,7 @@ func populateSampleCmdF(command *cobra.Command, args []string) error {
 
 	// Create other users
 	for i := 0; i < users; i++ {
-		// All open teams and some teams, categories only for open ones
+		// All open channels and some team channels, categories only for open ones
 		add1 := some(teamChannelsNames, .5)
 		channels := append(*openChannelsNames, *add1...)
 		categories := createCategories(&catsOpen, openChannelsNames)
@@ -299,7 +355,7 @@ func populateSampleCmdF(command *cobra.Command, args []string) error {
 		add2 = createCategories(&catsPersonal, add1)
 		categories = append(categories, add2...)
 
-		user := createUserW(i, mainTeam, &channels, &categories, profileImages, "", "")
+		user := createUserW(i, mainTeam, &channels, &categories, &profileImages, "", "", "")
 		randomUsers = append(randomUsers, user)
 		encoder.Encode(user)
 
@@ -394,14 +450,23 @@ func createDirectChannelW(members []string) app.LineImportData {
 }
 
 // channelType is "P" for "private" or "O" for "open"
-func createChannelW(teamName string, channelType string, channelKind string, channelCategory string, fixedName string) app.LineImportData {
+func createChannelW(teamName string, channelType string, channelKind string, channelCategory string, fixedName string, index int) app.LineImportData {
 	var displayName string
 	if len(fixedName) > 0 {
 		displayName = fixedName
 	} else {
 		displayName = fake.Title()
 	}
-	name := strings.ToLower(strings.ReplaceAll(displayName, " ", "-"))
+	limit := model.CHANNEL_DISPLAY_NAME_MAX_RUNES - 5
+	if len(displayName) > limit {
+		displayName = displayName[0:limit]
+	}
+	chunks := strings.Split(displayName, " ")
+	if len(chunks) > 2 {
+		chunks = chunks[0:2]
+	}
+	name := strings.ToLower(strings.Join(chunks, "-"))
+	name = name + strconv.Itoa(index)
 	header := fake.Paragraph()
 	purpose := fake.Paragraph()
 
@@ -453,12 +518,22 @@ func createUserW(
 	teamName string,
 	channels *[]string,
 	categories *[]app.CategoryImportData,
-	profileImages []string,
+	profileImages *[]string,
 	userType string,
 	fixedUsername string,
+	fixedName string,
 ) app.LineImportData {
 	firstName := fake.FirstName()
 	lastName := fake.LastName()
+	if len(fixedName) > 0 {
+		chunks := strings.Split(fixedName, " ")
+		firstName = chunks[0]
+		if len(chunks) > 1 {
+			lastName = chunks[1]
+		} else {
+			lastName = ""
+		}
+	}
 	position := fake.JobTitle()
 	location := fake.Country()
 	phoneNumber := fake.Phone()
@@ -495,12 +570,16 @@ func createUserW(
 
 	fmt.Println("Creating new user:", username, systemRoles)
 
-	// The 75% of the users have custom profile image
 	var profileImage *string = nil
-	if rand.Intn(4) != 0 {
-		profileImageSelector := rand.Int()
-		if len(profileImages) > 0 {
-			profileImage = &profileImages[profileImageSelector%len(profileImages)]
+	imgCount := len(*profileImages)
+	if imgCount == 1 {
+		// if a single avatar id given, always set it
+		profileImage = &(*profileImages)[0]
+	} else if imgCount > 0 {
+		// if the name is fixed, choose an avatar, otherwise choose avatar in the 75% of cases
+		if len(fixedUsername) > 0 || rand.Intn(4) != 0 {
+			profileImageSelector := rand.Int()
+			profileImage = &(*profileImages)[profileImageSelector%imgCount]
 		}
 	}
 
