@@ -260,6 +260,10 @@ func (c *Client4) GetFilesRoute() string {
 	return fmt.Sprintf("/files")
 }
 
+func (c *Client4) GetWFilesRoute() string {
+	return "/files" // fmt.Sprintf("%s/files", API_URL_SUFFIX_WORLDR)
+}
+
 func (c *Client4) GetFileRoute(fileId string) string {
 	return fmt.Sprintf(c.GetFilesRoute()+"/%v", fileId)
 }
@@ -466,6 +470,10 @@ func (c *Client4) GetGroupSyncablesRoute(groupID string, syncableType GroupSynca
 
 func (c *Client4) DoApiGet(url string, etag string) (*http.Response, *AppError) {
 	return c.DoApiRequest(http.MethodGet, c.ApiUrl+url, "", etag)
+}
+
+func (c *Client4) DoWorldrApiGet(url string, etag string) (*http.Response, *AppError) {
+	return c.DoApiRequest(http.MethodGet, c.Url+API_URL_SUFFIX_WORLDR+url, "", etag)
 }
 
 func (c *Client4) DoApiPost(url string, data string) (*http.Response, *AppError) {
@@ -2982,6 +2990,16 @@ func (c *Client4) GetFileInfo(fileId string) (*FileInfo, *Response) {
 	}
 	defer closeBody(r)
 	return FileInfoFromJson(r.Body), BuildResponse(r)
+}
+
+// GetFileInfos gets all the files into objects.
+func (c *Client4) GetFileInfos() ([]*FileInfo, *Response) {
+	r, err := c.DoWorldrApiGet(c.GetWFilesRoute(), "")
+	if err != nil {
+		return nil, BuildErrorResponse(r, err)
+	}
+	defer closeBody(r)
+	return FileInfosFromJson(r.Body), BuildResponse(r)
 }
 
 // GetFileInfosForPost gets all the file info objects attached to a post.

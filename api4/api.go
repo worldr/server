@@ -59,6 +59,9 @@ type Routes struct {
 	Files *mux.Router // 'api/v4/files'
 	File  *mux.Router // 'api/v4/files/{file_id:[A-Za-z0-9]+}'
 
+	// Worldr get all files API.
+	WFiles *mux.Router // '/api/worldr/v1/files/' for now, maybe later add '{user_id:[A-Za-z1-9_-]+}'
+
 	Plugins *mux.Router // 'api/v4/plugins'
 	Plugin  *mux.Router // 'api/v4/plugins/{plugin_id:[A-Za-z0-9_-]+}'
 
@@ -138,6 +141,7 @@ func Init(configservice configservice.ConfigService, globalOptionsFunc app.AppOp
 	api.BaseRoutes.WorldrRoot = root.PathPrefix(model.API_URL_SUFFIX_WORLDR).Subrouter()
 	api.BaseRoutes.WChannels = api.BaseRoutes.WorldrRoot.PathPrefix("/channels").Subrouter()
 	api.BaseRoutes.WUsers = api.BaseRoutes.WorldrRoot.PathPrefix("/users").Subrouter()
+	api.BaseRoutes.WFiles = api.BaseRoutes.WorldrRoot.PathPrefix("/files").Subrouter()
 
 	// Mattermost original API
 
@@ -236,6 +240,7 @@ func Init(configservice configservice.ConfigService, globalOptionsFunc app.AppOp
 	api.InitWChannel()
 	api.InitPost()
 	api.InitFile()
+	api.InitWFile()
 	api.InitSystem()
 	api.InitLicense()
 	api.InitConfig()
