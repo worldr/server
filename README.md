@@ -25,6 +25,7 @@ Flags:
   -h, --help                    help for populatesample
       --posts-per-channel int   The number of sample post per channel. (default 40)
       --profile-images string   Optional. Path to folder with images to randomly pick as user profile image.
+      --channel-images string   Optional. Path to folder with images to randomly pick as channel image.			
   -s, --seed int                Seed used for generating the random data (Different seeds generate different data). (default 3)
   -u, --users int               The number of sample users. (default 15)
 

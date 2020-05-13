@@ -4,11 +4,17 @@
 package app
 
 import (
+	"bytes"
 	"fmt"
+	"image"
+	"image/png"
+	"io"
+	"mime/multipart"
 	"net/http"
 	"strings"
 	"time"
 
+	"github.com/disintegration/imaging"
 	"github.com/mattermost/mattermost-server/v5/mlog"
 	"github.com/mattermost/mattermost-server/v5/model"
 	"github.com/mattermost/mattermost-server/v5/plugin"
@@ -2521,4 +2527,58 @@ func (a *App) GetGlobalChannels(teamId string, userId string) (*model.ChannelSna
 // members for each channel because otherwise this could mean getting all of the users in the system.
 func (a *App) GetOverview(teamId string, userId string) (*model.ChannelList, *map[string]*model.ChannelMembersShort, *[]string, *model.AppError) {
 	return a.Srv().Store.Channel().GetOverview(teamId, userId)
+}
+
+func (a *App) GetChannelImage(channelId string) ([]byte, *model.AppError) {
+	path := "channels/" + channelId + "/image.png"
+	return a.ReadFile(path)
+}
+
+func (a *App) SetChannelImageFromMultiPartFile(channelId string, file multipart.File) *model.AppError {
+	// Decode image config first to check dimensions before loading the whole thing into memory later on
+	config, _, err := image.DecodeConfig(file)
+	if err != nil {
+		return model.NewAppError("SetChannelImage", "api.channel.upload_image.decode_config.app_error", nil, err.Error(), http.StatusBadRequest)
+	}
+	if config.Width*config.Height > model.MaxImageSize {
+		return model.NewAppError("SetChannelImage", "api.channel.upload_image.too_large.app_error", nil, "", http.StatusBadRequest)
+	}
+
+	file.Seek(0, 0)
+
+	return a.SetChannelImageFromFile(channelId, file)
+}
+
+func (a *App) SetChannelImageFromFile(channelId string, file io.Reader) *model.AppError {
+
+	// Decode image into Image object
+	img, _, err := image.Decode(file)
+	if err != nil {
+		return model.NewAppError("SetChannelImage", "api.channel.upload_image.decode.app_error", nil, err.Error(), http.StatusBadRequest)
+	}
+
+	orientation, _ := getImageOrientation(file)
+	img = makeImageUpright(img, orientation)
+
+	// Scale image
+	profileWidthAndHeight := 128
+	img = imaging.Fill(img, profileWidthAndHeight, profileWidthAndHeight, imaging.Center, imaging.Lanczos)
+
+	buf := new(bytes.Buffer)
+	err = png.Encode(buf, img)
+	if err != nil {
+		return model.NewAppError("SetChannelImage", "api.channel.upload_image.encode.app_error", nil, err.Error(), http.StatusInternalServerError)
+	}
+
+	path := "channels/" + channelId + "/image.png"
+
+	if _, err := a.WriteFile(buf, path); err != nil {
+		return model.NewAppError("SetChannelImage", "api.channel.upload_image.upload.app_error", nil, "", http.StatusInternalServerError)
+	}
+
+	if err := a.Srv().Store.Channel().UpdateLastPictureUpdate(channelId); err != nil {
+		mlog.Error("Error with updating last picture update", mlog.Err(err))
+	}
+
+	return nil
 }

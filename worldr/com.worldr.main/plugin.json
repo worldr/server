@@ -1,7 +1,0 @@
-{
-    "id": "com.worldr.main",
-    "name": "Worldr API extension",
-    "server": {
-        "executable": "plugin"
-    }
-}

@@ -39,6 +39,7 @@ type ChannelImportData struct {
 	Header      *string `json:"header,omitempty"`
 	Purpose     *string `json:"purpose,omitempty"`
 	Scheme      *string `json:"scheme,omitempty"`
+	Image       *string `json:"image,omitempty"`
 }
 
 type CategoryImportData struct {

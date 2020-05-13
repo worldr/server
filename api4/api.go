@@ -41,6 +41,7 @@ type Routes struct {
 	Channels                 *mux.Router // 'api/v4/channels'
 	WChannels                *mux.Router // 'api/worldr/v1/channels'
 	Channel                  *mux.Router // 'api/v4/channels/{channel_id:[A-Za-z0-9]+}'
+	WChannel                 *mux.Router // 'api/worldr/v1/channels/{channel_id:[A-Za-z0-9]+}'
 	ChannelForUser           *mux.Router // 'api/v4/users/{user_id:[A-Za-z0-9]+}/channels/{channel_id:[A-Za-z0-9]+}'
 	ChannelByName            *mux.Router // 'api/v4/teams/{team_id:[A-Za-z0-9]+}/channels/name/{channel_name:[A-Za-z0-9_-]+}'
 	ChannelByNameForTeamName *mux.Router // 'api/v4/teams/name/{team_name:[A-Za-z0-9_-]+}/channels/name/{channel_name:[A-Za-z0-9_-]+}'
@@ -140,6 +141,7 @@ func Init(configservice configservice.ConfigService, globalOptionsFunc app.AppOp
 
 	api.BaseRoutes.WorldrRoot = root.PathPrefix(model.API_URL_SUFFIX_WORLDR).Subrouter()
 	api.BaseRoutes.WChannels = api.BaseRoutes.WorldrRoot.PathPrefix("/channels").Subrouter()
+	api.BaseRoutes.WChannel = api.BaseRoutes.WorldrRoot.PathPrefix("/channel/{channel_id:[A-Za-z0-9]+}").Subrouter()
 	api.BaseRoutes.WUsers = api.BaseRoutes.WorldrRoot.PathPrefix("/users").Subrouter()
 	api.BaseRoutes.WFiles = api.BaseRoutes.WorldrRoot.PathPrefix("/files").Subrouter()
 

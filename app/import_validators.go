@@ -162,6 +162,11 @@ func validateCategoryImportData(data *CategoryImportData) *model.AppError {
 }
 
 func validateChannelImportData(data *ChannelImportData) *model.AppError {
+	if data.Image != nil {
+		if _, err := os.Stat(*data.Image); os.IsNotExist(err) {
+			return model.NewAppError("BulkImport", "app.import.validate_channel_import_data.image.error", nil, "", http.StatusBadRequest)
+		}
+	}
 
 	if data.Team == nil {
 		return model.NewAppError("BulkImport", "app.import.validate_channel_import_data.team_missing.error", nil, "", http.StatusBadRequest)

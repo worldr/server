@@ -1773,6 +1773,22 @@ func (_m *ChannelStore) Update(channel *model.Channel) (*model.Channel, *model.A
 	return r0, r1
 }
 
+// UpdateLastPictureUpdate provides a mock function with given fields: channelId
+func (_m *ChannelStore) UpdateLastPictureUpdate(channelId string) *model.AppError {
+	ret := _m.Called(channelId)
+
+	var r0 *model.AppError
+	if rf, ok := ret.Get(0).(func(string) *model.AppError); ok {
+		r0 = rf(channelId)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*model.AppError)
+		}
+	}
+
+	return r0
+}
+
 // UpdateLastViewedAt provides a mock function with given fields: channelIds, userId
 func (_m *ChannelStore) UpdateLastViewedAt(channelIds []string, userId string) (map[string]int64, *model.AppError) {
 	ret := _m.Called(channelIds, userId)

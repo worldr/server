@@ -124,7 +124,8 @@ CREATE TABLE public.channels (
     creatorid character varying(26),
     schemeid character varying(26),
     groupconstrained boolean,
-    kind character varying(26)
+    kind character varying(26),
+    lastpictureupdate bigint
 );
 
 

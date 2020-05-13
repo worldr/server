@@ -1904,6 +1904,24 @@ func (s *OpenTracingLayerChannelStore) Update(channel *model.Channel) (*model.Ch
 	return resultVar0, resultVar1
 }
 
+func (s *OpenTracingLayerChannelStore) UpdateLastPictureUpdate(channelId string) *model.AppError {
+	origCtx := s.Root.Store.Context()
+	span, newCtx := tracing.StartSpanWithParentByContext(s.Root.Store.Context(), "ChannelStore.UpdateLastPictureUpdate")
+	s.Root.Store.SetContext(newCtx)
+	defer func() {
+		s.Root.Store.SetContext(origCtx)
+	}()
+
+	defer span.Finish()
+	resultVar0 := s.ChannelStore.UpdateLastPictureUpdate(channelId)
+	if resultVar0 != nil {
+		span.LogFields(spanlog.Error(resultVar0))
+		ext.Error.Set(span, true)
+	}
+
+	return resultVar0
+}
+
 func (s *OpenTracingLayerChannelStore) UpdateLastViewedAt(channelIds []string, userId string) (map[string]int64, *model.AppError) {
 	origCtx := s.Root.Store.Context()
 	span, newCtx := tracing.StartSpanWithParentByContext(s.Root.Store.Context(), "ChannelStore.UpdateLastViewedAt")

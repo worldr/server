@@ -14,10 +14,7 @@
         "UseLetsEncrypt": false,
         "LetsEncryptCertificateCacheFile": "./config/letsencrypt.cache",
         "Forward80To443": false,
-        "TrustedProxyIPHeader": [
-            "X-Forwarded-For",
-            "X-Real-IP"
-        ],
+        "TrustedProxyIPHeader": ["X-Forwarded-For", "X-Real-IP"],
         "ReadTimeout": 300,
         "WriteTimeout": 300,
         "IdleTimeout": 60,
@@ -31,7 +28,7 @@
         "EnableOnlyAdminIntegrations": true,
         "EnablePostUsernameOverride": false,
         "EnablePostIconOverride": false,
-        "EnableLinkPreviews": false,
+        "EnableLinkPreviews": true,
         "EnableTesting": true,
         "EnableDeveloper": true,
         "EnableOpenTracing": false,
@@ -169,9 +166,9 @@
         "ConsoleLevel": "DEBUG",
         "ConsoleJson": true,
         "EnableFile": true,
-        "FileLevel": "INFO",
+        "FileLevel": "DEBUG",
         "FileJson": true,
-        "FileLocation": "/var/log/mattermost-notif"
+        "FileLocation": "./logs/notifications"
     },
     "PasswordSettings": {
         "MinimumLength": 10,
@@ -204,13 +201,13 @@
         "EnableSignUpWithEmail": false,
         "EnableSignInWithEmail": true,
         "EnableSignInWithUsername": true,
-        "SendEmailNotifications": true,
+        "SendEmailNotifications": false,
         "UseChannelInEmailNotifications": false,
         "RequireEmailVerification": false,
-        "FeedbackName": "",
-        "FeedbackEmail": "test@example.com",
-        "ReplyToAddress": "test@example.com",
-        "FeedbackOrganization": "",
+        "FeedbackName": "Worldr",
+        "FeedbackEmail": "support@worldr.com",
+        "ReplyToAddress": "support@worldr.com",
+        "FeedbackOrganization": "Worldr",
         "EnableSMTPAuth": false,
         "SMTPUsername": "",
         "SMTPPassword": "",
@@ -219,7 +216,7 @@
         "SMTPServerTimeout": 10,
         "ConnectionSecurity": "",
         "SendPushNotifications": true,
-        "PushNotificationServer": "https://push-test.mattermost.com",
+        "PushNotificationServer": "http://127.0.0.1:8066",
         "PushNotificationContents": "generic",
         "EnableEmailBatching": false,
         "EmailBatchingBufferSize": 256,
@@ -458,21 +455,21 @@
         "RunScheduler": true
     },
     "PluginSettings": {
-        "Enable": true,
-        "EnableUploads": true,
+        "Enable": false,
+        "EnableUploads": false,
         "AllowInsecureDownloadUrl": false,
         "EnableHealthCheck": true,
         "Directory": "./plugins",
         "ClientDirectory": "./client/plugins",
         "Plugins": {},
         "PluginStates": {
-            "com.worldr.main": {
+            "com.mattermost.nps": {
                 "Enable": true
             }
         },
-        "EnableMarketplace": true,
-        "EnableRemoteMarketplace": true,
-        "AutomaticPrepackagedPlugins": true,
+        "EnableMarketplace": false,
+        "EnableRemoteMarketplace": false,
+        "AutomaticPrepackagedPlugins": false,
         "RequirePluginSignature": false,
         "MarketplaceUrl": "https://api.integrations.mattermost.com",
         "SignaturePublicKeyFiles": []

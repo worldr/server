@@ -3087,3 +3087,13 @@ func (s SqlChannelStore) GetOverview(teamId string, userId string) (*model.Chann
 	}
 	return channels, &membersMap, &uids, nil
 }
+
+func (s SqlChannelStore) UpdateLastPictureUpdate(channelId string) *model.AppError {
+	curTime := model.GetMillis()
+
+	if _, err := s.GetMaster().Exec("UPDATE Channels SET LastPictureUpdate = :Time, UpdateAt = :Time WHERE Id = :ChannelId", map[string]interface{}{"Time": curTime, "ChannelId": channelId}); err != nil {
+		return model.NewAppError("SqlChannelStore.UpdateLastPictureUpdate", "store.sql_channel.update_last_picture_update.app_error", nil, "channel_id="+channelId, http.StatusInternalServerError)
+	}
+
+	return nil
+}

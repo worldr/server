@@ -221,6 +221,7 @@ type ChannelStore interface {
 	GetWorkChannels(teamId string, userId string) (*model.ChannelSnapshotList, *model.AppError)
 	GetGlobalChannels(teamId string, userId string) (*model.ChannelSnapshotList, *model.AppError)
 	GetOverview(teamId string, userId string) (*model.ChannelList, *map[string]*model.ChannelMembersShort, *[]string, *model.AppError)
+	UpdateLastPictureUpdate(channelId string) *model.AppError
 }
 
 type ChannelMemberHistoryStore interface {

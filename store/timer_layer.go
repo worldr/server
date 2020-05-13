@@ -1771,6 +1771,22 @@ func (s *TimerLayerChannelStore) Update(channel *model.Channel) (*model.Channel,
 	return resultVar0, resultVar1
 }
 
+func (s *TimerLayerChannelStore) UpdateLastPictureUpdate(channelId string) *model.AppError {
+	start := timemodule.Now()
+
+	resultVar0 := s.ChannelStore.UpdateLastPictureUpdate(channelId)
+
+	elapsed := float64(timemodule.Since(start)) / float64(timemodule.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if resultVar0 == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("ChannelStore.UpdateLastPictureUpdate", success, elapsed)
+	}
+	return resultVar0
+}
+
 func (s *TimerLayerChannelStore) UpdateLastViewedAt(channelIds []string, userId string) (map[string]int64, *model.AppError) {
 	start := timemodule.Now()
 

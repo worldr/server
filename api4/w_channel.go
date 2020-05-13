@@ -4,18 +4,63 @@
 package api4
 
 import (
+	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/mattermost/mattermost-server/v5/model"
 	"github.com/mattermost/mattermost-server/v5/store"
 )
 
 func (api *API) InitWChannel() {
+
+	// all channels
 	api.BaseRoutes.WChannels.Handle("/categories", api.ApiSessionRequired(getChannelsCategories)).Methods("GET")
 	api.BaseRoutes.WChannels.Handle("/personal", api.ApiSessionRequired(getPersonalChannels)).Methods("GET")
 	api.BaseRoutes.WChannels.Handle("/work", api.ApiSessionRequired(getWorkChannels)).Methods("GET")
 	api.BaseRoutes.WChannels.Handle("/global", api.ApiSessionRequired(getGlobalChannels)).Methods("GET")
 	api.BaseRoutes.WChannels.Handle("/overview", api.ApiSessionRequired(getOverview)).Methods("GET")
+
+	// channel with specific id
+	api.BaseRoutes.WChannel.Handle("/image", api.ApiSessionRequired(getChannelImage)).Methods("GET")
+}
+func getChannelImage(c *Context, w http.ResponseWriter, r *http.Request) {
+	c.RequireChannelId()
+	if c.Err != nil {
+		return
+	}
+
+	session := c.App.Session()
+	isReadable := c.App.SessionHasPermissionToChannel(
+		*session,
+		c.Params.ChannelId,
+		model.PERMISSION_READ_CHANNEL,
+	)
+	channel, err := c.App.GetChannel(c.Params.ChannelId)
+	if err != nil {
+		c.Err = err
+		return
+	}
+	// always allow getting pictures for open chats plus the chats the user is permitted to read
+	if channel.Type != "O" && !isReadable {
+		c.Err = model.NewAppError("getChannelImage", "api.channel.get_image.not_allowed.app_error", nil, "", http.StatusBadRequest)
+		return
+	}
+
+	etag := strconv.FormatInt(channel.LastPictureUpdate, 10)
+	if c.HandleEtag(etag, "Get Channel Image", w, r) {
+		return
+	}
+
+	image, err := c.App.GetChannelImage(c.Params.ChannelId)
+	if err != nil {
+		c.Err = err
+		return
+	}
+	w.Header().Set("Cache-Control", fmt.Sprintf("max-age=%v, public", 24*60*60)) // 24 hrs
+	w.Header().Set(model.HEADER_ETAG_SERVER, etag)
+	w.Header().Set("Content-Type", "image/png")
+	w.Write(image)
 }
 
 func getChannelsCategories(c *Context, w http.ResponseWriter, r *http.Request) {

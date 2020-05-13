@@ -277,6 +277,16 @@ func (a *App) importChannel(data *ChannelImportData, dryRun bool) *model.AppErro
 		}
 	}
 
+	if data.Image != nil {
+		file, err := os.Open(*data.Image)
+		if err != nil {
+			mlog.Error("Unable to open the channel image.", mlog.Any("err", err))
+		}
+		if err := a.SetChannelImageFromMultiPartFile(channel.Id, file); err != nil {
+			mlog.Error("Unable to set the channel image from a file.", mlog.Any("err", err))
+		}
+	}
+
 	return nil
 }
 

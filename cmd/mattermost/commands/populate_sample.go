@@ -37,6 +37,7 @@ const (
 	PARAM_DEACTIVEATED      = "deactivated-users"
 	PARAM_POSTS_PER_CHANNEL = "posts-per-channel"
 	PARAM_AVATARS           = "profile-images"
+	PARAM_CHANNEL_AVATARS   = "channel-images"
 )
 
 func init() {
@@ -48,6 +49,7 @@ func init() {
 	PopulateSampleCmd.Flags().Int(PARAM_DEACTIVEATED, 0, "The number of deactivated users.")
 	PopulateSampleCmd.Flags().Int(PARAM_POSTS_PER_CHANNEL, 50, "The number of sample post per channel.")
 	PopulateSampleCmd.Flags().String(PARAM_AVATARS, "", "Optional. Path to folder with images to randomly pick as user profile image.")
+	PopulateSampleCmd.Flags().String(PARAM_CHANNEL_AVATARS, "", "Optional. Path to folder with images to randomly pick as channel image.")
 	RootCmd.AddCommand(PopulateSampleCmd)
 }
 
@@ -64,14 +66,15 @@ func createChannelsW(
 	channelNames *[]string,
 	count int,
 	index int,
+	images *[]string,
 ) *[]string {
 	for i := 0; i < count; i++ {
 		var line app.LineImportData
 		if i < len(*channelNames) {
-			line = createChannelW(team, channelType, kind, category, (*channelNames)[i], index+i)
+			line = createChannelW(team, channelType, kind, category, (*channelNames)[i], index+i, images)
 			(*channelNames)[i] = *line.Channel.Name
 		} else {
-			line = createChannelW(team, channelType, kind, category, "", index+i)
+			line = createChannelW(team, channelType, kind, category, "", index+i, images)
 			cn := append(*channelNames, *line.Channel.Name)
 			channelNames = &cn
 		}
@@ -88,6 +91,38 @@ func some(values *[]string, prob float32) *[]string {
 		}
 	}
 	return &result
+}
+
+func prepareImages(imagesFolder string, targetList *[]string, targetMap *map[string]string) error {
+	var imagesStat os.FileInfo
+	imagesStat, err := os.Stat(imagesFolder)
+	if os.IsNotExist(err) {
+		return errors.New("images folder doesn't exists.")
+	}
+	if !imagesStat.IsDir() {
+		return errors.New("images parameter must be a folder path.")
+	}
+	var imagesFiles []os.FileInfo
+	imagesFiles, err = ioutil.ReadDir(imagesFolder)
+	if err != nil {
+		return errors.New("Invalid images parameter")
+	}
+	images := []string{}
+	for _, image := range imagesFiles {
+		var fileName string = image.Name()
+		file := path.Join(imagesFolder, fileName)
+		images = append(images, file)
+		if targetMap != nil {
+			dot := strings.LastIndex(fileName, ".")
+			if dot > 0 {
+				fileName = fileName[0:dot]
+			}
+			(*targetMap)[fileName] = file
+		}
+	}
+	sort.Strings(images)
+	*targetList = images
+	return nil
 }
 
 func populateSampleCmdF(command *cobra.Command, args []string) error {
@@ -126,37 +161,30 @@ func populateSampleCmdF(command *cobra.Command, args []string) error {
 	if err != nil || postsPerChannel < 0 {
 		return paramError(PARAM_POSTS_PER_CHANNEL)
 	}
+
 	profileImagesPath, err := command.Flags().GetString(PARAM_AVATARS)
 	if err != nil {
 		return paramError(PARAM_AVATARS)
 	}
-	profileImages := []string{}
-	profileImagesMap := map[string]string{}
+	profileImages := &[]string{}
+	profileImagesMap := &map[string]string{}
 	if profileImagesPath != "" {
-		var profileImagesStat os.FileInfo
-		profileImagesStat, err = os.Stat(profileImagesPath)
-		if os.IsNotExist(err) {
-			return errors.New("Profile images folder doesn't exists.")
-		}
-		if !profileImagesStat.IsDir() {
-			return errors.New("profile-images parameters must be a folder path.")
-		}
-		var profileImagesFiles []os.FileInfo
-		profileImagesFiles, err = ioutil.ReadDir(profileImagesPath)
+		err = prepareImages(profileImagesPath, profileImages, profileImagesMap)
 		if err != nil {
-			return errors.New("Invalid profile-images parameter")
+			return paramError(PARAM_CHANNEL_AVATARS)
 		}
-		for _, profileImage := range profileImagesFiles {
-			var fileName string = profileImage.Name()
-			file := path.Join(profileImagesPath, fileName)
-			profileImages = append(profileImages, file)
-			dot := strings.LastIndex(fileName, ".")
-			if dot > 0 {
-				fileName = fileName[0:dot]
-			}
-			profileImagesMap[fileName] = file
+	}
+
+	channelImagesPath, err := command.Flags().GetString(PARAM_CHANNEL_AVATARS)
+	if err != nil {
+		return paramError(PARAM_CHANNEL_AVATARS)
+	}
+	channelImages := &[]string{}
+	if channelImagesPath != "" {
+		err = prepareImages(channelImagesPath, channelImages, nil)
+		if err != nil {
+			return paramError(PARAM_CHANNEL_AVATARS)
 		}
-		sort.Strings(profileImages)
 	}
 
 	bulkFile, err := os.OpenFile("logs/populate.sample.log", os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0755)
@@ -198,6 +226,7 @@ func populateSampleCmdF(command *cobra.Command, args []string) error {
 		openChannelsNames,
 		len(*openChannelsNames),
 		0,
+		channelImages,
 	)
 
 	// Create team channels
@@ -219,6 +248,7 @@ func populateSampleCmdF(command *cobra.Command, args []string) error {
 		teamChannelsNames,
 		len(*teamChannelsNames),
 		50,
+		channelImages,
 	)
 
 	// Create work channels
@@ -243,6 +273,7 @@ func populateSampleCmdF(command *cobra.Command, args []string) error {
 		workChannelsNames,
 		len(*workChannelsNames),
 		100,
+		channelImages,
 	)
 
 	personalChannelsNames := &[]string{
@@ -266,6 +297,7 @@ func populateSampleCmdF(command *cobra.Command, args []string) error {
 		personalChannelsNames,
 		len(*personalChannelsNames),
 		150,
+		channelImages,
 	)
 
 	allChannels := append(*openChannelsNames, *teamChannelsNames...)
@@ -316,10 +348,10 @@ func populateSampleCmdF(command *cobra.Command, args []string) error {
 		}
 
 		var avatars *[]string
-		if file, exists := profileImagesMap[v]; exists {
+		if file, exists := (*profileImagesMap)[v]; exists {
 			avatars = &[]string{file}
 		} else {
-			avatars = &profileImages
+			avatars = profileImages
 		}
 
 		user := createUserW(i, mainTeam, &allChannels, &categories, avatars, ADMIN, v, name)
@@ -355,7 +387,7 @@ func populateSampleCmdF(command *cobra.Command, args []string) error {
 		add2 = createCategories(&catsPersonal, add1)
 		categories = append(categories, add2...)
 
-		user := createUserW(i, mainTeam, &channels, &categories, &profileImages, "", "", "")
+		user := createUserW(i, mainTeam, &channels, &categories, profileImages, "", "", "")
 		randomUsers = append(randomUsers, user)
 		encoder.Encode(user)
 
@@ -450,7 +482,15 @@ func createDirectChannelW(members []string) app.LineImportData {
 }
 
 // channelType is "P" for "private" or "O" for "open"
-func createChannelW(teamName string, channelType string, channelKind string, channelCategory string, fixedName string, index int) app.LineImportData {
+func createChannelW(
+	teamName string,
+	channelType string,
+	channelKind string,
+	channelCategory string,
+	fixedName string,
+	index int,
+	images *[]string,
+) app.LineImportData {
 	var displayName string
 	if len(fixedName) > 0 {
 		displayName = fixedName
@@ -474,6 +514,16 @@ func createChannelW(teamName string, channelType string, channelKind string, cha
 		purpose = purpose[0:250]
 	}
 
+	var image *string = nil
+	imgCount := len(*images)
+	if imgCount == 1 {
+		// if a single avatar id given, always set it
+		image = &(*images)[0]
+	} else if imgCount > 0 {
+		selector := rand.Int()
+		image = &(*images)[selector%imgCount]
+	}
+
 	fmt.Println("Creating new channel:", name)
 
 	channel := app.ChannelImportData{
@@ -484,6 +534,7 @@ func createChannelW(teamName string, channelType string, channelKind string, cha
 		Kind:        &channelKind,
 		Header:      &header,
 		Purpose:     &purpose,
+		Image:       image,
 	}
 	return app.LineImportData{
 		Type:    "channel",

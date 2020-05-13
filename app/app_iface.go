@@ -498,6 +498,7 @@ type AppIface interface {
 	GetChannelByNameForTeamName(channelName, teamName string, includeDeleted bool) (*model.Channel, *model.AppError)
 	GetChannelCounts(teamId string, userId string) (*model.ChannelCounts, *model.AppError)
 	GetChannelGuestCount(channelId string) (int64, *model.AppError)
+	GetChannelImage(channelId string) ([]byte, *model.AppError)
 	GetChannelMember(channelId string, userId string) (*model.ChannelMember, *model.AppError)
 	GetChannelMemberCount(channelId string) (int64, *model.AppError)
 	GetChannelMembersByIds(channelId string, userIds []string) (*model.ChannelMembers, *model.AppError)
@@ -875,6 +876,8 @@ type AppIface interface {
 	SetAcceptLanguage(s string)
 	SetActiveChannel(userId string, channelId string) *model.AppError
 	SetAutoResponderStatus(user *model.User, oldNotifyProps model.StringMap)
+	SetChannelImageFromFile(channelId string, file io.Reader) *model.AppError
+	SetChannelImageFromMultiPartFile(channelId string, file multipart.File) *model.AppError
 	SetClientLicense(m map[string]string)
 	SetContext(c context.Context)
 	SetDefaultProfileImage(user *model.User) *model.AppError

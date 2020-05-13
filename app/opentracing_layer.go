@@ -4298,6 +4298,28 @@ func (a *OpenTracingAppLayer) GetChannelGuestCount(channelId string) (int64, *mo
 	return resultVar0, resultVar1
 }
 
+func (a *OpenTracingAppLayer) GetChannelImage(channelId string) ([]byte, *model.AppError) {
+	origCtx := a.ctx
+	span, newCtx := tracing.StartSpanWithParentByContext(a.ctx, "app.GetChannelImage")
+
+	a.ctx = newCtx
+	a.app.Srv().Store.SetContext(newCtx)
+	defer func() {
+		a.app.Srv().Store.SetContext(origCtx)
+		a.ctx = origCtx
+	}()
+
+	defer span.Finish()
+	resultVar0, resultVar1 := a.app.GetChannelImage(channelId)
+
+	if resultVar1 != nil {
+		span.LogFields(spanlog.Error(resultVar1))
+		ext.Error.Set(span, true)
+	}
+
+	return resultVar0, resultVar1
+}
+
 func (a *OpenTracingAppLayer) GetChannelMember(channelId string, userId string) (*model.ChannelMember, *model.AppError) {
 	origCtx := a.ctx
 	span, newCtx := tracing.StartSpanWithParentByContext(a.ctx, "app.GetChannelMember")
@@ -12812,6 +12834,50 @@ func (a *OpenTracingAppLayer) SetBotIconImageFromMultiPartFile(botUserId string,
 
 	defer span.Finish()
 	resultVar0 := a.app.SetBotIconImageFromMultiPartFile(botUserId, imageData)
+
+	if resultVar0 != nil {
+		span.LogFields(spanlog.Error(resultVar0))
+		ext.Error.Set(span, true)
+	}
+
+	return resultVar0
+}
+
+func (a *OpenTracingAppLayer) SetChannelImageFromFile(channelId string, file io.Reader) *model.AppError {
+	origCtx := a.ctx
+	span, newCtx := tracing.StartSpanWithParentByContext(a.ctx, "app.SetChannelImageFromFile")
+
+	a.ctx = newCtx
+	a.app.Srv().Store.SetContext(newCtx)
+	defer func() {
+		a.app.Srv().Store.SetContext(origCtx)
+		a.ctx = origCtx
+	}()
+
+	defer span.Finish()
+	resultVar0 := a.app.SetChannelImageFromFile(channelId, file)
+
+	if resultVar0 != nil {
+		span.LogFields(spanlog.Error(resultVar0))
+		ext.Error.Set(span, true)
+	}
+
+	return resultVar0
+}
+
+func (a *OpenTracingAppLayer) SetChannelImageFromMultiPartFile(channelId string, file multipart.File) *model.AppError {
+	origCtx := a.ctx
+	span, newCtx := tracing.StartSpanWithParentByContext(a.ctx, "app.SetChannelImageFromMultiPartFile")
+
+	a.ctx = newCtx
+	a.app.Srv().Store.SetContext(newCtx)
+	defer func() {
+		a.app.Srv().Store.SetContext(origCtx)
+		a.ctx = origCtx
+	}()
+
+	defer span.Finish()
+	resultVar0 := a.app.SetChannelImageFromMultiPartFile(channelId, file)
 
 	if resultVar0 != nil {
 		span.LogFields(spanlog.Error(resultVar0))

@@ -93,6 +93,7 @@ func TestChannelStore(t *testing.T, ss store.Store, s SqlSupplier) {
 	t.Run("GetWorkChannels", func(t *testing.T) { testChannelStoreGetWorkChannels(t, ss) })
 	t.Run("GetGlobalChannels", func(t *testing.T) { testChannelStoreGetGlobalChannels(t, ss) })
 	t.Run("GetOverview", func(t *testing.T) { testChannelsOverview(t, ss) })
+	t.Run("UpdateLastPictureUpdate", func(t *testing.T) { testUpdateLastPictureUpdate(t, ss) })
 }
 
 func testChannelStoreSave(t *testing.T, ss store.Store) {
@@ -4461,4 +4462,25 @@ func testChannelsOverview(t *testing.T, ss store.Store) {
 			assert.True(t, u.UserId == user1Id || u.UserId == user2Id)
 		}
 	}
+}
+
+func testUpdateLastPictureUpdate(t *testing.T, ss store.Store) {
+	p0 := model.Channel{}
+	p0.TeamId = model.NewId()
+	p0.DisplayName = "Private channel"
+	p0.Name = "zz" + model.NewId() + "a"
+	p0.Type = model.CHANNEL_PRIVATE
+	_, err := ss.Channel().Save(&p0, -1)
+	require.Nil(t, err)
+
+	before, err := ss.Channel().Get(p0.Id, false)
+	require.Nil(t, err)
+	require.Equal(t, int64(0), before.LastPictureUpdate)
+
+	err = ss.Channel().UpdateLastPictureUpdate(p0.Id)
+	require.Nil(t, err)
+
+	after, err := ss.Channel().Get(p0.Id, false)
+	require.Nil(t, err)
+	require.True(t, after.LastPictureUpdate > int64(0))
 }
