@@ -38,18 +38,21 @@ const (
 	PARAM_POSTS_PER_CHANNEL = "posts-per-channel"
 	PARAM_AVATARS           = "profile-images"
 	PARAM_CHANNEL_AVATARS   = "channel-images"
+	PARAM_CONFIG_FILE       = "configuration-file"
 )
 
 func init() {
 	PopulateSampleCmd.Flags().StringSlice(PARAM_ADMINS, []string{}, "Server admins.")
 	PopulateSampleCmd.Flags().StringSlice(PARAM_ADMIN_NAMES, []string{}, "Server admin names.")
-	PopulateSampleCmd.Flags().Int64P(PARAM_SEED, "s", 1, "Seed used for generating the random data (Different seeds generate different data).")
-	PopulateSampleCmd.Flags().IntP(PARAM_USERS, "u", 15, "The number of sample users.")
+	PopulateSampleCmd.Flags().Int64P(PARAM_SEED, "s", 0, "Seed used for generating the random data (Different seeds generate different data).")
+	PopulateSampleCmd.Flags().IntP(PARAM_USERS, "u", 0, "The number of sample users.")
 	PopulateSampleCmd.Flags().IntP(PARAM_GUESTS, "g", 0, "The number of sample guests.")
 	PopulateSampleCmd.Flags().Int(PARAM_DEACTIVEATED, 0, "The number of deactivated users.")
-	PopulateSampleCmd.Flags().Int(PARAM_POSTS_PER_CHANNEL, 50, "The number of sample post per channel.")
+	PopulateSampleCmd.Flags().Int(PARAM_POSTS_PER_CHANNEL, 0, "The number of sample post per channel.")
 	PopulateSampleCmd.Flags().String(PARAM_AVATARS, "", "Optional. Path to folder with images to randomly pick as user profile image.")
 	PopulateSampleCmd.Flags().String(PARAM_CHANNEL_AVATARS, "", "Optional. Path to folder with images to randomly pick as channel image.")
+	PopulateSampleCmd.Flags().String(PARAM_CONFIG_FILE, "worldr_internal.json", "JSON configuration file to pick data from.")
+
 	RootCmd.AddCommand(PopulateSampleCmd)
 }
 
@@ -125,6 +128,44 @@ func prepareImages(imagesFolder string, targetList *[]string, targetMap *map[str
 	return nil
 }
 
+// fileExists checks if a file exists and is not a directory before we
+// try using it to prevent further errors.
+func fileExists(filename string) bool {
+	info, err := os.Stat(filename)
+	if os.IsNotExist(err) {
+		return false
+	}
+	return !info.IsDir()
+}
+
+type User struct {
+	Administrator      bool   `json:"administrator"`
+	Biography          string `json:"biography"`
+	ChannelDisplayMode string `json:"channel display mode"`
+	CollapsePreviews   string `json:"collapse previews"`
+	Email              string `json:"email"`
+	FirstName          string `json:"first name"`
+	LastName           string `json:"last name"`
+	Location           string `json:"location"`
+	MessageDisplay     string `json:"message display"`
+	Nickname           string `json:"nickname"`
+	Password           string `json:"password"`
+	PhoneNumber        string `json:"phone number"`
+	Position           string `json:"position"`
+	SocialMedia        string `json:"social media"`
+	TutorialStep       string `json:"tutorial step"`
+	UseMilitaryTime    string `json:"use military time"`
+	Username           string `json:"username"`
+}
+
+type InitialData struct {
+	OpenChannelsNames     []string `json:"open channels names"`
+	TeamChannelsNames     []string `json:"team channels names"`
+	WorkChannelsNames     []string `json:"work channels names"`
+	PersonalChannelsNames []string `json:"personal channels names"`
+	Administrators        []User   `json:"administrators"`
+}
+
 func populateSampleCmdF(command *cobra.Command, args []string) error {
 	a, err := InitDBCommandContextCobra(command)
 	if err != nil {
@@ -132,15 +173,6 @@ func populateSampleCmdF(command *cobra.Command, args []string) error {
 	}
 	defer a.Shutdown()
 
-	admins, err := command.Flags().GetStringSlice(PARAM_ADMINS)
-	if err != nil || len(admins) == 0 {
-		return paramError(PARAM_ADMINS)
-	}
-	adminNames, err := command.Flags().GetStringSlice(PARAM_ADMIN_NAMES)
-	seed, err := command.Flags().GetInt64(PARAM_SEED)
-	if err != nil {
-		return paramError(PARAM_SEED)
-	}
 	users, err := command.Flags().GetInt(PARAM_USERS)
 	if err != nil || users < 0 {
 		return paramError(PARAM_USERS)
@@ -187,6 +219,79 @@ func populateSampleCmdF(command *cobra.Command, args []string) error {
 		}
 	}
 
+	// Get data from a configuration file.
+	// TODO: this should define ALL the options.
+	var initData InitialData
+	configurationFilePath, err := command.Flags().GetString(PARAM_CONFIG_FILE)
+	if configurationFilePath != "" {
+		if fileExists(configurationFilePath) {
+			cfgData, err1 := ioutil.ReadFile(configurationFilePath)
+			if err1 != nil {
+				return paramError(PARAM_CONFIG_FILE)
+			}
+			err = json.Unmarshal(cfgData, &initData)
+			if err != nil {
+				fmt.Println("error:", err)
+				return paramError(PARAM_CONFIG_FILE)
+			}
+		} else {
+			fmt.Println("error: configuration file not found or is not readable.")
+			return paramError(PARAM_CONFIG_FILE)
+		}
+	} else {
+		fmt.Println(fmt.Printf("Configuration file %q does not exist (or is a directory)", configurationFilePath))
+		initData.OpenChannelsNames = []string{
+			"Worldr Technologies Ltd",
+			"General",
+			"Random",
+			"Announcements",
+			"Briefings",
+			"Special reports",
+			"Indicators",
+		}
+		initData.PersonalChannelsNames = []string{
+			"Management",
+			"London Devs",
+			"QA team",
+			"DevOps",
+			"Leaders",
+			"International",
+			"Ministry of silly walks",
+		}
+		initData.TeamChannelsNames = []string{
+			"Milestone 2",
+			"Voice Calls",
+			"Christmas Specials",
+			"Website v1",
+			"HR - Looking For Devs",
+			"Quarantine Lifting Celebration",
+			"Letters",
+			"Obituaries",
+			"Graphic detail",
+			"Calls recap",
+		}
+		initData.WorkChannelsNames = []string{
+			"Puzzling Muzzle",
+			"Buzzing Embezzlement",
+			"Nitwit Blubber Oddment Tweak",
+			"Weather In Llanfairpwllgwyngyllgogerychwyrndrobwllllantysiliogogogoch",
+			"The Witcher 3 endings",
+			"Elvis Lives",
+			"Paul Is Dead",
+			"Cthulhu Rises",
+		}
+	}
+
+	admins, err := command.Flags().GetStringSlice(PARAM_ADMINS)
+	if err != nil || (len(admins) == 0 && configurationFilePath == "") {
+		return paramError(PARAM_ADMINS)
+	}
+	adminNames, err := command.Flags().GetStringSlice(PARAM_ADMIN_NAMES)
+	seed, err := command.Flags().GetInt64(PARAM_SEED)
+	if err != nil {
+		return paramError(PARAM_SEED)
+	}
+
 	bulkFile, err := os.OpenFile("logs/populate.sample.log", os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0755)
 	if err != nil {
 		return fmt.Errorf("Unable to open import file for writing: %s.", err.Error())
@@ -208,94 +313,53 @@ func populateSampleCmdF(command *cobra.Command, args []string) error {
 	encoder.Encode(createMainTeam(mainTeam, "I"))
 
 	// Create open channels
-	openChannelsNames := &[]string{
-		"Worldr Technologies Ltd",
-		"General",
-		"Random",
-		"Announcements",
-		"Briefings",
-		"Special reports",
-		"Indicators",
-	}
-	openChannelsNames = createChannelsW(
+	openChannelsNames := createChannelsW(
 		encoder,
 		mainTeam,
 		"O",
 		"",
 		"",
-		openChannelsNames,
-		len(*openChannelsNames),
+		&(initData.OpenChannelsNames),
+		len(initData.OpenChannelsNames),
 		0,
 		channelImages,
 	)
 
 	// Create team channels
-	teamChannelsNames := &[]string{
-		"Management",
-		"London Devs",
-		"QA team",
-		"DevOps",
-		"Leaders",
-		"International",
-		"Ministry of silly walks",
-	}
-	teamChannelsNames = createChannelsW(
+	teamChannelsNames := createChannelsW(
 		encoder,
 		mainTeam,
 		"P",
 		"team",
 		"",
-		teamChannelsNames,
-		len(*teamChannelsNames),
+		&(initData.TeamChannelsNames),
+		len(initData.TeamChannelsNames),
 		50,
 		channelImages,
 	)
 
 	// Create work channels
-	workChannelsNames := &[]string{
-		"Milestone 2",
-		"Voice Calls",
-		"Christmas Specials",
-		"Website v1",
-		"HR - Looking For Devs",
-		"Quarantine Lifting Celebration",
-		"Letters",
-		"Obituaries",
-		"Graphic detail",
-		"Calls recap",
-	}
-	workChannelsNames = createChannelsW(
+	workChannelsNames := createChannelsW(
 		encoder,
 		mainTeam,
 		"P",
 		"work",
 		"",
-		workChannelsNames,
-		len(*workChannelsNames),
+		&(initData.WorkChannelsNames),
+		len(initData.WorkChannelsNames),
 		100,
 		channelImages,
 	)
 
-	personalChannelsNames := &[]string{
-		"Puzzling Muzzle",
-		"Buzzing Embezzlement",
-		"Nitwit Blubber Oddment Tweak",
-		"Weather In Llanfairpwllgwyngyllgogerychwyrndrobwllllantysiliogogogoch",
-		"The Witcher 3 endings",
-		"Elvis Lives",
-		"Paul Is Dead",
-		"Cthulhu Rises",
-	}
-
 	// Create private channels
-	personalChannelsNames = createChannelsW(
+	personalChannelsNames := createChannelsW(
 		encoder,
 		mainTeam,
 		"P",
 		"",
 		"",
-		personalChannelsNames,
-		len(*personalChannelsNames),
+		&(initData.PersonalChannelsNames),
+		len(initData.PersonalChannelsNames),
 		150,
 		channelImages,
 	)
@@ -331,7 +395,21 @@ func populateSampleCmdF(command *cobra.Command, args []string) error {
 		"",
 	}
 
-	// Create admins
+	// Create administrators from the configuration file.
+	for _, admin := range initData.Administrators {
+		// Categories for everything but team channels
+		categories := createCategories(&catsPersonal, personalChannelsNames)
+		add := createCategories(&catsWork, workChannelsNames)
+		categories = append(categories, add...)
+		add = createCategories(&catsOpen, openChannelsNames)
+		categories = append(categories, add...)
+
+		user := createConfigurationUserW(admin, mainTeam, &allChannels, &categories)
+		adminUsers = append(adminUsers, user)
+		encoder.Encode(user)
+	}
+
+	// Create admins, the old way.
 	for i, v := range admins {
 		// Categories for everything but team channels
 		categories := createCategories(&catsPersonal, personalChannelsNames)
@@ -694,6 +772,50 @@ func createUserW(
 		WorkRole:           &workRole,
 		SocialMedia:        &socialMedia,
 		Biography:          &biography,
+	}
+	return app.LineImportData{
+		Type: "user",
+		User: &user,
+	}
+}
+
+func createConfigurationUserW(
+	usr User,
+	teamName string,
+	channels *[]string,
+	categories *[]app.CategoryImportData,
+) app.LineImportData {
+
+	systemRoles := "system_user system_admin"
+	teamRoles := "team_user team_admin"
+	channelRoles := "channel_user channel_admin"
+
+	team := createTeamMembershipW(channels, &teamName, teamRoles, channelRoles)
+	team.Categories = categories
+	teams := []app.UserTeamImportData{team}
+
+	user := app.UserImportData{
+		ProfileImage:       nil,
+		Username:           &usr.Username,
+		Email:              &usr.Email,
+		Password:           &usr.Username, // ☠ ☠ ☠  This is BAD, SO BAD!!!
+		Nickname:           &usr.Nickname,
+		FirstName:          &usr.FirstName,
+		LastName:           &usr.LastName,
+		Position:           &usr.Position,
+		Roles:              &systemRoles,
+		Teams:              &teams,
+		UseMilitaryTime:    &usr.UseMilitaryTime,
+		CollapsePreviews:   &usr.CollapsePreviews,
+		MessageDisplay:     &usr.MessageDisplay,
+		ChannelDisplayMode: &usr.ChannelDisplayMode,
+		TutorialStep:       &usr.TutorialStep,
+		DeleteAt:           nil,
+		Location:           &usr.Location,
+		PhoneNumber:        &usr.PhoneNumber,
+		WorkRole:           &usr.Position,
+		SocialMedia:        &usr.SocialMedia,
+		Biography:          &usr.Biography,
 	}
 	return app.LineImportData{
 		Type: "user",

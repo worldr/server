@@ -1,0 +1,33 @@
+{
+    "open channels names": [
+        "General"
+    ],
+    "team channels names": [
+        "Your Team"
+    ],
+    "work channels names": [
+        "Your Project"
+    ],
+    "personal channels names": [
+    ],
+    "administrators": [
+        {
+      "biography": "An automatically created system administrator.",
+         "channel display mode": "full",
+         "collapse previews": "true",
+         "email": "admin@example.com",
+         "first name": "Administrator",
+         "last name": "",
+         "location": "London",
+         "message display": "clean",
+         "nickname": "",
+         "phone number": "",
+         "position": "System administrator",
+         "system roles": "",
+      "social media": "",
+         "tutorial step": "999",
+         "use military time": "true",
+         "username": "admin"
+        }
+    ]
+}
