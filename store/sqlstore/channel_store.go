@@ -2877,13 +2877,13 @@ func (s SqlChannelStore) getRelevantChannelIds(teamId string, userId string) (*[
 	// Direct and Group-direct channels don't have teamId, get them anyway.
 	infos := &model.ChannelInfoList{}
 	_, err := s.GetReplica().Select(infos, `
-			SELECT 
-				cm.ChannelId as Id 
-			FROM ChannelMembers as cm, Channels as c 
-			WHERE 
+			SELECT
+				cm.ChannelId as Id
+			FROM ChannelMembers as cm, Channels as c
+			WHERE
 				cm.ChannelId = c.Id
 				AND
-				cm.UserId = :UserId 
+				cm.UserId = :UserId
 				AND
 				c.DeleteAt = 0
 				AND
@@ -2915,20 +2915,29 @@ func (s SqlChannelStore) getChannelInfos(teamId string, userId string) (*[]strin
 		return nil, nil, model.NewAppError("SqlChannelStore.getChannelInfos", "store.sql_channel.get_infos.get_relevant_channels_ids.app_error", nil, "userId="+userId+", err="+err1.Error(), http.StatusInternalServerError)
 	}
 
-	// 2. Get members counts for channels of userId found above
+	// 2. Get members counts for channels of userId found above.
+	// Note that we need to subtract messages counts, see `GetChannelUnread`
+	// above for details.
 	infos := &model.ChannelInfoList{}
 	_, err2 := s.GetReplica().Select(infos, `
 		SELECT DISTINCT ON (c1.ChannelId)
-			c1.ChannelId as Id, c2.Members, c1.MsgCount as Unread, c1.MentionCount as Mentions 			
+			c1.ChannelId as Id, c2.Members, (c3.TotalMsgCount - c1.MsgCount) as MsgCount, c1.MentionCount
 		FROM
 			ChannelMembers as c1
 		JOIN (
 			SELECT ChannelId, count(ChannelId) as Members
-			FROM ChannelMembers 
-			GROUP BY ChannelId 
+			FROM ChannelMembers
+			GROUP BY ChannelId
 			HAVING ChannelId in ('`+strings.Join(*channelIds, "','")+`')
 		) as c2
 		ON c1.ChannelId=c2.ChannelId
+		JOIN (
+			SELECT Id, TotalMsgCount
+			FROM Channels
+			GROUP BY Id
+			HAVING Id in ('`+strings.Join(*channelIds, "','")+`')
+		) as c3
+		ON c2.ChannelId=c3.Id
 		`,
 	)
 	if err2 != nil {
@@ -2952,9 +2961,9 @@ func (s SqlChannelStore) getLastMessages(channels *model.ChannelList) (*map[stri
 
 	posts := &lastMessages{}
 	_, err := s.GetReplica().Select(posts, `
-		SELECT 
-			p.* 
-		FROM 
+		SELECT
+			p.*
+		FROM
 			Posts as p
 		JOIN (
 			SELECT Id, LastPostAt FROM Channels
@@ -2980,11 +2989,11 @@ func (s SqlChannelStore) getSpecificChannels(teamId string, userId string, claus
 
 	channels := &model.ChannelList{}
 	_, err2 := s.GetReplica().Select(channels, `
-		SELECT 
+		SELECT
 			*
-		FROM 
+		FROM
 			Channels
-		WHERE			
+		WHERE
 			`+clause+`
 			AND
 			Id IN ('`+strings.Join(*channelIds, "','")+`')
@@ -3042,11 +3051,11 @@ func (s SqlChannelStore) GetOverview(teamId string, userId string) (*model.Chann
 	// Get channels structures
 	channels := &model.ChannelList{}
 	_, err2 := s.GetReplica().Select(channels, `
-		SELECT 
+		SELECT
 			*
-		FROM 
+		FROM
 			Channels
-		WHERE			
+		WHERE
 			Id IN ('`+strings.Join(*channelIds, "','")+`')
 		`,
 	)
@@ -3057,9 +3066,9 @@ func (s SqlChannelStore) GetOverview(teamId string, userId string) (*model.Chann
 	// Get member ids for all channels
 	members := &model.ChannelMembersShort{}
 	_, err3 := s.GetReplica().Select(members, `
-		SELECT 
+		SELECT
 			ChannelId,UserId,SchemeGuest,SchemeUser,SchemeAdmin
-		FROM 
+		FROM
 			ChannelMembers
 		WHERE ChannelId IN ('`+strings.Join(*channelIds, "','")+`')
 		`,
