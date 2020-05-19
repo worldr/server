@@ -94,6 +94,7 @@ func TestChannelStore(t *testing.T, ss store.Store, s SqlSupplier) {
 	t.Run("GetGlobalChannels", func(t *testing.T) { testChannelStoreGetGlobalChannels(t, ss) })
 	t.Run("GetOverview", func(t *testing.T) { testChannelsOverview(t, ss) })
 	t.Run("UpdateLastPictureUpdate", func(t *testing.T) { testUpdateLastPictureUpdate(t, ss) })
+	t.Run("GetSpecificChannels", func(t *testing.T) { testGetSpecificChannels(t, ss) })
 }
 
 func testChannelStoreSave(t *testing.T, ss store.Store) {
@@ -189,7 +190,7 @@ func testChannelStoreSaveDirectChannel(t *testing.T, ss store.Store, s SqlSuppli
 	require.Len(t, *members, 2, "should have saved 2 members")
 
 	_, err = ss.Channel().SaveDirectChannel(&o1, &m1, &m2)
-	require.NotNil(t, err, "shoudn't be a able to update from save")
+	require.NotNil(t, err, "shouldn't be a able to update from save")
 
 	// Attempt to save a direct channel that already exists
 	o1a := model.Channel{
@@ -467,7 +468,7 @@ func testChannelStoreGetChannelsByIds(t *testing.T, ss store.Store) {
 
 	r1, err := ss.Channel().GetChannelsByIds([]string{o1.Id, o2.Id})
 	require.Nil(t, err, err)
-	require.Len(t, r1, 2, "invalid returned channels, exepected 2 and got "+strconv.Itoa(len(r1)))
+	require.Len(t, r1, 2, "invalid returned channels, expected 2 and got "+strconv.Itoa(len(r1)))
 	require.Equal(t, o1.ToJson(), r1[0].ToJson())
 	require.Equal(t, o2.ToJson(), r1[1].ToJson())
 
@@ -1937,7 +1938,7 @@ func testGetMember(t *testing.T, ss store.Store) {
 	require.Equal(t, userId, member.UserId, "should've have gotten member for user")
 
 	member, err = ss.Channel().GetMember(c2.Id, userId)
-	require.Nil(t, err, "should'nt have errored when getting member", err)
+	require.Nil(t, err, "shouldn't have errored when getting member", err)
 	require.Equal(t, c2.Id, member.ChannelId, "should've gotten member of channel 2")
 	require.Equal(t, userId, member.UserId, "should've gotten member for user")
 
@@ -4412,7 +4413,10 @@ func testChannelStoreGetPersonalChannels(t *testing.T, ss store.Store) {
 		assert.False(t, v.Channel.Type == "O")
 		assert.False(t, v.Channel.Kind == "team" || v.Channel.Kind == "work")
 		assert.True(t, v.Channel.TeamId == "" || v.Channel.TeamId == teamId)
+		assert.Equal(t, v.Info.MsgCount, 0, "Unread count did not match!")
+		assert.Equal(t, v.Info.MentionCount, 0, "Mention count did not match!")
 	}
+
 }
 
 func testChannelStoreGetWorkChannels(t *testing.T, ss store.Store) {
@@ -4483,4 +4487,48 @@ func testUpdateLastPictureUpdate(t *testing.T, ss store.Store) {
 	after, err := ss.Channel().Get(p0.Id, false)
 	require.Nil(t, err)
 	require.True(t, after.LastPictureUpdate > int64(0))
+}
+
+func testGetSpecificChannels(t *testing.T, ss store.Store) {
+	teamId := model.NewId()
+
+	uid := model.NewId()
+	m1 := &model.TeamMember{TeamId: teamId, UserId: uid}
+	_, err := ss.Team().SaveMember(m1, -1)
+	require.Nil(t, err)
+	notifyPropsModel := model.GetDefaultChannelNotifyProps()
+
+	// Setup Channel 1
+	c1 := &model.Channel{TeamId: m1.TeamId, Name: model.NewId(), DisplayName: "Downtown", Type: model.CHANNEL_OPEN, TotalMsgCount: 100}
+	_, err = ss.Channel().Save(c1, -1)
+	require.Nil(t, err)
+
+	cm1 := &model.ChannelMember{ChannelId: c1.Id, UserId: m1.UserId, NotifyProps: notifyPropsModel, MsgCount: 89}
+	_, err = ss.Channel().SaveMember(cm1)
+	require.Nil(t, err)
+
+	// Setup Channel 2
+	c2 := &model.Channel{TeamId: m1.TeamId, Name: model.NewId(), DisplayName: "Cultural", Type: model.CHANNEL_OPEN, TotalMsgCount: 100}
+	_, err = ss.Channel().Save(c2, -1)
+	require.Nil(t, err)
+
+	cm2 := &model.ChannelMember{ChannelId: c2.Id, UserId: m1.UserId, NotifyProps: notifyPropsModel, MsgCount: 90, MentionCount: 5}
+	_, err = ss.Channel().SaveMember(cm2)
+	require.Nil(t, err)
+
+	list, err1 := ss.Channel().GetGlobalChannels(teamId, uid)
+	require.Nil(t, err1)
+
+	assert.Equal(t, 2, len(*list))
+
+	for _, v := range *list {
+		if v.Info.Id == c1.Id {
+			assert.Equal(t, 11, v.Info.MsgCount, "Unread count did not match!")
+			assert.Equal(t, 0, v.Info.MentionCount, "Mention count did not match!")
+		}
+		if v.Info.Id == c2.Id {
+			assert.Equal(t, 10, v.Info.MsgCount, "Unread count did not match!")
+			assert.Equal(t, 5, v.Info.MentionCount, "Mention count did not match!")
+		}
+	}
 }
