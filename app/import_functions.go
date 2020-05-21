@@ -519,6 +519,13 @@ func (a *App) importUser(data *UserImportData, dryRun bool) *model.AppError {
 		} else {
 			user.UpdateMentionKeysFromUsername("")
 		}
+
+		if data.NotifyProps.FirstName != nil {
+			if value, ok := user.NotifyProps[model.FIRST_NAME_NOTIFY_PROP]; !ok || value != *data.NotifyProps.FirstName {
+				user.AddNotifyProp(model.FIRST_NAME_NOTIFY_PROP, *data.NotifyProps.FirstName)
+				hasNotifyPropsChanged = true
+			}
+		}
 	}
 
 	var savedUser *model.User

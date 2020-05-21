@@ -102,3 +102,16 @@ func TestPushNotificationDeviceId(t *testing.T) {
 	msg.Platform = ""
 	msg.DeviceId = ""
 }
+
+func TestPushNotificationServerTag(t *testing.T) {
+
+	msg := PushNotification{ServerTag: "test"}
+
+	tag := "changed"
+	msg.SetServerTag(&tag)
+	require.Equal(t, msg.ServerTag, "changed", msg.ServerTag)
+	msg.ServerTag = ""
+
+	msg.SetServerTag(nil)
+	require.Equal(t, msg.ServerTag, "", msg.ServerTag)
+}

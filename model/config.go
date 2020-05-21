@@ -88,6 +88,7 @@ const (
 
 	SITENAME_MAX_LENGTH = 30
 
+	SERVICE_SETTINGS_DEFAULT_SERVER_TAG         = "dev"
 	SERVICE_SETTINGS_DEFAULT_SITE_URL           = "http://localhost:8065"
 	SERVICE_SETTINGS_DEFAULT_TLS_CERT_FILE      = ""
 	SERVICE_SETTINGS_DEFAULT_TLS_KEY_FILE       = ""
@@ -240,6 +241,7 @@ var ServerTLSSupportedCiphers = map[string]uint16{
 }
 
 type ServiceSettings struct {
+	ServerTag                                         *string
 	SiteURL                                           *string  `restricted:"true"`
 	WebsocketURL                                      *string  `restricted:"true"`
 	LicenseFileLocation                               *string  `restricted:"true"`
@@ -329,6 +331,22 @@ type ServiceSettings struct {
 }
 
 func (s *ServiceSettings) SetDefaults(isUpdate bool) {
+	if s.ServerTag == nil {
+		if s.EnableDeveloper != nil && *s.EnableDeveloper {
+			s.ServerTag = NewString(SERVICE_SETTINGS_DEFAULT_SERVER_TAG)
+		} else {
+			s.ServerTag = NewString("")
+		}
+	}
+
+	if s.SiteURL == nil {
+		if s.EnableDeveloper != nil && *s.EnableDeveloper {
+			s.SiteURL = NewString(SERVICE_SETTINGS_DEFAULT_SITE_URL)
+		} else {
+			s.SiteURL = NewString("")
+		}
+	}
+
 	if s.EnableEmailInvitations == nil {
 		// If the site URL is also not present then assume this is a clean install
 		if s.SiteURL == nil {

@@ -205,7 +205,7 @@ func TestUpdateChannel(t *testing.T) {
 	require.Equal(t, wteam.Header, newTeamChannel.Header, "Update failed for Header in private channel")
 	require.Equal(t, wteam.Purpose, newTeamChannel.Purpose, "Update failed for Purpose in private channel")
 
-	// Update a Worldr private channel of kind "project".
+	// Update a Worldr private channel of kind "work".
 	wproject.DisplayName = "My new display name for private channel"
 	wproject.Header = "My fancy private header"
 	wproject.Purpose = "Mattermost ftw! in private mode"
@@ -218,8 +218,8 @@ func TestUpdateChannel(t *testing.T) {
 	require.Equal(t, wproject.Header, newProjectChannel.Header, "Update failed for Header in private channel")
 	require.Equal(t, wproject.Purpose, newProjectChannel.Purpose, "Update failed for Purpose in private channel")
 
-	// Update a worldr team to worldr project./
-	wteam.Kind = "project"
+	// Update a worldr team to worldr project.
+	wteam.Kind = model.CHANNEL_KIND_PROJECT
 
 	newConvertedProjectChannel, resp := Client.UpdateChannel(wproject)
 	CheckNoError(t, resp)
@@ -1352,12 +1352,12 @@ func TestDeleteChannel(t *testing.T) {
 	CheckNoError(t, resp)
 
 	// Delete Worldr team and project channels.
-	wteam := &model.Channel{DisplayName: "Test Worldr team", Name: GenerateTestChannelName(), Type: model.CHANNEL_PRIVATE, TeamId: team.Id, Kind: "team"}
+	wteam := &model.Channel{DisplayName: "Test Worldr team", Name: GenerateTestChannelName(), Type: model.CHANNEL_PRIVATE, TeamId: team.Id, Kind: model.CHANNEL_KIND_TEAM}
 	rteam, _ := Client.CreateChannel(wteam)
 	_, resp = Client.DeleteChannel(rteam.Id)
 	CheckNoError(t, resp)
 
-	wproject := &model.Channel{DisplayName: "Test Worldr project", Name: GenerateTestChannelName(), Type: model.CHANNEL_PRIVATE, TeamId: team.Id, Kind: "project"}
+	wproject := &model.Channel{DisplayName: "Test Worldr project", Name: GenerateTestChannelName(), Type: model.CHANNEL_PRIVATE, TeamId: team.Id, Kind: model.CHANNEL_KIND_PROJECT}
 	rteam, _ = Client.CreateChannel(wproject)
 	_, resp = Client.DeleteChannel(rteam.Id)
 	CheckNoError(t, resp)

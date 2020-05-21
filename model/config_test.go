@@ -1253,3 +1253,23 @@ func TestConfigMarketplaceDefaults(t *testing.T) {
 		require.Equal(t, "https://marketplace.example.com", *c.PluginSettings.MarketplaceUrl)
 	})
 }
+
+func TestConfigEmptyServerTag(t *testing.T) {
+	EnableDeveloper := true
+	c1 := Config{
+		ServiceSettings: ServiceSettings{
+			EnableDeveloper: &EnableDeveloper,
+		},
+	}
+	c1.SetDefaults()
+	require.Equal(t, *c1.ServiceSettings.ServerTag, SERVICE_SETTINGS_DEFAULT_SERVER_TAG)
+
+	EnableDeveloper = false
+	c1 = Config{
+		ServiceSettings: ServiceSettings{
+			EnableDeveloper: &EnableDeveloper,
+		},
+	}
+	c1.SetDefaults()
+	require.Equal(t, *c1.ServiceSettings.ServerTag, "")
+}

@@ -1,5 +1,6 @@
 {
     "ServiceSettings": {
+        "ServerTag": "dev",
         "SiteURL": "http://localhost:8065",
         "WebsocketURL": "",
         "LicenseFileLocation": "",

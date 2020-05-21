@@ -108,6 +108,7 @@ func (a *App) sendPushNotificationToAllSessions(msg *model.PushNotification, use
 		// We made a copy to avoid decoding and parsing all the time
 		tmpMessage := notification
 		tmpMessage.SetDeviceIdAndPlatform(session.DeviceId)
+		tmpMessage.SetServerTag(a.Srv().Config().ServiceSettings.ServerTag)
 		tmpMessage.AckId = model.NewId()
 
 		err := a.sendToPushProxy(*tmpMessage, session)

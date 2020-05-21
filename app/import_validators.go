@@ -290,6 +290,10 @@ func validateUserImportData(data *UserImportData) *model.AppError {
 		if data.NotifyProps.CommentsTrigger != nil && !model.IsValidCommentsNotifyLevel(*data.NotifyProps.CommentsTrigger) {
 			return model.NewAppError("BulkImport", "app.import.validate_user_import_data.notify_props_comments_trigger_invalid.error", nil, "", http.StatusBadRequest)
 		}
+
+		if data.NotifyProps.FirstName != nil && !model.IsValidTrueOrFalseString(*data.NotifyProps.FirstName) {
+			return model.NewAppError("BulkImport", "app.import.validate_user_import_data.notify_props_first_name_invalid.error", nil, "", http.StatusBadRequest)
+		}
 	}
 
 	if data.UseMarkdownPreview != nil && !model.IsValidTrueOrFalseString(*data.UseMarkdownPreview) {

@@ -97,6 +97,8 @@ type UserNotifyPropsImportData struct {
 	ChannelTrigger  *string `json:"channel"`
 	CommentsTrigger *string `json:"comments"`
 	MentionKeys     *string `json:"mention_keys"`
+
+	FirstName *string `json:"first_name"`
 }
 
 type UserTeamImportData struct {

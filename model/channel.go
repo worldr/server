@@ -34,7 +34,7 @@ const (
 
 	CHANNEL_KIND_NONE    = ""
 	CHANNEL_KIND_TEAM    = "team"
-	CHANNEL_KIND_PROJECT = "project"
+	CHANNEL_KIND_PROJECT = "work"
 )
 
 type Channel struct {

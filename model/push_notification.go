@@ -47,6 +47,7 @@ type PushNotificationAck struct {
 type PushNotification struct {
 	AckId            string `json:"ack_id"`
 	Platform         string `json:"platform"`
+	ServerTag        string `json:"server_tag"`
 	ServerId         string `json:"server_id"`
 	DeviceId         string `json:"device_id"`
 	PostId           string `json:"post_id"`
@@ -81,6 +82,14 @@ func (me *PushNotification) SetDeviceIdAndPlatform(deviceId string) {
 	if index > -1 {
 		me.Platform = deviceId[:index]
 		me.DeviceId = deviceId[index+1:]
+	}
+}
+
+func (me *PushNotification) SetServerTag(tag *string) {
+	if tag != nil {
+		me.ServerTag = *tag
+	} else {
+		me.ServerTag = ""
 	}
 }
 

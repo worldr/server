@@ -12,7 +12,6 @@ import (
 	"os"
 	"path"
 	"sort"
-	"strconv"
 	"strings"
 
 	"github.com/icrowley/fake"
@@ -23,14 +22,12 @@ import (
 )
 
 var PopulateSampleCmd = &cobra.Command{
-	Use:   "populatesample",
-	Short: "Generate sample data",
+	Use:   "populate",
+	Short: "Generate data",
 	RunE:  populateSampleCmdF,
 }
 
 const (
-	PARAM_ADMINS            = "admins"
-	PARAM_ADMIN_NAMES       = "admin-names"
 	PARAM_SEED              = "seed"
 	PARAM_USERS             = "users"
 	PARAM_GUESTS            = "guests"
@@ -42,16 +39,14 @@ const (
 )
 
 func init() {
-	PopulateSampleCmd.Flags().StringSlice(PARAM_ADMINS, []string{}, "Server admins.")
-	PopulateSampleCmd.Flags().StringSlice(PARAM_ADMIN_NAMES, []string{}, "Server admin names.")
 	PopulateSampleCmd.Flags().Int64P(PARAM_SEED, "s", 0, "Seed used for generating the random data (Different seeds generate different data).")
-	PopulateSampleCmd.Flags().IntP(PARAM_USERS, "u", 0, "The number of sample users.")
-	PopulateSampleCmd.Flags().IntP(PARAM_GUESTS, "g", 0, "The number of sample guests.")
-	PopulateSampleCmd.Flags().Int(PARAM_DEACTIVEATED, 0, "The number of deactivated users.")
-	PopulateSampleCmd.Flags().Int(PARAM_POSTS_PER_CHANNEL, 0, "The number of sample post per channel.")
+	PopulateSampleCmd.Flags().IntP(PARAM_USERS, "u", 0, "The number of random sample users.")
+	PopulateSampleCmd.Flags().IntP(PARAM_GUESTS, "g", 0, "The number of random sample guests.")
+	PopulateSampleCmd.Flags().Int(PARAM_DEACTIVEATED, 0, "The number of random deactivated users.")
+	PopulateSampleCmd.Flags().Int(PARAM_POSTS_PER_CHANNEL, 0, "The number of random sample post per channel.")
 	PopulateSampleCmd.Flags().String(PARAM_AVATARS, "", "Optional. Path to folder with images to randomly pick as user profile image.")
 	PopulateSampleCmd.Flags().String(PARAM_CHANNEL_AVATARS, "", "Optional. Path to folder with images to randomly pick as channel image.")
-	PopulateSampleCmd.Flags().String(PARAM_CONFIG_FILE, "worldr_internal.json", "JSON configuration file to pick data from.")
+	PopulateSampleCmd.Flags().String(PARAM_CONFIG_FILE, "", "JSON configuration file to pick data from.")
 
 	RootCmd.AddCommand(PopulateSampleCmd)
 }
@@ -164,7 +159,10 @@ type InitialData struct {
 	WorkChannelsNames     []string `json:"work channels names"`
 	PersonalChannelsNames []string `json:"personal channels names"`
 	Administrators        []User   `json:"administrators"`
+	Users                 []User   `json:"users"`
 }
+
+var usersFile *os.File
 
 func populateSampleCmdF(command *cobra.Command, args []string) error {
 	a, err := InitDBCommandContextCobra(command)
@@ -200,12 +198,14 @@ func populateSampleCmdF(command *cobra.Command, args []string) error {
 	}
 	profileImages := &[]string{}
 	profileImagesMap := &map[string]string{}
+	profileImagesUsed := map[string]bool{}
 	if profileImagesPath != "" {
 		err = prepareImages(profileImagesPath, profileImages, profileImagesMap)
 		if err != nil {
 			return paramError(PARAM_CHANNEL_AVATARS)
 		}
 	}
+	fmt.Println("Profile images:", len(*profileImages))
 
 	channelImagesPath, err := command.Flags().GetString(PARAM_CHANNEL_AVATARS)
 	if err != nil {
@@ -218,6 +218,7 @@ func populateSampleCmdF(command *cobra.Command, args []string) error {
 			return paramError(PARAM_CHANNEL_AVATARS)
 		}
 	}
+	fmt.Println("Channel images:", len(*channelImages))
 
 	// Get data from a configuration file.
 	// TODO: this should define ALL the options.
@@ -225,6 +226,7 @@ func populateSampleCmdF(command *cobra.Command, args []string) error {
 	configurationFilePath, err := command.Flags().GetString(PARAM_CONFIG_FILE)
 	if configurationFilePath != "" {
 		if fileExists(configurationFilePath) {
+			fmt.Println("Reading config file from", configurationFilePath)
 			cfgData, err1 := ioutil.ReadFile(configurationFilePath)
 			if err1 != nil {
 				return paramError(PARAM_CONFIG_FILE)
@@ -282,32 +284,29 @@ func populateSampleCmdF(command *cobra.Command, args []string) error {
 		}
 	}
 
-	admins, err := command.Flags().GetStringSlice(PARAM_ADMINS)
-	if err != nil || (len(admins) == 0 && configurationFilePath == "") {
-		return paramError(PARAM_ADMINS)
-	}
-	adminNames, err := command.Flags().GetStringSlice(PARAM_ADMIN_NAMES)
-	seed, err := command.Flags().GetInt64(PARAM_SEED)
-	if err != nil {
-		return paramError(PARAM_SEED)
+	if err != nil || len(initData.Administrators) == 0 {
+		return paramError("Adminisrators")
 	}
 
-	bulkFile, err := os.OpenFile("logs/populate.sample.log", os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0755)
+	bulkFile, err := os.OpenFile("logs/populate", os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0755)
 	if err != nil {
 		return fmt.Errorf("Unable to open import file for writing: %s.", err.Error())
+	}
+	usersFile, err = os.OpenFile("logs/populate.users", os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0755)
+	if err != nil {
+		return fmt.Errorf("Unable to open users file for writing: %s.", err.Error())
 	}
 
 	encoder := json.NewEncoder(bulkFile)
 	version := 1
 	encoder.Encode(app.LineImportData{Type: "version", Version: &version})
 
+	seed, err := command.Flags().GetInt64(PARAM_SEED)
 	fake.Seed(seed)
 	rand.Seed(seed)
 
 	mainTeam := sqlstore.MAIN_TEAM_NAME
 
-	fmt.Println("ADMINS:", admins)
-	fmt.Println("ADMIN NAMES:", adminNames)
 	fmt.Println("MAIN TEAM:", mainTeam)
 
 	encoder.Encode(createMainTeam(mainTeam, "I"))
@@ -396,7 +395,8 @@ func populateSampleCmdF(command *cobra.Command, args []string) error {
 	}
 
 	// Create administrators from the configuration file.
-	for _, admin := range initData.Administrators {
+	admins := make([]string, len(initData.Administrators))
+	for i, admin := range initData.Administrators {
 		// Categories for everything but team channels
 		categories := createCategories(&catsPersonal, personalChannelsNames)
 		add := createCategories(&catsWork, workChannelsNames)
@@ -404,13 +404,23 @@ func populateSampleCmdF(command *cobra.Command, args []string) error {
 		add = createCategories(&catsOpen, openChannelsNames)
 		categories = append(categories, add...)
 
-		user := createConfigurationUserW(admin, mainTeam, &allChannels, &categories)
+		var avatar *string
+		if file, exists := (*profileImagesMap)[admin.Username]; exists {
+			avatar = &file
+			profileImagesUsed[file] = true
+		}
+
+		fmt.Println(fmt.Sprintf("Registering admin %s", admin.Username))
+
+		user := createConfigurationUserW(admin, mainTeam, &allChannels, &categories, avatar, true)
 		adminUsers = append(adminUsers, user)
 		encoder.Encode(user)
+
+		admins[i] = admin.Username
 	}
 
-	// Create admins, the old way.
-	for i, v := range admins {
+	// Create users from the configuration file.
+	for _, u := range initData.Users {
 		// Categories for everything but team channels
 		categories := createCategories(&catsPersonal, personalChannelsNames)
 		add := createCategories(&catsWork, workChannelsNames)
@@ -418,22 +428,15 @@ func populateSampleCmdF(command *cobra.Command, args []string) error {
 		add = createCategories(&catsOpen, openChannelsNames)
 		categories = append(categories, add...)
 
-		var name string
-		if len(adminNames) > i {
-			name = adminNames[i]
-		} else {
-			name = v
+		var avatar *string
+		if file, exists := (*profileImagesMap)[u.Username]; exists {
+			avatar = &file
+			profileImagesUsed[file] = true
 		}
 
-		var avatars *[]string
-		if file, exists := (*profileImagesMap)[v]; exists {
-			avatars = &[]string{file}
-		} else {
-			avatars = profileImages
-		}
+		fmt.Println(fmt.Sprintf("Registering user %s", u.Username))
 
-		user := createUserW(i, mainTeam, &allChannels, &categories, avatars, ADMIN, v, name)
-		adminUsers = append(adminUsers, user)
+		user := createConfigurationUserW(u, mainTeam, &allChannels, &categories, avatar, false)
 		encoder.Encode(user)
 	}
 
@@ -444,63 +447,75 @@ func populateSampleCmdF(command *cobra.Command, args []string) error {
 		membersByChannel[v] = admins
 	}
 
-	randomUsers := []app.LineImportData{}
+	if users > 0 {
+		randomUsers := []app.LineImportData{}
 
-	// Create other users
-	for i := 0; i < users; i++ {
-		// All open channels and some team channels, categories only for open ones
-		add1 := some(teamChannelsNames, .5)
-		channels := append(*openChannelsNames, *add1...)
-		categories := createCategories(&catsOpen, openChannelsNames)
-
-		// Some work channels AKA projects
-		add1 = some(workChannelsNames, .5)
-		channels = append(channels, *add1...)
-		add2 := createCategories(&catsWork, add1)
-		categories = append(categories, add2...)
-
-		// Some private channels
-		add1 = some(personalChannelsNames, .5)
-		channels = append(channels, *add1...)
-		add2 = createCategories(&catsPersonal, add1)
-		categories = append(categories, add2...)
-
-		user := createUserW(i, mainTeam, &channels, &categories, profileImages, "", "", "")
-		randomUsers = append(randomUsers, user)
-		encoder.Encode(user)
-
-		for _, v := range channels {
-			// Admins participate in all of the chats
-			membersByChannel[v] = append(membersByChannel[v], *user.User.Username)
+		// Remove used personal avatars from the list for random users
+		temp := make([]string, len(*profileImages))[:0]
+		for _, v := range *profileImages {
+			if _, exists := profileImagesUsed[v]; !exists {
+				temp = append(temp, v)
+			} else {
+				fmt.Println("Evicting personal avatar from the list for random users:", v)
+			}
 		}
-	}
+		profileImages = &temp
 
-	allUsers := append(adminUsers, randomUsers...)
+		// Create other users
+		for i := 0; i < users; i++ {
+			// All open channels and some team channels, categories only for open ones
+			add1 := some(teamChannelsNames, .5)
+			channels := append(*openChannelsNames, *add1...)
+			categories := createCategories(&catsOpen, openChannelsNames)
 
-	// Create direct chats between all of the users
-	for i := 0; i < len(allUsers); i++ {
-		for j := i + 1; j < len(allUsers); j++ {
-			u1 := allUsers[i]
-			u2 := allUsers[j]
-			if rand.Float32() < .5 {
-				participants := []string{*u1.User.Username, *u2.User.Username}
-				fmt.Println("Creating new direct channel:", participants, "with", postsPerChannel, "messages")
-				encoder.Encode(createDirectChannelW(participants))
-				// Create content for direct chats
-				dates := sortedRandomDates(postsPerChannel)
-				for k := 0; k < postsPerChannel; k++ {
-					encoder.Encode(createDirectPost(participants, dates[k]))
+			// Some work channels AKA projects
+			add1 = some(workChannelsNames, .5)
+			channels = append(channels, *add1...)
+			add2 := createCategories(&catsWork, add1)
+			categories = append(categories, add2...)
+
+			// Some private channels
+			add1 = some(personalChannelsNames, .5)
+			channels = append(channels, *add1...)
+			add2 = createCategories(&catsPersonal, add1)
+			categories = append(categories, add2...)
+
+			user := createUserW(i, mainTeam, &channels, &categories, profileImages, "", "", "")
+			randomUsers = append(randomUsers, user)
+			encoder.Encode(user)
+
+			for _, v := range channels {
+				// Admins participate in all of the chats
+				membersByChannel[v] = append(membersByChannel[v], *user.User.Username)
+			}
+		}
+
+		allUsers := append(adminUsers, randomUsers...)
+
+		// Create direct chats between all of the users
+		for i := 0; i < len(allUsers); i++ {
+			for j := i + 1; j < len(allUsers); j++ {
+				u1 := allUsers[i]
+				u2 := allUsers[j]
+				if rand.Float32() < .5 {
+					participants := []string{*u1.User.Username, *u2.User.Username}
+					fmt.Println("Creating new direct channel:", participants, "with", postsPerChannel, "messages")
+					encoder.Encode(createDirectChannelW(participants))
+					// Create content for direct chats
+					dates := sortedRandomDates(postsPerChannel)
+					for k := 0; k < postsPerChannel; k++ {
+						encoder.Encode(createDirectPost(participants, dates[k]))
+					}
 				}
 			}
 		}
-	}
-
-	// Create content for non-direct chats
-	for channel, members := range membersByChannel {
-		fmt.Println("Adding", postsPerChannel, "message to channel ", channel, "with members: ", members)
-		dates := sortedRandomDates(postsPerChannel)
-		for i := 0; i < postsPerChannel; i++ {
-			encoder.Encode(createPost(mainTeam, channel, members, dates[i]))
+		// Create content for non-direct chats
+		for channel, members := range membersByChannel {
+			fmt.Println("Adding", postsPerChannel, "message to channel ", channel, "with members: ", members)
+			dates := sortedRandomDates(postsPerChannel)
+			for i := 0; i < postsPerChannel; i++ {
+				encoder.Encode(createPost(mainTeam, channel, members, dates[i]))
+			}
 		}
 	}
 
@@ -520,6 +535,10 @@ func populateSampleCmdF(command *cobra.Command, args []string) error {
 	err = bulkFile.Close()
 	if err != nil {
 		return fmt.Errorf("Unable to close the output file: %s", err.Error())
+	}
+	err = usersFile.Close()
+	if err != nil {
+		return fmt.Errorf("Unable to close the users file: %s", err.Error())
 	}
 
 	return nil
@@ -584,7 +603,6 @@ func createChannelW(
 		chunks = chunks[0:2]
 	}
 	name := strings.ToLower(strings.Join(chunks, "-"))
-	name = name + strconv.Itoa(index)
 	header := fake.Paragraph()
 	purpose := fake.Paragraph()
 
@@ -750,6 +768,8 @@ func createUserW(
 	team.Categories = categories
 	teams := []app.UserTeamImportData{team}
 
+	notify := defaultNotifyProps()
+
 	user := app.UserImportData{
 		ProfileImage:       profileImage,
 		Username:           &username,
@@ -772,10 +792,29 @@ func createUserW(
 		WorkRole:           &workRole,
 		SocialMedia:        &socialMedia,
 		Biography:          &biography,
+		NotifyProps:        notify,
 	}
 	return app.LineImportData{
 		Type: "user",
 		User: &user,
+	}
+}
+
+func ptrStr(s string) *string {
+	return &s
+}
+
+func defaultNotifyProps() *app.UserNotifyPropsImportData {
+	return &app.UserNotifyPropsImportData{
+		Desktop:          ptrStr("all"),
+		DesktopSound:     ptrStr("true"),
+		Email:            ptrStr("false"),
+		Mobile:           ptrStr("all"),
+		MobilePushStatus: ptrStr("online"),
+		ChannelTrigger:   ptrStr("true"),
+		CommentsTrigger:  ptrStr("any"),
+		MentionKeys:      ptrStr("@"),
+		FirstName:        ptrStr("true"),
 	}
 }
 
@@ -784,21 +823,35 @@ func createConfigurationUserW(
 	teamName string,
 	channels *[]string,
 	categories *[]app.CategoryImportData,
+	avatar *string,
+	isAdmin bool,
 ) app.LineImportData {
 
-	systemRoles := "system_user system_admin"
-	teamRoles := "team_user team_admin"
-	channelRoles := "channel_user channel_admin"
+	systemRoles := "system_user"
+	teamRoles := "team_user"
+	channelRoles := "channel_user"
+	if isAdmin {
+		systemRoles += " system_admin"
+		teamRoles += " team_admin"
+		channelRoles += " channel_admin"
+	}
+	password := "W2020-" + fake.CharactersN(4)
 
 	team := createTeamMembershipW(channels, &teamName, teamRoles, channelRoles)
 	team.Categories = categories
 	teams := []app.UserTeamImportData{team}
 
+	usersFile.WriteString(fmt.Sprintf("Username: %s\n", usr.Username))
+	usersFile.WriteString(fmt.Sprintf("Password: %s\n", password))
+	usersFile.WriteString("\n")
+
+	notify := defaultNotifyProps()
+
 	user := app.UserImportData{
-		ProfileImage:       nil,
+		ProfileImage:       avatar,
 		Username:           &usr.Username,
 		Email:              &usr.Email,
-		Password:           &usr.Username, // ☠ ☠ ☠  This is BAD, SO BAD!!!
+		Password:           &password, //TODO: replace with something appropriately random
 		Nickname:           &usr.Nickname,
 		FirstName:          &usr.FirstName,
 		LastName:           &usr.LastName,
@@ -816,6 +869,7 @@ func createConfigurationUserW(
 		WorkRole:           &usr.Position,
 		SocialMedia:        &usr.SocialMedia,
 		Biography:          &usr.Biography,
+		NotifyProps:        notify,
 	}
 	return app.LineImportData{
 		Type: "user",
