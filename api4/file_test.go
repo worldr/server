@@ -157,6 +157,9 @@ func testUploadFilesMultipart(
 	err := mw.WriteField("channel_id", channelId)
 	require.Nil(t, err)
 
+	err = mw.WriteField("files", "upload")
+	require.Nil(t, err)
+
 	for i, blob := range blobs {
 		ct := http.DetectContentType(blob)
 		if len(clientIds) > i {

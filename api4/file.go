@@ -277,6 +277,13 @@ NEXT_PART:
 				}
 				clientIds = append(clientIds, v)
 
+			case "files":
+				// Skip this field.
+				// This field is added by the client api generator for Dart
+				// And contains the name of the file field being uploaded.
+				// This is only here to avoid changing the implementation right now.
+				// TODO: clean the implementation up and don't react with an error response to the parameters we don't care for.
+
 			default:
 				c.SetInvalidParam(formname)
 				return nil
