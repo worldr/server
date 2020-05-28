@@ -4492,19 +4492,33 @@ func testUpdateLastPictureUpdate(t *testing.T, ss store.Store) {
 func testGetSpecificChannels(t *testing.T, ss store.Store) {
 	teamId := model.NewId()
 
-	uid := model.NewId()
-	m1 := &model.TeamMember{TeamId: teamId, UserId: uid}
+	// Add 3 team members
+	m1 := &model.TeamMember{TeamId: teamId, UserId: model.NewId()}
+	m2 := &model.TeamMember{TeamId: teamId, UserId: model.NewId()}
+	m3 := &model.TeamMember{TeamId: teamId, UserId: model.NewId()}
 	_, err := ss.Team().SaveMember(m1, -1)
 	require.Nil(t, err)
+	_, err = ss.Team().SaveMember(m2, -1)
+	require.Nil(t, err)
+	_, err = ss.Team().SaveMember(m3, -1)
+	require.Nil(t, err)
+
 	notifyPropsModel := model.GetDefaultChannelNotifyProps()
 
 	// Setup Channel 1
-	c1 := &model.Channel{TeamId: m1.TeamId, Name: model.NewId(), DisplayName: "Downtown", Type: model.CHANNEL_OPEN, TotalMsgCount: 100}
+	c1 := &model.Channel{TeamId: teamId, Name: model.NewId(), DisplayName: "Downtown", Type: model.CHANNEL_OPEN, TotalMsgCount: 100}
 	_, err = ss.Channel().Save(c1, -1)
 	require.Nil(t, err)
 
-	cm1 := &model.ChannelMember{ChannelId: c1.Id, UserId: m1.UserId, NotifyProps: notifyPropsModel, MsgCount: 89}
-	_, err = ss.Channel().SaveMember(cm1)
+	// Add all 3 members to channel 1
+	c1m1 := &model.ChannelMember{ChannelId: c1.Id, UserId: m1.UserId, NotifyProps: notifyPropsModel, MsgCount: 1, MentionCount: 4}
+	c1m2 := &model.ChannelMember{ChannelId: c1.Id, UserId: m2.UserId, NotifyProps: notifyPropsModel, MsgCount: 2, MentionCount: 5}
+	c1m3 := &model.ChannelMember{ChannelId: c1.Id, UserId: m3.UserId, NotifyProps: notifyPropsModel, MsgCount: 3, MentionCount: 6}
+	_, err = ss.Channel().SaveMember(c1m1)
+	require.Nil(t, err)
+	_, err = ss.Channel().SaveMember(c1m2)
+	require.Nil(t, err)
+	_, err = ss.Channel().SaveMember(c1m3)
 	require.Nil(t, err)
 
 	// Setup Channel 2
@@ -4512,23 +4526,30 @@ func testGetSpecificChannels(t *testing.T, ss store.Store) {
 	_, err = ss.Channel().Save(c2, -1)
 	require.Nil(t, err)
 
-	cm2 := &model.ChannelMember{ChannelId: c2.Id, UserId: m1.UserId, NotifyProps: notifyPropsModel, MsgCount: 90, MentionCount: 5}
-	_, err = ss.Channel().SaveMember(cm2)
+	// Add all 3 members to channel 2
+	c2m1 := &model.ChannelMember{ChannelId: c2.Id, UserId: m1.UserId, NotifyProps: notifyPropsModel, MsgCount: 7, MentionCount: 10}
+	c2m2 := &model.ChannelMember{ChannelId: c2.Id, UserId: m2.UserId, NotifyProps: notifyPropsModel, MsgCount: 8, MentionCount: 11}
+	c2m3 := &model.ChannelMember{ChannelId: c2.Id, UserId: m3.UserId, NotifyProps: notifyPropsModel, MsgCount: 9, MentionCount: 12}
+	_, err = ss.Channel().SaveMember(c2m1)
+	require.Nil(t, err)
+	_, err = ss.Channel().SaveMember(c2m2)
+	require.Nil(t, err)
+	_, err = ss.Channel().SaveMember(c2m3)
 	require.Nil(t, err)
 
-	list, err1 := ss.Channel().GetGlobalChannels(teamId, uid)
+	list, err1 := ss.Channel().GetGlobalChannels(teamId, m2.UserId)
 	require.Nil(t, err1)
 
 	assert.Equal(t, 2, len(*list))
 
 	for _, v := range *list {
 		if v.Info.Id == c1.Id {
-			assert.Equal(t, 11, v.Info.MsgCount, "Unread count did not match!")
-			assert.Equal(t, 0, v.Info.MentionCount, "Mention count did not match!")
+			assert.Equal(t, c1.TotalMsgCount-c1m2.MsgCount, int64(v.Info.MsgCount), "Unread count did not match for channel 1!")
+			assert.Equal(t, c1m2.MentionCount, int64(v.Info.MentionCount), "Mention count did not match for channel 1!")
 		}
 		if v.Info.Id == c2.Id {
-			assert.Equal(t, 10, v.Info.MsgCount, "Unread count did not match!")
-			assert.Equal(t, 5, v.Info.MentionCount, "Mention count did not match!")
+			assert.Equal(t, c2.TotalMsgCount-c2m2.MsgCount, int64(v.Info.MsgCount), "Unread count did not match for channel 2!")
+			assert.Equal(t, c2m2.MentionCount, int64(v.Info.MentionCount), "Mention count did not match for channel 2!")
 		}
 	}
 }

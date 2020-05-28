@@ -2919,7 +2919,9 @@ func (s SqlChannelStore) getChannelInfos(teamId string, userId string) (*[]strin
 	// Note that we need to subtract messages counts, see `GetChannelUnread`
 	// above for details.
 	infos := &model.ChannelInfoList{}
-	_, err2 := s.GetReplica().Select(infos, `
+	_, err2 := s.GetReplica().Select(
+		infos,
+		`
 		SELECT DISTINCT ON (c1.ChannelId)
 			c1.ChannelId as Id, c2.Members, (c3.TotalMsgCount - c1.MsgCount) as MsgCount, c1.MentionCount
 		FROM
@@ -2930,7 +2932,7 @@ func (s SqlChannelStore) getChannelInfos(teamId string, userId string) (*[]strin
 			GROUP BY ChannelId
 			HAVING ChannelId in ('`+strings.Join(*channelIds, "','")+`')
 		) as c2
-		ON c1.ChannelId=c2.ChannelId
+		ON c1.ChannelId=c2.ChannelId AND c1.UserId = :UserId
 		JOIN (
 			SELECT Id, TotalMsgCount
 			FROM Channels
@@ -2939,6 +2941,7 @@ func (s SqlChannelStore) getChannelInfos(teamId string, userId string) (*[]strin
 		) as c3
 		ON c2.ChannelId=c3.Id
 		`,
+		map[string]interface{}{"UserId": userId},
 	)
 	if err2 != nil {
 		return nil, nil, model.NewAppError("SqlChannelStore.getChannelInfos", "store.sql_channel.get_personal_channels.get_my_channels_members.app_error", nil, "userId="+userId+", err="+err2.Error(), http.StatusInternalServerError)
