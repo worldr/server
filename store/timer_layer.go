@@ -1154,10 +1154,10 @@ func (s *TimerLayerChannelStore) GetMoreChannels(teamId string, userId string, o
 	return resultVar0, resultVar1
 }
 
-func (s *TimerLayerChannelStore) GetOverview(teamId string, userId string) (*model.ChannelList, *map[string]*model.ChannelMembersShort, *[]string, *model.AppError) {
+func (s *TimerLayerChannelStore) GetOverview(teamId string, userId string, channelId string) (*model.ChannelList, *map[string]*model.ChannelMembersShort, *[]string, *model.AppError) {
 	start := timemodule.Now()
 
-	resultVar0, resultVar1, resultVar2, resultVar3 := s.ChannelStore.GetOverview(teamId, userId)
+	resultVar0, resultVar1, resultVar2, resultVar3 := s.ChannelStore.GetOverview(teamId, userId, channelId)
 
 	elapsed := float64(timemodule.Since(start)) / float64(timemodule.Second)
 	if s.Root.Metrics != nil {

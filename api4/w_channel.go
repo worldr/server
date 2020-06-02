@@ -143,8 +143,16 @@ func getOverview(c *Context, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	uid := c.App.Session().UserId
+	channelId := r.URL.Query().Get("ChannelId")
+	if channelId != "" {
+		if !c.App.SessionHasPermissionToChannel(*c.App.Session(), channelId, model.PERMISSION_READ_CHANNEL) {
+			c.Err = model.NewAppError("getOverview", "api.channel.get_overview.app_error", nil, "Session has no permission for channel ID '"+channelId+"'", http.StatusBadRequest)
+			return
+		}
+	}
+
 	// Get channels visible to user and their members
-	if channels, membersByChannel, uids, err := c.App.GetOverview(team.Id, uid); err != nil {
+	if channels, membersByChannel, uids, err := c.App.GetOverview(team.Id, uid, channelId); err != nil {
 		c.Err = err
 	} else {
 		// Get users

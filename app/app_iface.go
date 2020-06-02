@@ -171,7 +171,7 @@ type AppIface interface {
 	// These are all of the channels visible to user with all of their members.
 	// XXX: later we may need to separate getting the list of channels and the list of
 	// members for each channel because otherwise this could mean getting all of the users in the system.
-	GetOverview(teamId string, userId string) (*model.ChannelList, *map[string]*model.ChannelMembersShort, *[]string, *model.AppError)
+	GetOverview(teamId string, userId string, channelId string) (*model.ChannelList, *map[string]*model.ChannelMembersShort, *[]string, *model.AppError)
 	// GetPersonalChannels returns everything needed to show the personal chats screen.
 	// These include direct messages, group direct messages and private channels
 	// the userId is a member of. Apart from the Channel structure itself,

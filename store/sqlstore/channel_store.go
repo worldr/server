@@ -2908,11 +2908,15 @@ func (s SqlChannelStore) getRelevantChannelIds(teamId string, userId string) (*[
 	return &channelIds, nil
 }
 
-func (s SqlChannelStore) getChannelInfos(teamId string, userId string) (*[]string, *map[string]*model.ChannelInfo, *model.AppError) {
+func (s SqlChannelStore) getChannelInfos(teamId string, userId string, channelId string) (*[]string, *map[string]*model.ChannelInfo, *model.AppError) {
 	// 1. Get ids of channels userId is a member of.
-	channelIds, err1 := s.getRelevantChannelIds(teamId, userId)
-	if err1 != nil {
-		return nil, nil, model.NewAppError("SqlChannelStore.getChannelInfos", "store.sql_channel.get_infos.get_relevant_channels_ids.app_error", nil, "userId="+userId+", err="+err1.Error(), http.StatusInternalServerError)
+	channelIds := &([]string{channelId})
+	if channelId == "" {
+		var err1 *model.AppError
+		channelIds, err1 = s.getRelevantChannelIds(teamId, userId)
+		if err1 != nil {
+			return nil, nil, model.NewAppError("SqlChannelStore.getChannelInfos", "store.sql_channel.get_infos.get_relevant_channels_ids.app_error", nil, "userId="+userId+", err="+err1.Error(), http.StatusInternalServerError)
+		}
 	}
 
 	// 2. Get members counts for channels of userId found above.
@@ -2985,7 +2989,7 @@ func (s SqlChannelStore) getLastMessages(channels *model.ChannelList) (*map[stri
 }
 
 func (s SqlChannelStore) getSpecificChannels(teamId string, userId string, clause string) (*model.ChannelSnapshotList, *model.AppError) {
-	channelIds, channelInfos, err1 := s.getChannelInfos(teamId, userId)
+	channelIds, channelInfos, err1 := s.getChannelInfos(teamId, userId, "")
 	if err1 != nil {
 		return nil, model.NewAppError("SqlChannelStore.getSpecificChannels", "store.sql_channel.get_specific_channels.get_channel_infos.app_error", nil, "userId="+userId+", clause="+clause+", err="+err1.Error(), http.StatusInternalServerError)
 	}
@@ -3044,9 +3048,10 @@ func (s SqlChannelStore) GetGlobalChannels(teamId string, userId string) (*model
 
 // GetOverview returns channels for global screen.
 // These are all of channels visible to userId along with their members.
-func (s SqlChannelStore) GetOverview(teamId string, userId string) (*model.ChannelList, *map[string]*model.ChannelMembersShort, *[]string, *model.AppError) {
+func (s SqlChannelStore) GetOverview(teamId string, userId string, channelId string) (*model.ChannelList, *map[string]*model.ChannelMembersShort, *[]string, *model.AppError) {
+
 	// Get all channel ids visible to userId
-	channelIds, infos, err1 := s.getChannelInfos(teamId, userId)
+	channelIds, infos, err1 := s.getChannelInfos(teamId, userId, channelId)
 	if err1 != nil {
 		return nil, nil, nil, model.NewAppError("SqlChannelStore.GetOverview", "store.sql_channel.get_overview.get_relevant_channels_ids.app_error", nil, "userId="+userId+", teamId="+teamId+", err="+err1.Error(), http.StatusInternalServerError)
 	}

@@ -6404,7 +6404,7 @@ func (a *OpenTracingAppLayer) GetOutgoingWebhooksPageByUser(userId string, page 
 	return resultVar0, resultVar1
 }
 
-func (a *OpenTracingAppLayer) GetOverview(teamId string, userId string) (*model.ChannelList, *map[string]*model.ChannelMembersShort, *[]string, *model.AppError) {
+func (a *OpenTracingAppLayer) GetOverview(teamId string, userId string, channelId string) (*model.ChannelList, *map[string]*model.ChannelMembersShort, *[]string, *model.AppError) {
 	origCtx := a.ctx
 	span, newCtx := tracing.StartSpanWithParentByContext(a.ctx, "app.GetOverview")
 
@@ -6416,7 +6416,7 @@ func (a *OpenTracingAppLayer) GetOverview(teamId string, userId string) (*model.
 	}()
 
 	defer span.Finish()
-	resultVar0, resultVar1, resultVar2, resultVar3 := a.app.GetOverview(teamId, userId)
+	resultVar0, resultVar1, resultVar2, resultVar3 := a.app.GetOverview(teamId, userId, channelId)
 
 	if resultVar3 != nil {
 		span.LogFields(spanlog.Error(resultVar3))

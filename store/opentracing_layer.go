@@ -1247,7 +1247,7 @@ func (s *OpenTracingLayerChannelStore) GetMoreChannels(teamId string, userId str
 	return resultVar0, resultVar1
 }
 
-func (s *OpenTracingLayerChannelStore) GetOverview(teamId string, userId string) (*model.ChannelList, *map[string]*model.ChannelMembersShort, *[]string, *model.AppError) {
+func (s *OpenTracingLayerChannelStore) GetOverview(teamId string, userId string, channelId string) (*model.ChannelList, *map[string]*model.ChannelMembersShort, *[]string, *model.AppError) {
 	origCtx := s.Root.Store.Context()
 	span, newCtx := tracing.StartSpanWithParentByContext(s.Root.Store.Context(), "ChannelStore.GetOverview")
 	s.Root.Store.SetContext(newCtx)
@@ -1256,7 +1256,7 @@ func (s *OpenTracingLayerChannelStore) GetOverview(teamId string, userId string)
 	}()
 
 	defer span.Finish()
-	resultVar0, resultVar1, resultVar2, resultVar3 := s.ChannelStore.GetOverview(teamId, userId)
+	resultVar0, resultVar1, resultVar2, resultVar3 := s.ChannelStore.GetOverview(teamId, userId, channelId)
 	if resultVar3 != nil {
 		span.LogFields(spanlog.Error(resultVar3))
 		ext.Error.Set(span, true)

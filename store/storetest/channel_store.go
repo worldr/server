@@ -4450,7 +4450,7 @@ func testChannelStoreGetGlobalChannels(t *testing.T, ss store.Store) {
 func testChannelsOverview(t *testing.T, ss store.Store) {
 	teamId, user1Id, user2Id := prepareTestSpecificChats(t, ss)
 
-	list, members, uids, err1 := ss.Channel().GetOverview(teamId, user1Id)
+	list, members, uids, err1 := ss.Channel().GetOverview(teamId, user1Id, "")
 	require.Nil(t, err1)
 
 	assert.Equal(t, 6, len(*list))
@@ -4466,6 +4466,27 @@ func testChannelsOverview(t *testing.T, ss store.Store) {
 			assert.True(t, u.UserId == user1Id || u.UserId == user2Id)
 		}
 	}
+
+	// Get information if we have a channel ID option.
+	instance, members1, uids1, err2 := ss.Channel().GetOverview(teamId, user1Id, (*list)[0].Id)
+	require.Nil(t, err2)
+	assert.Equal(t, 1, len(*instance))
+	assert.Equal(t, 1, len(*members1))
+	assert.Equal(t, 2, len(*uids1))
+
+	for _, channel := range *list {
+		users, exists := (*members)[channel.Id]
+		assert.True(t, exists)
+		assert.Equal(t, 2, len(*users))
+		for _, u := range *users {
+			assert.Equal(t, channel.Id, u.ChannelId)
+			assert.True(t, u.UserId == user1Id || u.UserId == user2Id)
+		}
+	}
+
+	// Check for errors when given an erroneous channel ID.
+	//_, _, _, err3 := ss.Channel().GetOverview(teamId, user1Id, "xxxxxxxxxxxxxxxxxxxxxxxxxx")
+	//require.NotNil(t, err3)
 }
 
 func testUpdateLastPictureUpdate(t *testing.T, ss store.Store) {
