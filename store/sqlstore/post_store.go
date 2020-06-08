@@ -1666,3 +1666,33 @@ func (s *SqlPostStore) GetDirectPostParentsForExportAfter(limit int, afterId str
 	}
 	return posts, nil
 }
+
+// GetRecentPosts returns at most perChannel recent posts for given channel ids.
+func (s *SqlPostStore) GetRecentPosts(channelIds *[]string, perChannel int) (*[]model.Post, *model.AppError) {
+	var posts []model.Post
+	_, err := s.GetSearchReplica().Select(&posts, `
+			WITH c AS (
+				SELECT Id AS ChannelId,LastPostAt 
+				FROM Channels 
+				WHERE Id in ('`+strings.Join(*channelIds, "','")+`')
+			)
+			SELECT p.* 
+			FROM c 
+			LEFT JOIN LATERAL (
+				SELECT * 
+				FROM Posts as p 
+				WHERE p.channelid = c.channelid 
+					AND p.createat <= c.lastpostat 
+					AND p.deleteat = 0
+					ORDER BY p.createat DESC LIMIT :Limit
+			) AS p ON true
+			`,
+		map[string]interface{}{"Limit": perChannel},
+	)
+
+	if err != nil {
+		return nil, model.NewAppError("SqlPostStore.GetRecentPosts", "store.sql_post.get_recent_posts.app_error", nil, err.Error(), http.StatusInternalServerError)
+	}
+
+	return &posts, nil
+}

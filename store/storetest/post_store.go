@@ -6,6 +6,7 @@ package storetest
 import (
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -53,6 +54,7 @@ func TestPostStore(t *testing.T, ss store.Store, s SqlSupplier) {
 	t.Run("GetDirectPostParentsForExportAfter", func(t *testing.T) { testPostStoreGetDirectPostParentsForExportAfter(t, ss, s) })
 	t.Run("GetDirectPostParentsForExportAfterDeleted", func(t *testing.T) { testPostStoreGetDirectPostParentsForExportAfterDeleted(t, ss, s) })
 	t.Run("GetDirectPostParentsForExportAfterBatched", func(t *testing.T) { testPostStoreGetDirectPostParentsForExportAfterBatched(t, ss, s) })
+	t.Run("GetRecentPosts", func(t *testing.T) { testGetRecentPosts(t, ss, s) })
 }
 
 func testPostStoreSave(t *testing.T, ss store.Store) {
@@ -2950,6 +2952,97 @@ func testPostStoreGetDirectPostParentsForExportAfterBatched(t *testing.T, ss sto
 	}
 	sort.Slice(exportedPostIds, func(i, j int) bool { return exportedPostIds[i] < exportedPostIds[j] })
 	assert.ElementsMatch(t, postIds[:100], exportedPostIds)
+
+	// Manually truncate Channels table until testlib can handle cleanups
+	s.GetMaster().Exec("TRUNCATE Channels")
+}
+
+func populateChannels(t *testing.T, ss store.Store, count int, postsPerChannel int, usersCount int) (*[]*model.Channel, *[]string) {
+	teamId := model.NewId()
+
+	channels := []*model.Channel{}
+	uids := []string{}
+
+	baseUid := model.NewId()
+	for i := 0; i < usersCount; i++ {
+		num := strconv.Itoa(i)
+		uids = append(uids, baseUid[0:len(baseUid)-len(num)]+num)
+	}
+
+	for i := 0; i < count; i++ {
+		c := model.Channel{}
+		c.Name = "zz" + model.NewId() + "b"
+		c.DisplayName = "zz" + model.NewId() + "b"
+		c.Type = model.CHANNEL_OPEN
+		c.TeamId = teamId
+
+		channel, err := ss.Channel().Save(&c, 100)
+		channels = append(channels, channel)
+		require.Nil(t, err)
+
+		// We need to sleep here to be sure the post is not created during the same millisecond
+		time.Sleep(time.Millisecond)
+
+		post := model.Post{}
+		post.ChannelId = channel.Id
+		msg := "zz" + model.NewId() + "b"
+
+		for j := 0; j < postsPerChannel; j++ {
+			p := post
+			p.UserId = uids[j%len(uids)]
+			p.Message = msg + strconv.Itoa(j)
+			_, err := ss.Post().Save(&p)
+			require.Nil(t, err)
+		}
+
+	}
+	return &channels, &uids
+}
+
+func testGetRecentPosts(t *testing.T, ss store.Store, s SqlSupplier) {
+	channels, _ := populateChannels(t, ss, 5, 5, 4)
+
+	t.Run("expected amount of posts returned for 1 channel", func(t *testing.T) {
+		posts, err := ss.Post().GetRecentPosts(&[]string{(*channels)[0].Id}, 10)
+		require.Nil(t, err)
+		require.Equal(t, 5, len(*posts), "wrong number of posts")
+	})
+
+	t.Run("expected amount of posts returned with low limit", func(t *testing.T) {
+		posts, err := ss.Post().GetRecentPosts(&[]string{(*channels)[0].Id}, 3)
+		require.Nil(t, err)
+		require.Equal(t, 3, len(*posts), "wrong number of posts")
+	})
+
+	t.Run("expected amount of posts returned with low limit and 2 channels", func(t *testing.T) {
+		posts, err := ss.Post().GetRecentPosts(&[]string{(*channels)[0].Id, (*channels)[1].Id}, 3)
+		require.Nil(t, err)
+		require.Equal(t, 6, len(*posts), "wrong number of posts")
+		for i, p := range *posts {
+			if i < 3 {
+				require.True(t, p.ChannelId == (*channels)[0].Id, "expected first channel")
+			} else {
+				require.True(t, p.ChannelId == (*channels)[1].Id, "expected second channel")
+			}
+		}
+	})
+
+	t.Run("expected channels", func(t *testing.T) {
+		posts, err := ss.Post().GetRecentPosts(&[]string{(*channels)[0].Id, (*channels)[1].Id, (*channels)[2].Id, (*channels)[3].Id}, 2)
+		require.Nil(t, err)
+		require.Equal(t, 8, len(*posts), "wrong number of posts")
+		for i, p := range *posts {
+			if i < 2 {
+				require.True(t, p.ChannelId == (*channels)[0].Id, "expecting channel 1")
+			} else if i < 4 {
+				require.True(t, p.ChannelId == (*channels)[1].Id, "expecting channel 2")
+			} else if i < 6 {
+				require.True(t, p.ChannelId == (*channels)[2].Id, "expecting channel 3")
+			} else {
+				require.True(t, p.ChannelId == (*channels)[3].Id, "expecting channel 4")
+			}
+		}
+	})
 
 	// Manually truncate Channels table until testlib can handle cleanups
 	s.GetMaster().Exec("TRUNCATE Channels")

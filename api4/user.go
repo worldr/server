@@ -1379,64 +1379,65 @@ func sendPasswordReset(c *Context, w http.ResponseWriter, r *http.Request) {
 	ReturnStatusOK(w)
 }
 
-func login(c *Context, w http.ResponseWriter, r *http.Request) {
-	// Mask all sensitive errors, with the exception of the following
-	defer func() {
-		if c.Err == nil {
-			return
+// Mask all sensitive errors, with the exception of the following
+func maskSensitiveErrors(c *Context) {
+	if c.Err == nil {
+		return
+	}
+
+	unmaskedErrors := []string{
+		"mfa.validate_token.authenticate.app_error",
+		"api.user.check_user_mfa.bad_code.app_error",
+		"api.user.login.blank_pwd.app_error",
+		"api.user.login.bot_login_forbidden.app_error",
+		"api.user.login.client_side_cert.certificate.app_error",
+		"api.user.login.inactive.app_error",
+		"api.user.login.not_verified.app_error",
+		"api.user.check_user_login_attempts.too_many.app_error",
+		"app.team.join_user_to_team.max_accounts.app_error",
+		"store.sql_user.save.max_accounts.app_error",
+	}
+
+	maskError := true
+
+	for _, unmaskedError := range unmaskedErrors {
+		if c.Err.Id == unmaskedError {
+			maskError = false
 		}
+	}
 
-		unmaskedErrors := []string{
-			"mfa.validate_token.authenticate.app_error",
-			"api.user.check_user_mfa.bad_code.app_error",
-			"api.user.login.blank_pwd.app_error",
-			"api.user.login.bot_login_forbidden.app_error",
-			"api.user.login.client_side_cert.certificate.app_error",
-			"api.user.login.inactive.app_error",
-			"api.user.login.not_verified.app_error",
-			"api.user.check_user_login_attempts.too_many.app_error",
-			"app.team.join_user_to_team.max_accounts.app_error",
-			"store.sql_user.save.max_accounts.app_error",
-		}
+	if !maskError {
+		return
+	}
 
-		maskError := true
+	config := c.App.Config()
+	enableUsername := *config.EmailSettings.EnableSignInWithUsername
+	enableEmail := *config.EmailSettings.EnableSignInWithEmail
+	samlEnabled := *config.SamlSettings.Enable
+	gitlabEnabled := *config.GetSSOService("gitlab").Enable
+	googleEnabled := *config.GetSSOService("google").Enable
+	office365Enabled := *config.Office365Settings.Enable
 
-		for _, unmaskedError := range unmaskedErrors {
-			if c.Err.Id == unmaskedError {
-				maskError = false
-			}
-		}
+	if samlEnabled || gitlabEnabled || googleEnabled || office365Enabled {
+		c.Err = model.NewAppError("login", "api.user.login.invalid_credentials_sso", nil, "", http.StatusUnauthorized)
+		return
+	}
 
-		if !maskError {
-			return
-		}
+	if enableUsername && !enableEmail {
+		c.Err = model.NewAppError("login", "api.user.login.invalid_credentials_username", nil, "", http.StatusUnauthorized)
+		return
+	}
 
-		config := c.App.Config()
-		enableUsername := *config.EmailSettings.EnableSignInWithUsername
-		enableEmail := *config.EmailSettings.EnableSignInWithEmail
-		samlEnabled := *config.SamlSettings.Enable
-		gitlabEnabled := *config.GetSSOService("gitlab").Enable
-		googleEnabled := *config.GetSSOService("google").Enable
-		office365Enabled := *config.Office365Settings.Enable
+	if !enableUsername && enableEmail {
+		c.Err = model.NewAppError("login", "api.user.login.invalid_credentials_email", nil, "", http.StatusUnauthorized)
+		return
+	}
 
-		if samlEnabled || gitlabEnabled || googleEnabled || office365Enabled {
-			c.Err = model.NewAppError("login", "api.user.login.invalid_credentials_sso", nil, "", http.StatusUnauthorized)
-			return
-		}
+	c.Err = model.NewAppError("login", "api.user.login.invalid_credentials_email_username", nil, "", http.StatusUnauthorized)
 
-		if enableUsername && !enableEmail {
-			c.Err = model.NewAppError("login", "api.user.login.invalid_credentials_username", nil, "", http.StatusUnauthorized)
-			return
-		}
+}
 
-		if !enableUsername && enableEmail {
-			c.Err = model.NewAppError("login", "api.user.login.invalid_credentials_email", nil, "", http.StatusUnauthorized)
-			return
-		}
-
-		c.Err = model.NewAppError("login", "api.user.login.invalid_credentials_email_username", nil, "", http.StatusUnauthorized)
-	}()
-
+func executeLogin(c *Context, w http.ResponseWriter, r *http.Request) (*model.User, *model.AppError) {
 	props := model.MapFromJson(r.Body)
 
 	id := props["id"]
@@ -1448,15 +1449,15 @@ func login(c *Context, w http.ResponseWriter, r *http.Request) {
 
 	if *c.App.Config().ExperimentalSettings.ClientSideCertEnable {
 		if license := c.App.License(); license == nil || !*license.Features.SAML {
-			c.Err = model.NewAppError("ClientSideCertNotAllowed", "api.user.login.client_side_cert.license.app_error", nil, "", http.StatusBadRequest)
-			return
+			err := model.NewAppError("ClientSideCertNotAllowed", "api.user.login.client_side_cert.license.app_error", nil, "", http.StatusBadRequest)
+			return nil, err
 		}
 		certPem, certSubject, certEmail := c.App.CheckForClientSideCert(r)
 		mlog.Debug("Client Cert", mlog.String("cert_subject", certSubject), mlog.String("cert_email", certEmail))
 
 		if len(certPem) == 0 || len(certEmail) == 0 {
-			c.Err = model.NewAppError("ClientSideCertMissing", "api.user.login.client_side_cert.certificate.app_error", nil, "", http.StatusBadRequest)
-			return
+			err := model.NewAppError("ClientSideCertMissing", "api.user.login.client_side_cert.certificate.app_error", nil, "", http.StatusBadRequest)
+			return nil, err
 		}
 
 		if *c.App.Config().ExperimentalSettings.ClientSideCertCheck == model.CLIENT_SIDE_CERT_CHECK_PRIMARY_AUTH {
@@ -1475,19 +1476,18 @@ func login(c *Context, w http.ResponseWriter, r *http.Request) {
 	user, err := c.App.AuthenticateUserForLogin(id, loginId, password, mfaToken, ldapOnly)
 	if err != nil {
 		c.LogAuditWithUserId(id, "failure - login_id="+loginId)
-		c.Err = err
-		return
+		return nil, err
 	}
 	auditRec.AddMeta(audit.KeyUserID, user.Id)
 
 	if user.IsGuest() {
 		if c.App.License() == nil {
-			c.Err = model.NewAppError("login", "api.user.login.guest_accounts.license.error", nil, "", http.StatusUnauthorized)
-			return
+			err1 := model.NewAppError("login", "api.user.login.guest_accounts.license.error", nil, "", http.StatusUnauthorized)
+			return nil, err1
 		}
 		if !*c.App.Config().GuestAccountsSettings.Enable {
-			c.Err = model.NewAppError("login", "api.user.login.guest_accounts.disabled.error", nil, "", http.StatusUnauthorized)
-			return
+			err1 := model.NewAppError("login", "api.user.login.guest_accounts.disabled.error", nil, "", http.StatusUnauthorized)
+			return nil, err1
 		}
 	}
 
@@ -1495,8 +1495,7 @@ func login(c *Context, w http.ResponseWriter, r *http.Request) {
 
 	err = c.App.DoLogin(w, r, user, deviceId)
 	if err != nil {
-		c.Err = err
-		return
+		return nil, err
 	}
 
 	c.LogAuditWithUserId(user.Id, "success")
@@ -1507,8 +1506,7 @@ func login(c *Context, w http.ResponseWriter, r *http.Request) {
 
 	userTermsOfService, err := c.App.GetUserTermsOfService(user.Id)
 	if err != nil && err.StatusCode != http.StatusNotFound {
-		c.Err = err
-		return
+		return nil, err
 	}
 
 	if userTermsOfService != nil {
@@ -1519,7 +1517,17 @@ func login(c *Context, w http.ResponseWriter, r *http.Request) {
 	user.Sanitize(map[string]bool{})
 
 	auditRec.Success()
-	w.Write([]byte(user.ToJson()))
+
+	return user, nil
+}
+
+func login(c *Context, w http.ResponseWriter, r *http.Request) {
+	defer maskSensitiveErrors(c)
+	if user, err := executeLogin(c, w, r); err != nil {
+		c.Err = err
+	} else {
+		w.Write([]byte(user.ToJson()))
+	}
 }
 
 func logout(c *Context, w http.ResponseWriter, r *http.Request) {

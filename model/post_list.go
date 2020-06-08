@@ -16,6 +16,16 @@ type PostList struct {
 	PrevPostId string           `json:"prev_post_id"`
 }
 
+type PostListSimple []*Post
+
+func (o *PostListSimple) ToJson() string {
+	if b, err := json.Marshal(o); err != nil {
+		return "[]"
+	} else {
+		return string(b)
+	}
+}
+
 func NewPostList() *PostList {
 	return &PostList{
 		Order:      make([]string, 0),

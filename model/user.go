@@ -104,6 +104,15 @@ type User struct {
 	TermsOfServiceCreateAt int64     `db:"-" json:"terms_of_service_create_at,omitempty"`
 }
 
+type UserResponseWrapper struct {
+	Content *User `json:"content"`
+}
+
+func (o *UserResponseWrapper) ToJson() string {
+	b, _ := json.Marshal(o)
+	return string(b)
+}
+
 type UserUpdate struct {
 	Old *User
 	New *User

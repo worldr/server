@@ -22,6 +22,8 @@ const (
 	PENDING_POST_IDS_CACHE_SIZE = 25000
 	PENDING_POST_IDS_CACHE_TTL  = 30 * time.Second
 	PAGE_DEFAULT                = 0
+	MAX_RECENT_TOTAL            = 1000
+	MAX_RECENT_PER_CHANNEL      = 30
 )
 
 func (a *App) CreatePostAsUser(post *model.Post, currentSessionId string) (*model.Post, *model.AppError) {
@@ -1343,4 +1345,57 @@ func isPostMention(user *model.User, post *model.Post, keywords map[string][]str
 	}
 
 	return false
+}
+
+// GetRecentPosts returns a list of most recent posts for given channels.
+//
+func (a *App) GetRecentPosts(request *model.RecentPostsRequestData) (*model.PostListSimple, *model.AppError) {
+	if request.MaxTotalMessages > MAX_RECENT_TOTAL {
+		return nil, model.NewAppError("GetRecentPosts", "app.post.get_recent_posts.total_too_big.app_error", nil, "", http.StatusBadRequest)
+	}
+	if request.MessagesPerChannel > MAX_RECENT_PER_CHANNEL {
+		return nil, model.NewAppError("GetRecentPosts", "app.post.get_recent_posts.per_channel_too_big.app_error", nil, "", http.StatusBadRequest)
+	}
+
+	total := len(request.ChannelIds)
+	// Don't load more posts if MessagesPerChannel doesn't fit the remaining amount before reaching the limit
+	lim := request.MaxTotalMessages - request.MessagesPerChannel
+	processedChannels := 0
+	collectedPosts := 0
+	var ids []string
+	var posts = []*[]model.Post{}
+	// Collect posts in batches.
+	// Stop when either all of the requested channels have been processed,
+	// or total posts limit has been reached.
+	for processedChannels < total && collectedPosts < lim {
+		// Each batch is guaranteed to fit the limit for total messages,
+		// even if each channel in a batch has MessagesPerChannel messages.
+		// This means it's either a channel will have a full slice of posts up to MessagesPerChannel,
+		// or none at all (which means the client has to request again).
+		batch := (request.MaxTotalMessages - collectedPosts) / request.MessagesPerChannel
+		if processedChannels+batch > total {
+			ids = request.ChannelIds[processedChannels:]
+		} else {
+			ids = request.ChannelIds[processedChannels : processedChannels+batch]
+		}
+
+		chunk, err := a.Srv().Store.Post().GetRecentPosts(&ids, request.MessagesPerChannel)
+		if err != nil {
+			return nil, err
+		}
+		posts = append(posts, chunk)
+		processedChannels += len(ids)
+		collectedPosts += len(*chunk)
+	}
+
+	// Copy pointers to a flattened list
+	result := model.PostListSimple{}
+	for i := range posts {
+		len := len(*posts[i])
+		// Reverse the order as the db returns posts sorted by date from the most recent to the oldest
+		for j := len - 1; j >= 0; j-- {
+			result = append(result, &(*posts[i])[j])
+		}
+	}
+	return &result, nil
 }

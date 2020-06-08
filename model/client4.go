@@ -2999,7 +2999,7 @@ func (c *Client4) GetFileInfos() ([]*FileInfo, *Response) {
 		return nil, BuildErrorResponse(r, err)
 	}
 	defer closeBody(r)
-	return FileInfosFromJson(r.Body), BuildResponse(r)
+	return *FileInfoResponseWrapperFromJson(r.Body).Content, BuildResponse(r)
 }
 
 // GetFileInfosForPost gets all the file info objects attached to a post.

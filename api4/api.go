@@ -52,6 +52,7 @@ type Routes struct {
 	ChannelModerations       *mux.Router // 'api/v4/channels/{channel_id:[A-Za-z0-9]+}/moderations'
 
 	Posts           *mux.Router // 'api/v4/posts'
+	WPosts          *mux.Router // 'api/worldr/v1/posts'
 	Post            *mux.Router // 'api/v4/posts/{post_id:[A-Za-z0-9]+}'
 	PostsForChannel *mux.Router // 'api/v4/channels/{channel_id:[A-Za-z0-9]+}/posts'
 	PostsForUser    *mux.Router // 'api/v4/users/{user_id:[A-Za-z0-9]+}/posts'
@@ -144,6 +145,7 @@ func Init(configservice configservice.ConfigService, globalOptionsFunc app.AppOp
 	api.BaseRoutes.WChannel = api.BaseRoutes.WorldrRoot.PathPrefix("/channel/{channel_id:[A-Za-z0-9]+}").Subrouter()
 	api.BaseRoutes.WUsers = api.BaseRoutes.WorldrRoot.PathPrefix("/users").Subrouter()
 	api.BaseRoutes.WFiles = api.BaseRoutes.WorldrRoot.PathPrefix("/files").Subrouter()
+	api.BaseRoutes.WPosts = api.BaseRoutes.WorldrRoot.PathPrefix("/posts").Subrouter()
 
 	// Mattermost original API
 
@@ -271,6 +273,7 @@ func Init(configservice configservice.ConfigService, globalOptionsFunc app.AppOp
 	api.InitTermsOfService()
 	api.InitGroup()
 	api.InitAction()
+	api.InitWPosts()
 
 	root.Handle("/api/v4/{anything:.*}", http.HandlerFunc(api.Handle404))
 	root.Handle("/api/worldr/v1/{anything:.*}", http.HandlerFunc(api.Handle404))

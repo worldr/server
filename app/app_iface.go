@@ -191,14 +191,17 @@ type AppIface interface {
 	GetPluginsEnvironment() *plugin.Environment
 	// GetPublicKey will return the actual public key saved in the `name` file.
 	GetPublicKey(name string) ([]byte, *model.AppError)
+	// GetRecentPosts returns a list of most recent posts for given channels.
+	//
+	GetRecentPosts(request *model.RecentPostsRequestData) (*model.PostListSimple, *model.AppError)
 	// GetSanitizedConfig gets the configuration for a system admin without any secrets.
 	GetSanitizedConfig() *model.Config
 	// GetSchemeRolesForChannel Checks if a channel or its team has an override scheme for channel roles and returns the scheme roles or default channel roles.
-	GetSchemeRolesForChannel(channelId string) (guestRoleName string, userRoleName string, adminRoleName string, err *model.AppError)
+	GetSchemeRolesForChannel(channelId string) (string, string, string, *model.AppError)
 	// GetTeamGroupUsers returns the users who are associated to the team via GroupTeams and GroupMembers.
 	GetTeamGroupUsers(teamID string) ([]*model.User, *model.AppError)
 	// GetTeamSchemeChannelRoles Checks if a team has an override scheme and returns the scheme channel role names or default channel role names.
-	GetTeamSchemeChannelRoles(teamId string) (guestRoleName string, userRoleName string, adminRoleName string, err *model.AppError)
+	GetTeamSchemeChannelRoles(teamId string) (string, string, string, *model.AppError)
 	// GetTotalUsersStats is used for the DM list total
 	GetTotalUsersStats(viewRestrictions *model.ViewUsersRestrictions) (*model.UsersStats, *model.AppError)
 	// GetWorkChannels returns everything needed to show the work chats screen.
@@ -351,7 +354,7 @@ type AppIface interface {
 	AsymmetricSigningKey() *ecdsa.PrivateKey
 	AttachDeviceId(sessionId string, deviceId string, expiresAt int64) *model.AppError
 	AttachSessionCookies(w http.ResponseWriter, r *http.Request)
-	AuthenticateUserForLogin(id, loginId, password, mfaToken string, ldapOnly bool) (user *model.User, err *model.AppError)
+	AuthenticateUserForLogin(id, loginId, password, mfaToken string, ldapOnly bool) (*model.User, *model.AppError)
 	AuthorizeOAuthUser(w http.ResponseWriter, r *http.Request, service, code, state, redirectUri string) (io.ReadCloser, string, map[string]string, *model.AppError)
 	AutocompleteChannels(teamId string, term string) (*model.ChannelList, *model.AppError)
 	AutocompleteChannelsForSearch(teamId string, userId string, term string) (*model.ChannelList, *model.AppError)
@@ -405,7 +408,7 @@ type AppIface interface {
 	CreateOAuthUser(service string, userData io.Reader, teamId string) (*model.User, *model.AppError)
 	CreateOutgoingWebhook(hook *model.OutgoingWebhook) (*model.OutgoingWebhook, *model.AppError)
 	CreatePasswordRecoveryToken(userId, email string) (*model.Token, *model.AppError)
-	CreatePost(post *model.Post, channel *model.Channel, triggerWebhooks bool) (savedPost *model.Post, err *model.AppError)
+	CreatePost(post *model.Post, channel *model.Channel, triggerWebhooks bool) (*model.Post, *model.AppError)
 	CreatePostAsUser(post *model.Post, currentSessionId string) (*model.Post, *model.AppError)
 	CreatePostMissingChannel(post *model.Post, triggerWebhooks bool) (*model.Post, *model.AppError)
 	CreateRole(role *model.Role) (*model.Role, *model.AppError)
@@ -706,7 +709,7 @@ type AppIface interface {
 	HubUnregister(webConn *WebConn)
 	ImageProxy() *imageproxy.ImageProxy
 	ImageProxyAdder() func(string) string
-	ImageProxyRemover() (f func(string) string)
+	ImageProxyRemover() func(string) string
 	ImportPermissions(jsonl io.Reader) error
 	InitPlugins(pluginDir, webappPluginDir string)
 	InitPostMetadata()

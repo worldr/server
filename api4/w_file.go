@@ -24,7 +24,7 @@ func (api *API) InitWFile() {
 // Worldr only.
 func getWFilesInfos(c *Context, w http.ResponseWriter, r *http.Request) {
 	opts := model.GetFileInfosOptions{UserIds: []string{c.App.Session().UserId}}
-	info, err := c.App.GetFileInfos(0, 11, &opts)
+	infos, err := c.App.GetFileInfos(0, 11, &opts)
 	if err != nil {
 		c.Err = err
 		return
@@ -32,7 +32,7 @@ func getWFilesInfos(c *Context, w http.ResponseWriter, r *http.Request) {
 
 	// Checks that the current UserId actually has access to those files?
 	// Isn't that useless? Possibly.
-	for _, fileInfo := range info {
+	for _, fileInfo := range infos {
 		if fileInfo.CreatorId != c.App.Session().UserId && !c.App.SessionHasPermissionToChannelByPost(*c.App.Session(), "", model.PERMISSION_READ_CHANNEL) {
 			c.SetPermissionError(model.PERMISSION_READ_CHANNEL)
 			return
@@ -41,5 +41,6 @@ func getWFilesInfos(c *Context, w http.ResponseWriter, r *http.Request) {
 
 	// All is good, let's return,
 	w.Header().Set("Cache-Control", "max-age=2592000, public")
-	w.Write([]byte(model.FileInfosToJson(info)))
+	response := model.FileInfoResponseWrapper{Content: &infos}
+	w.Write([]byte(response.ToJson()))
 }

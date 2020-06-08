@@ -55,6 +55,26 @@ type FileInfo struct {
 	HasPreviewImage bool   `json:"has_preview_image,omitempty"`
 }
 
+type FileInfoResponseWrapper struct {
+	Content *[]*FileInfo `json:"content"`
+}
+
+func (o *FileInfoResponseWrapper) ToJson() string {
+	b, _ := json.Marshal(o)
+	return string(b)
+}
+
+func FileInfoResponseWrapperFromJson(data io.Reader) *FileInfoResponseWrapper {
+	decoder := json.NewDecoder(data)
+
+	var wrapper FileInfoResponseWrapper
+	if err := decoder.Decode(&wrapper); err != nil {
+		return nil
+	} else {
+		return &wrapper
+	}
+}
+
 func (fi *FileInfo) ToJson() string {
 	b, _ := json.Marshal(fi)
 	return string(b)
@@ -71,9 +91,12 @@ func FileInfoFromJson(data io.Reader) *FileInfo {
 	}
 }
 
-func FileInfosToJson(infos []*FileInfo) string {
-	b, _ := json.Marshal(infos)
-	return string(b)
+func FileInfosToJson(o []*FileInfo) string {
+	if b, err := json.Marshal(o); err != nil {
+		return "[]"
+	} else {
+		return string(b)
+	}
 }
 
 func FileInfosFromJson(data io.Reader) []*FileInfo {

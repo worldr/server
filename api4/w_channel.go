@@ -143,7 +143,7 @@ func getOverview(c *Context, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	uid := c.App.Session().UserId
-	channelId := r.URL.Query().Get("ChannelId")
+	channelId := c.Params.ChannelId
 	if channelId != "" {
 		if !c.App.SessionHasPermissionToChannel(*c.App.Session(), channelId, model.PERMISSION_READ_CHANNEL) {
 			c.Err = model.NewAppError("getOverview", "api.channel.get_overview.app_error", nil, "Session has no permission for channel ID '"+channelId+"'", http.StatusBadRequest)

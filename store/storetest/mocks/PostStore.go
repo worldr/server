@@ -557,6 +557,31 @@ func (_m *PostStore) GetPostsSince(options model.GetPostsSinceOptions, allowFrom
 	return r0, r1
 }
 
+// GetRecentPosts provides a mock function with given fields: channelIds, perChannel
+func (_m *PostStore) GetRecentPosts(channelIds *[]string, perChannel int) (*[]model.Post, *model.AppError) {
+	ret := _m.Called(channelIds, perChannel)
+
+	var r0 *[]model.Post
+	if rf, ok := ret.Get(0).(func(*[]string, int) *[]model.Post); ok {
+		r0 = rf(channelIds, perChannel)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*[]model.Post)
+		}
+	}
+
+	var r1 *model.AppError
+	if rf, ok := ret.Get(1).(func(*[]string, int) *model.AppError); ok {
+		r1 = rf(channelIds, perChannel)
+	} else {
+		if ret.Get(1) != nil {
+			r1 = ret.Get(1).(*model.AppError)
+		}
+	}
+
+	return r0, r1
+}
+
 // GetRepliesForExport provides a mock function with given fields: parentId
 func (_m *PostStore) GetRepliesForExport(parentId string) ([]*model.ReplyForExport, *model.AppError) {
 	ret := _m.Called(parentId)
