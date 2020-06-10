@@ -218,7 +218,7 @@
         "ConnectionSecurity": "",
         "SendPushNotifications": true,
         "PushNotificationServer": "http://127.0.0.1:8066",
-        "PushNotificationContents": "generic",
+        "PushNotificationContents": "full",
         "EnableEmailBatching": false,
         "EmailBatchingBufferSize": 256,
         "EmailBatchingInterval": 30,

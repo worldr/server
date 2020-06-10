@@ -505,15 +505,16 @@ func (a *App) buildFullPushNotificationMessage(contentsConfig string, post *mode
 	explicitMention bool, channelWideMention bool, replyToThreadType string) *model.PushNotification {
 
 	msg := &model.PushNotification{
-		Category:   model.CATEGORY_CAN_REPLY,
-		Version:    model.PUSH_MESSAGE_V2,
-		Type:       model.PUSH_TYPE_MESSAGE,
-		TeamId:     channel.TeamId,
-		ChannelId:  channel.Id,
-		PostId:     post.Id,
-		RootId:     post.RootId,
-		SenderId:   post.UserId,
-		IsIdLoaded: false,
+		Category:    model.CATEGORY_CAN_REPLY,
+		Version:     model.PUSH_MESSAGE_V2,
+		Type:        model.PUSH_TYPE_MESSAGE,
+		TeamId:      channel.TeamId,
+		ChannelId:   channel.Id,
+		ChannelType: channel.Type,
+		PostId:      post.Id,
+		RootId:      post.RootId,
+		SenderId:    post.UserId,
+		IsIdLoaded:  false,
 	}
 
 	cfg := a.Config()

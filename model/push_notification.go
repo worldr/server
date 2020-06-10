@@ -58,8 +58,9 @@ type PushNotification struct {
 	ContentAvailable int    `json:"cont_ava,omitempty"`
 	TeamId           string `json:"team_id,omitempty"`
 	ChannelId        string `json:"channel_id,omitempty"`
-	RootId           string `json:"root_id,omitempty"`
+	ChannelType      string `json:"channel_type,omitempty"`
 	ChannelName      string `json:"channel_name,omitempty"`
+	RootId           string `json:"root_id,omitempty"`
 	Type             string `json:"type,omitempty"`
 	SenderId         string `json:"sender_id,omitempty"`
 	SenderName       string `json:"sender_name,omitempty"`
