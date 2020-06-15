@@ -24,6 +24,7 @@ const (
 	PAGE_DEFAULT                = 0
 	MAX_RECENT_TOTAL            = 1000
 	MAX_RECENT_PER_CHANNEL      = 30
+	MAX_INCREMENT_TOTAL         = 1000
 )
 
 func (a *App) CreatePostAsUser(post *model.Post, currentSessionId string) (*model.Post, *model.AppError) {
@@ -1348,7 +1349,6 @@ func isPostMention(user *model.User, post *model.Post, keywords map[string][]str
 }
 
 // GetRecentPosts returns a list of most recent posts for given channels.
-//
 func (a *App) GetRecentPosts(request *model.RecentPostsRequestData) (*model.PostListSimple, *model.AppError) {
 	if request.MaxTotalMessages > MAX_RECENT_TOTAL {
 		return nil, model.NewAppError("GetRecentPosts", "app.post.get_recent_posts.total_too_big.app_error", nil, "", http.StatusBadRequest)
@@ -1398,4 +1398,31 @@ func (a *App) GetRecentPosts(request *model.RecentPostsRequestData) (*model.Post
 		}
 	}
 	return &result, nil
+}
+
+// CheckIncrementPossible returns true if it is reasonable to proceed with downloading incremental updates for given chats.
+func (a *App) CheckIncrementPossible(request *model.IncrementCheckRequest) (bool, *model.AppError) {
+	channelsWithPosts := make([]model.ChannelWithLastPost, len(request.Channels))[:0]
+	missingChannels := []string{}
+	for _, v := range request.Channels {
+		if len(v.LastPostId) == 0 {
+			missingChannels = append(missingChannels, v.ChannelId)
+		} else {
+			channelsWithPosts = append(channelsWithPosts, v)
+		}
+	}
+
+	count, err := a.Srv().Store.Post().GetPostsCountAfter(&channelsWithPosts)
+	if err != nil {
+		return false, err
+	}
+
+	var missingCount int64 = 0
+	if len(missingChannels) > 0 {
+		missingCount, err = a.Srv().Store.Post().GetTotalPostsCount(&missingChannels)
+		if err != nil {
+			return false, err
+		}
+	}
+	return count+missingCount <= MAX_INCREMENT_TOTAL, nil
 }

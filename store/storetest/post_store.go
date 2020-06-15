@@ -55,6 +55,8 @@ func TestPostStore(t *testing.T, ss store.Store, s SqlSupplier) {
 	t.Run("GetDirectPostParentsForExportAfterDeleted", func(t *testing.T) { testPostStoreGetDirectPostParentsForExportAfterDeleted(t, ss, s) })
 	t.Run("GetDirectPostParentsForExportAfterBatched", func(t *testing.T) { testPostStoreGetDirectPostParentsForExportAfterBatched(t, ss, s) })
 	t.Run("GetRecentPosts", func(t *testing.T) { testGetRecentPosts(t, ss, s) })
+	t.Run("CheckIncrementPossible", func(t *testing.T) { testCheckIncrementPossible(t, ss, s) })
+	t.Run("GetTotalPostsCount", func(t *testing.T) { testGetTotalPostsCount(t, ss, s) })
 }
 
 func testPostStoreSave(t *testing.T, ss store.Store) {
@@ -2957,10 +2959,17 @@ func testPostStoreGetDirectPostParentsForExportAfterBatched(t *testing.T, ss sto
 	s.GetMaster().Exec("TRUNCATE Channels")
 }
 
-func populateChannels(t *testing.T, ss store.Store, count int, postsPerChannel int, usersCount int) (*[]*model.Channel, *[]string) {
+func populateChannels(
+	t *testing.T,
+	ss store.Store,
+	channelsCount int,
+	postsPerChannel int,
+	usersCount int,
+) (*[]*model.Channel, *[]string, *map[string][]string) {
 	teamId := model.NewId()
 
-	channels := []*model.Channel{}
+	channels := []*model.Channel{}[:0]
+	posts := make(map[string][]string, channelsCount)
 	uids := []string{}
 
 	baseUid := model.NewId()
@@ -2969,7 +2978,8 @@ func populateChannels(t *testing.T, ss store.Store, count int, postsPerChannel i
 		uids = append(uids, baseUid[0:len(baseUid)-len(num)]+num)
 	}
 
-	for i := 0; i < count; i++ {
+	var list []string
+	for i := 0; i < channelsCount; i++ {
 		c := model.Channel{}
 		c.Name = "zz" + model.NewId() + "b"
 		c.DisplayName = "zz" + model.NewId() + "b"
@@ -2980,27 +2990,28 @@ func populateChannels(t *testing.T, ss store.Store, count int, postsPerChannel i
 		channels = append(channels, channel)
 		require.Nil(t, err)
 
-		// We need to sleep here to be sure the post is not created during the same millisecond
-		time.Sleep(time.Millisecond)
-
 		post := model.Post{}
 		post.ChannelId = channel.Id
 		msg := "zz" + model.NewId() + "b"
 
+		list = make([]string, postsPerChannel)[:0]
 		for j := 0; j < postsPerChannel; j++ {
 			p := post
 			p.UserId = uids[j%len(uids)]
 			p.Message = msg + strconv.Itoa(j)
-			_, err := ss.Post().Save(&p)
+			post, err := ss.Post().Save(&p)
 			require.Nil(t, err)
+			list = append(list, post.Id)
+			// We need to sleep here to be sure the post is not created during the same millisecond
+			time.Sleep(time.Millisecond)
 		}
-
+		posts[channel.Id] = list
 	}
-	return &channels, &uids
+	return &channels, &uids, &posts
 }
 
 func testGetRecentPosts(t *testing.T, ss store.Store, s SqlSupplier) {
-	channels, _ := populateChannels(t, ss, 5, 5, 4)
+	channels, _, _ := populateChannels(t, ss, 5, 5, 4)
 
 	t.Run("expected amount of posts returned for 1 channel", func(t *testing.T) {
 		posts, err := ss.Post().GetRecentPosts(&[]string{(*channels)[0].Id}, 10)
@@ -3042,6 +3053,148 @@ func testGetRecentPosts(t *testing.T, ss store.Store, s SqlSupplier) {
 				require.True(t, p.ChannelId == (*channels)[3].Id, "expecting channel 4")
 			}
 		}
+	})
+
+	// Manually truncate Channels table until testlib can handle cleanups
+	s.GetMaster().Exec("TRUNCATE Channels")
+}
+
+func testCheckIncrementPossible(t *testing.T, ss store.Store, s SqlSupplier) {
+	channels, _, posts := populateChannels(t, ss, 3, 500, 2)
+
+	t.Run("number of posts in one channel", func(t *testing.T) {
+		c := (*channels)[0]
+		request := []model.ChannelWithLastPost{
+			{
+				ChannelId:  c.Id,
+				LastPostId: (*posts)[c.Id][0],
+			},
+		}
+		count, err := ss.Post().GetPostsCountAfter(&request)
+		require.Nil(t, err)
+		require.Equal(t, int64(499), count, "wrong number of posts")
+
+		request = []model.ChannelWithLastPost{
+			{
+				ChannelId:  c.Id,
+				LastPostId: (*posts)[c.Id][250],
+			},
+		}
+		count, err = ss.Post().GetPostsCountAfter(&request)
+		require.Nil(t, err)
+		require.Equal(t, int64(249), count, "wrong number of posts")
+
+		request = []model.ChannelWithLastPost{
+			{
+				ChannelId:  c.Id,
+				LastPostId: (*posts)[c.Id][499],
+			},
+		}
+		count, err = ss.Post().GetPostsCountAfter(&request)
+		require.Nil(t, err)
+		require.Equal(t, int64(0), count, "wrong number of posts")
+	})
+
+	t.Run("number of posts in three channels", func(t *testing.T) {
+		c1 := (*channels)[0]
+		c2 := (*channels)[1]
+		c3 := (*channels)[2]
+		request := []model.ChannelWithLastPost{
+			{
+				ChannelId:  c1.Id,
+				LastPostId: (*posts)[c1.Id][299],
+			},
+			{
+				ChannelId:  c2.Id,
+				LastPostId: (*posts)[c2.Id][299],
+			},
+			{
+				ChannelId:  c3.Id,
+				LastPostId: (*posts)[c3.Id][299],
+			},
+		}
+		count, err := ss.Post().GetPostsCountAfter(&request)
+		require.Nil(t, err)
+		require.Equal(t, int64(600), count, "wrong number of posts")
+	})
+
+	t.Run("duplicate channel ids", func(t *testing.T) {
+		c := (*channels)[0]
+		request := []model.ChannelWithLastPost{
+			{
+				ChannelId:  c.Id,
+				LastPostId: (*posts)[c.Id][0],
+			},
+			{
+				ChannelId:  c.Id,
+				LastPostId: (*posts)[c.Id][1],
+			},
+		}
+		_, err := ss.Post().GetPostsCountAfter(&request)
+		require.NotNil(t, err)
+		require.Equal(
+			t,
+			err.Id,
+			"store.sql_post.get_posts_count_after.channel_id_duplicate_or_missing.app_error",
+			"wrong error id",
+		)
+	})
+
+	t.Run("mismatched channel id and post id", func(t *testing.T) {
+		c1 := (*channels)[0]
+		c2 := (*channels)[1]
+		request := []model.ChannelWithLastPost{
+			{
+				ChannelId:  c1.Id,
+				LastPostId: (*posts)[c2.Id][0],
+			},
+			{
+				ChannelId:  c2.Id,
+				LastPostId: (*posts)[c1.Id][0],
+			},
+		}
+		_, err := ss.Post().GetPostsCountAfter(&request)
+		require.NotNil(t, err)
+		require.Equal(
+			t,
+			err.Id,
+			"store.sql_post.get_posts_count_after.channel_id_post_id_mismatch.app_error",
+			"wrong error id",
+		)
+	})
+
+	t.Run("missing last post id", func(t *testing.T) {
+		c := (*channels)[0]
+		request := []model.ChannelWithLastPost{
+			{
+				ChannelId: c.Id,
+			},
+		}
+		_, err := ss.Post().GetPostsCountAfter(&request)
+		require.NotNil(t, err)
+		require.Equal(
+			t,
+			err.Id,
+			"store.sql_post.get_posts_count_after.channel_id_duplicate_or_missing.app_error",
+			"wrong error id",
+		)
+	})
+
+	// Manually truncate Channels table until testlib can handle cleanups
+	s.GetMaster().Exec("TRUNCATE Channels")
+}
+
+func testGetTotalPostsCount(t *testing.T, ss store.Store, s SqlSupplier) {
+	channels, _, _ := populateChannels(t, ss, 3, 500, 2)
+
+	t.Run("total number of posts in three channels", func(t *testing.T) {
+		c1 := (*channels)[0]
+		c2 := (*channels)[1]
+		c3 := (*channels)[2]
+		request := []string{c1.Id, c2.Id, c3.Id}
+		count, err := ss.Post().GetTotalPostsCount(&request)
+		require.Nil(t, err)
+		require.Equal(t, int64(1500), count, "wrong number of posts")
 	})
 
 	// Manually truncate Channels table until testlib can handle cleanups

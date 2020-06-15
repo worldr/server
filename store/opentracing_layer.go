@@ -4852,6 +4852,24 @@ func (s *OpenTracingLayerPostStore) GetPostsByIds(postIds []string) ([]*model.Po
 	return resultVar0, resultVar1
 }
 
+func (s *OpenTracingLayerPostStore) GetPostsCountAfter(channels *[]model.ChannelWithLastPost) (int64, *model.AppError) {
+	origCtx := s.Root.Store.Context()
+	span, newCtx := tracing.StartSpanWithParentByContext(s.Root.Store.Context(), "PostStore.GetPostsCountAfter")
+	s.Root.Store.SetContext(newCtx)
+	defer func() {
+		s.Root.Store.SetContext(origCtx)
+	}()
+
+	defer span.Finish()
+	resultVar0, resultVar1 := s.PostStore.GetPostsCountAfter(channels)
+	if resultVar1 != nil {
+		span.LogFields(spanlog.Error(resultVar1))
+		ext.Error.Set(span, true)
+	}
+
+	return resultVar0, resultVar1
+}
+
 func (s *OpenTracingLayerPostStore) GetPostsCreatedAt(channelId string, time int64) ([]*model.Post, *model.AppError) {
 	origCtx := s.Root.Store.Context()
 	span, newCtx := tracing.StartSpanWithParentByContext(s.Root.Store.Context(), "PostStore.GetPostsCreatedAt")
@@ -4934,6 +4952,24 @@ func (s *OpenTracingLayerPostStore) GetSingle(id string) (*model.Post, *model.Ap
 
 	defer span.Finish()
 	resultVar0, resultVar1 := s.PostStore.GetSingle(id)
+	if resultVar1 != nil {
+		span.LogFields(spanlog.Error(resultVar1))
+		ext.Error.Set(span, true)
+	}
+
+	return resultVar0, resultVar1
+}
+
+func (s *OpenTracingLayerPostStore) GetTotalPostsCount(channelIds *[]string) (int64, *model.AppError) {
+	origCtx := s.Root.Store.Context()
+	span, newCtx := tracing.StartSpanWithParentByContext(s.Root.Store.Context(), "PostStore.GetTotalPostsCount")
+	s.Root.Store.SetContext(newCtx)
+	defer func() {
+		s.Root.Store.SetContext(origCtx)
+	}()
+
+	defer span.Finish()
+	resultVar0, resultVar1 := s.PostStore.GetTotalPostsCount(channelIds)
 	if resultVar1 != nil {
 		span.LogFields(spanlog.Error(resultVar1))
 		ext.Error.Set(span, true)

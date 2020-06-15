@@ -64,6 +64,8 @@ type AppIface interface {
 	// The result can be used, for example, to determine the set of users who would be removed from a channel if the
 	// channel were group-constrained with the given groups.
 	ChannelMembersMinusGroupMembers(channelID string, groupIDs []string, page, perPage int) ([]*model.UserWithGroups, int64, *model.AppError)
+	// CheckIncrementPossible returns true if it is reasonable to proceed with downloading incremental updates for given chats.
+	CheckIncrementPossible(request *model.IncrementCheckRequest) (bool, *model.AppError)
 	// ClientConfigWithComputed gets the configuration in a format suitable for sending to the client.
 	ClientConfigWithComputed() map[string]string
 	// ConvertUserToBot converts a user to bot.
@@ -192,7 +194,6 @@ type AppIface interface {
 	// GetPublicKey will return the actual public key saved in the `name` file.
 	GetPublicKey(name string) ([]byte, *model.AppError)
 	// GetRecentPosts returns a list of most recent posts for given channels.
-	//
 	GetRecentPosts(request *model.RecentPostsRequestData) (*model.PostListSimple, *model.AppError)
 	// GetSanitizedConfig gets the configuration for a system admin without any secrets.
 	GetSanitizedConfig() *model.Config

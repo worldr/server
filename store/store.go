@@ -270,6 +270,8 @@ type PostStore interface {
 	GetRepliesForExport(parentId string) ([]*model.ReplyForExport, *model.AppError)
 	GetDirectPostParentsForExportAfter(limit int, afterId string) ([]*model.DirectPostForExport, *model.AppError)
 	GetRecentPosts(channelIds *[]string, perChannel int) (*[]model.Post, *model.AppError)
+	GetPostsCountAfter(channels *[]model.ChannelWithLastPost) (int64, *model.AppError)
+	GetTotalPostsCount(channelIds *[]string) (int64, *model.AppError)
 }
 
 type UserStore interface {

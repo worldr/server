@@ -1696,3 +1696,105 @@ func (s *SqlPostStore) GetRecentPosts(channelIds *[]string, perChannel int) (*[]
 
 	return &posts, nil
 }
+
+// GetPostsCountAfter() calculates the number of posts since the given post id for all of the given channels.
+func (s *SqlPostStore) GetPostsCountAfter(channels *[]model.ChannelWithLastPost) (int64, *model.AppError) {
+	channelByPost := make(map[string]string, len(*channels))
+	postIds := make([]string, len(*channels))
+	for i, v := range *channels {
+		postIds[i] = v.LastPostId
+		channelByPost[v.LastPostId] = v.ChannelId
+	}
+	var requestData []struct {
+		ChannelId string
+		PostId    string
+		CreateAt  int64
+	}
+	_, err := s.GetSearchReplica().Select(&requestData, `
+		SELECT DISTINCT ON (ChannelId) ChannelId,Id as PostId,CreateAt 
+		FROM Posts
+		WHERE Id IN ('`+strings.Join(postIds, "','")+`')
+		`,
+	)
+
+	if len(requestData) != len(*channels) {
+		return 0, model.NewAppError(
+			"SqlPostStore.GetPostsCountAfter",
+			"store.sql_post.get_posts_count_after.channel_id_duplicate_or_missing.app_error",
+			map[string]interface{}{
+				"requestData": requestData,
+				"channels":    *channels,
+			},
+			"Duplicate or missing channels in requested post list",
+			http.StatusInternalServerError,
+		)
+	}
+	for _, v := range requestData {
+		if cid, exists := channelByPost[v.PostId]; exists {
+			if cid != v.ChannelId {
+				return 0, model.NewAppError(
+					"SqlPostStore.GetPostsCountAfter",
+					"store.sql_post.get_posts_count_after.channel_id_post_id_mismatch.app_error",
+					nil,
+					"Unexpected channel id for post",
+					http.StatusInternalServerError,
+				)
+			}
+		}
+	}
+
+	count, err := s.GetSearchReplica().SelectInt(
+		`
+		WITH PostDate AS (
+			SELECT ChannelId,CreateAt 
+			FROM Posts
+			WHERE Id in ('` + strings.Join(postIds, "','") + `')
+			ORDER BY ChannelId
+		)
+		SELECT sum(PostChannelCount.count) FROM
+		(SELECT ChannelCount.count
+		FROM PostDate 
+		LEFT JOIN LATERAL (
+			SELECT count(*) 
+			FROM 
+				(SELECT 1 FROM posts
+				 WHERE channelid = PostDate.channelid 
+					AND createat > PostDate.createat 
+					AND deleteat = 0
+					LIMIT 1000) as p
+		) AS ChannelCount ON true) as PostChannelCount		
+		`,
+	)
+
+	if err != nil {
+		return 0, model.NewAppError(
+			"SqlPostStore.GetPostsCountAfter",
+			"store.sql_post.get_posts_count_after.app_error",
+			nil,
+			err.Error(),
+			http.StatusInternalServerError,
+		)
+	}
+
+	return count, nil
+}
+
+func (s *SqlPostStore) GetTotalPostsCount(channelIds *[]string) (int64, *model.AppError) {
+	count, err := s.GetSearchReplica().SelectInt(
+		`
+		SELECT sum(totalmsgcount)
+		FROM Channels
+		WHERE id IN ('` + strings.Join(*channelIds, "','") + `')
+		`,
+	)
+	if err != nil {
+		return 0, model.NewAppError(
+			"SqlPostStore.GetTotalPostsCount",
+			"store.sql_post.get_total_posts_count_after.app_error",
+			nil,
+			err.Error(),
+			http.StatusInternalServerError,
+		)
+	}
+	return count, nil
+}

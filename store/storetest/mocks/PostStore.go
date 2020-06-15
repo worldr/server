@@ -507,6 +507,29 @@ func (_m *PostStore) GetPostsByIds(postIds []string) ([]*model.Post, *model.AppE
 	return r0, r1
 }
 
+// GetPostsCountAfter provides a mock function with given fields: channels
+func (_m *PostStore) GetPostsCountAfter(channels *[]model.ChannelWithLastPost) (int64, *model.AppError) {
+	ret := _m.Called(channels)
+
+	var r0 int64
+	if rf, ok := ret.Get(0).(func(*[]model.ChannelWithLastPost) int64); ok {
+		r0 = rf(channels)
+	} else {
+		r0 = ret.Get(0).(int64)
+	}
+
+	var r1 *model.AppError
+	if rf, ok := ret.Get(1).(func(*[]model.ChannelWithLastPost) *model.AppError); ok {
+		r1 = rf(channels)
+	} else {
+		if ret.Get(1) != nil {
+			r1 = ret.Get(1).(*model.AppError)
+		}
+	}
+
+	return r0, r1
+}
+
 // GetPostsCreatedAt provides a mock function with given fields: channelId, time
 func (_m *PostStore) GetPostsCreatedAt(channelId string, time int64) ([]*model.Post, *model.AppError) {
 	ret := _m.Called(channelId, time)
@@ -623,6 +646,29 @@ func (_m *PostStore) GetSingle(id string) (*model.Post, *model.AppError) {
 	var r1 *model.AppError
 	if rf, ok := ret.Get(1).(func(string) *model.AppError); ok {
 		r1 = rf(id)
+	} else {
+		if ret.Get(1) != nil {
+			r1 = ret.Get(1).(*model.AppError)
+		}
+	}
+
+	return r0, r1
+}
+
+// GetTotalPostsCount provides a mock function with given fields: channelIds
+func (_m *PostStore) GetTotalPostsCount(channelIds *[]string) (int64, *model.AppError) {
+	ret := _m.Called(channelIds)
+
+	var r0 int64
+	if rf, ok := ret.Get(0).(func(*[]string) int64); ok {
+		r0 = rf(channelIds)
+	} else {
+		r0 = ret.Get(0).(int64)
+	}
+
+	var r1 *model.AppError
+	if rf, ok := ret.Get(1).(func(*[]string) *model.AppError); ok {
+		r1 = rf(channelIds)
 	} else {
 		if ret.Get(1) != nil {
 			r1 = ret.Get(1).(*model.AppError)
