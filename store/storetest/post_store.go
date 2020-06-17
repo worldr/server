@@ -56,7 +56,12 @@ func TestPostStore(t *testing.T, ss store.Store, s SqlSupplier) {
 	t.Run("GetDirectPostParentsForExportAfterBatched", func(t *testing.T) { testPostStoreGetDirectPostParentsForExportAfterBatched(t, ss, s) })
 	t.Run("GetRecentPosts", func(t *testing.T) { testGetRecentPosts(t, ss, s) })
 	t.Run("CheckIncrementPossible", func(t *testing.T) { testCheckIncrementPossible(t, ss, s) })
-	t.Run("GetTotalPostsCount", func(t *testing.T) { testGetTotalPostsCount(t, ss, s) })
+	t.Run("GetTotalPosts", func(t *testing.T) { testGetTotalPosts(t, ss, s) })
+	t.Run("GetPostCountAfterForChannels", func(t *testing.T) { testGetPostCountAfterForChannels(t, ss, s) })
+	t.Run("GetAllPostsAfter", func(t *testing.T) { testGetAllPostsAfter(t, ss, s) })
+	t.Run("GetAllPostsAfterLimits", func(t *testing.T) { testGetAllPostsAfterLimits(t, ss, s) })
+	t.Run("GetTotalPostsForChannels", func(t *testing.T) { testGetTotalPostsForChannels(t, ss, s) })
+	t.Run("GetOldestPostsForChannels", func(t *testing.T) { testGetOldestPostsForChannels(t, ss, s) })
 }
 
 func testPostStoreSave(t *testing.T, ss store.Store) {
@@ -3064,33 +3069,33 @@ func testCheckIncrementPossible(t *testing.T, ss store.Store, s SqlSupplier) {
 
 	t.Run("number of posts in one channel", func(t *testing.T) {
 		c := (*channels)[0]
-		request := []model.ChannelWithLastPost{
+		request := []model.ChannelWithPost{
 			{
-				ChannelId:  c.Id,
-				LastPostId: (*posts)[c.Id][0],
+				ChannelId: c.Id,
+				PostId:    (*posts)[c.Id][0],
 			},
 		}
-		count, err := ss.Post().GetPostsCountAfter(&request)
+		count, err := ss.Post().GetPostCountAfter(&request)
 		require.Nil(t, err)
 		require.Equal(t, int64(499), count, "wrong number of posts")
 
-		request = []model.ChannelWithLastPost{
+		request = []model.ChannelWithPost{
 			{
-				ChannelId:  c.Id,
-				LastPostId: (*posts)[c.Id][250],
+				ChannelId: c.Id,
+				PostId:    (*posts)[c.Id][250],
 			},
 		}
-		count, err = ss.Post().GetPostsCountAfter(&request)
+		count, err = ss.Post().GetPostCountAfter(&request)
 		require.Nil(t, err)
 		require.Equal(t, int64(249), count, "wrong number of posts")
 
-		request = []model.ChannelWithLastPost{
+		request = []model.ChannelWithPost{
 			{
-				ChannelId:  c.Id,
-				LastPostId: (*posts)[c.Id][499],
+				ChannelId: c.Id,
+				PostId:    (*posts)[c.Id][499],
 			},
 		}
-		count, err = ss.Post().GetPostsCountAfter(&request)
+		count, err = ss.Post().GetPostCountAfter(&request)
 		require.Nil(t, err)
 		require.Equal(t, int64(0), count, "wrong number of posts")
 	})
@@ -3099,43 +3104,43 @@ func testCheckIncrementPossible(t *testing.T, ss store.Store, s SqlSupplier) {
 		c1 := (*channels)[0]
 		c2 := (*channels)[1]
 		c3 := (*channels)[2]
-		request := []model.ChannelWithLastPost{
+		request := []model.ChannelWithPost{
 			{
-				ChannelId:  c1.Id,
-				LastPostId: (*posts)[c1.Id][299],
+				ChannelId: c1.Id,
+				PostId:    (*posts)[c1.Id][299],
 			},
 			{
-				ChannelId:  c2.Id,
-				LastPostId: (*posts)[c2.Id][299],
+				ChannelId: c2.Id,
+				PostId:    (*posts)[c2.Id][299],
 			},
 			{
-				ChannelId:  c3.Id,
-				LastPostId: (*posts)[c3.Id][299],
+				ChannelId: c3.Id,
+				PostId:    (*posts)[c3.Id][299],
 			},
 		}
-		count, err := ss.Post().GetPostsCountAfter(&request)
+		count, err := ss.Post().GetPostCountAfter(&request)
 		require.Nil(t, err)
 		require.Equal(t, int64(600), count, "wrong number of posts")
 	})
 
 	t.Run("duplicate channel ids", func(t *testing.T) {
 		c := (*channels)[0]
-		request := []model.ChannelWithLastPost{
+		request := []model.ChannelWithPost{
 			{
-				ChannelId:  c.Id,
-				LastPostId: (*posts)[c.Id][0],
+				ChannelId: c.Id,
+				PostId:    (*posts)[c.Id][0],
 			},
 			{
-				ChannelId:  c.Id,
-				LastPostId: (*posts)[c.Id][1],
+				ChannelId: c.Id,
+				PostId:    (*posts)[c.Id][1],
 			},
 		}
-		_, err := ss.Post().GetPostsCountAfter(&request)
+		_, err := ss.Post().GetPostCountAfter(&request)
 		require.NotNil(t, err)
 		require.Equal(
 			t,
+			"store.sql_post.get_posts_count_after_for_channels.channel_id_duplicate_or_missing.app_error",
 			err.Id,
-			"store.sql_post.get_posts_count_after.channel_id_duplicate_or_missing.app_error",
 			"wrong error id",
 		)
 	})
@@ -3143,39 +3148,39 @@ func testCheckIncrementPossible(t *testing.T, ss store.Store, s SqlSupplier) {
 	t.Run("mismatched channel id and post id", func(t *testing.T) {
 		c1 := (*channels)[0]
 		c2 := (*channels)[1]
-		request := []model.ChannelWithLastPost{
+		request := []model.ChannelWithPost{
 			{
-				ChannelId:  c1.Id,
-				LastPostId: (*posts)[c2.Id][0],
+				ChannelId: c1.Id,
+				PostId:    (*posts)[c2.Id][0],
 			},
 			{
-				ChannelId:  c2.Id,
-				LastPostId: (*posts)[c1.Id][0],
+				ChannelId: c2.Id,
+				PostId:    (*posts)[c1.Id][0],
 			},
 		}
-		_, err := ss.Post().GetPostsCountAfter(&request)
+		_, err := ss.Post().GetPostCountAfter(&request)
 		require.NotNil(t, err)
 		require.Equal(
 			t,
+			"store.sql_post.get_posts_count_after_for_channels.channel_id_post_id_mismatch.app_error",
 			err.Id,
-			"store.sql_post.get_posts_count_after.channel_id_post_id_mismatch.app_error",
 			"wrong error id",
 		)
 	})
 
 	t.Run("missing last post id", func(t *testing.T) {
 		c := (*channels)[0]
-		request := []model.ChannelWithLastPost{
+		request := []model.ChannelWithPost{
 			{
 				ChannelId: c.Id,
 			},
 		}
-		_, err := ss.Post().GetPostsCountAfter(&request)
+		_, err := ss.Post().GetPostCountAfter(&request)
 		require.NotNil(t, err)
 		require.Equal(
 			t,
+			"store.sql_post.get_posts_count_after_for_channels.channel_id_duplicate_or_missing.app_error",
 			err.Id,
-			"store.sql_post.get_posts_count_after.channel_id_duplicate_or_missing.app_error",
 			"wrong error id",
 		)
 	})
@@ -3184,7 +3189,7 @@ func testCheckIncrementPossible(t *testing.T, ss store.Store, s SqlSupplier) {
 	s.GetMaster().Exec("TRUNCATE Channels")
 }
 
-func testGetTotalPostsCount(t *testing.T, ss store.Store, s SqlSupplier) {
+func testGetTotalPosts(t *testing.T, ss store.Store, s SqlSupplier) {
 	channels, _, _ := populateChannels(t, ss, 3, 500, 2)
 
 	t.Run("total number of posts in three channels", func(t *testing.T) {
@@ -3192,9 +3197,322 @@ func testGetTotalPostsCount(t *testing.T, ss store.Store, s SqlSupplier) {
 		c2 := (*channels)[1]
 		c3 := (*channels)[2]
 		request := []string{c1.Id, c2.Id, c3.Id}
-		count, err := ss.Post().GetTotalPostsCount(&request)
+		count, err := ss.Post().GetTotalPosts(&request)
 		require.Nil(t, err)
 		require.Equal(t, int64(1500), count, "wrong number of posts")
+	})
+
+	// Manually truncate Channels table until testlib can handle cleanups
+	s.GetMaster().Exec("TRUNCATE Channels")
+}
+
+func testGetPostCountAfterForChannels(t *testing.T, ss store.Store, s SqlSupplier) {
+	channels, _, posts := populateChannels(t, ss, 3, 100, 2)
+
+	t.Run("get zero for one channel", func(t *testing.T) {
+		c := (*channels)[0]
+		request := []model.ChannelWithPost{
+			{
+				ChannelId: c.Id,
+				PostId:    (*posts)[c.Id][99],
+			},
+		}
+		counts, err := ss.Post().GetPostCountAfterForChannels(&request)
+		require.Nil(t, err)
+		postsCount, exists := (*counts)[c.Id]
+		require.True(t, exists, "no posts for requested channel")
+		require.Equal(t, 0, postsCount, "wrong number of posts")
+		require.Equal(t, 1, len(*counts), "expecting only one channel")
+	})
+
+	t.Run("get count for one channel", func(t *testing.T) {
+		c := (*channels)[0]
+		request := []model.ChannelWithPost{
+			{
+				ChannelId: c.Id,
+				PostId:    (*posts)[c.Id][50],
+			},
+		}
+		counts, err := ss.Post().GetPostCountAfterForChannels(&request)
+		require.Nil(t, err)
+		postsCount, exists := (*counts)[c.Id]
+		require.True(t, exists, "no posts for requested channel")
+		require.Equal(t, 49, postsCount, "wrong number of posts")
+		require.Equal(t, 1, len(*counts), "expecting only one channel")
+	})
+
+	t.Run("no post id for one channel", func(t *testing.T) {
+		c := (*channels)[0]
+		request := []model.ChannelWithPost{
+			{
+				ChannelId: c.Id,
+			},
+		}
+		_, err := ss.Post().GetPostCountAfterForChannels(&request)
+		require.NotNil(t, err)
+		require.Equal(
+			t,
+			"store.sql_post.get_posts_count_after_for_channels.channel_id_duplicate_or_missing.app_error",
+			err.Id,
+			"wrong error id",
+		)
+	})
+
+	t.Run("get count for two channels", func(t *testing.T) {
+		c1 := (*channels)[0]
+		c2 := (*channels)[1]
+		request := []model.ChannelWithPost{
+			{
+				ChannelId: c1.Id,
+				PostId:    (*posts)[c1.Id][49],
+			},
+			{
+				ChannelId: c2.Id,
+				PostId:    (*posts)[c2.Id][24],
+			},
+		}
+		counts, err := ss.Post().GetPostCountAfterForChannels(&request)
+		require.Nil(t, err)
+		require.Equal(t, 2, len(*counts), "expecting two channels")
+
+		postsCount, exists := (*counts)[c1.Id]
+		require.True(t, exists, "no posts for requested channel")
+		require.Equal(t, 50, postsCount, "wrong number of posts")
+
+		postsCount, exists = (*counts)[c2.Id]
+		require.True(t, exists, "no posts for requested channel")
+		require.Equal(t, 75, postsCount, "wrong number of posts")
+	})
+
+	// Manually truncate Channels table until testlib can handle cleanups
+	s.GetMaster().Exec("TRUNCATE Channels")
+}
+
+func checkPostsEqual(t *testing.T, expectedIds *[]string, actualPosts *[]*model.Post) {
+	require.Equal(t, len(*expectedIds), len(*actualPosts), "invalid posts list length")
+	for i := range *expectedIds {
+		require.Equal(t, (*expectedIds)[i], (*actualPosts)[i].Id, "post id mismatch")
+	}
+}
+
+func testGetAllPostsAfter(t *testing.T, ss store.Store, s SqlSupplier) {
+	channels, _, posts := populateChannels(t, ss, 3, 100, 2)
+
+	t.Run("get zero for one channel", func(t *testing.T) {
+		c := (*channels)[0]
+		p := (*posts)[c.Id][99]
+		request := []model.ChannelWithPost{
+			{
+				ChannelId: c.Id,
+				PostId:    p,
+			},
+		}
+		counts := map[string]int{
+			c.Id: 0,
+		}
+		posts, err := ss.Post().GetAllPostsAfter(&request, &[]string{}, &counts)
+		require.Nil(t, err)
+		list, exists := (*posts)[c.Id]
+		require.True(t, exists, "no posts list for requested channel")
+		require.Equal(t, 0, len(*list), "wrong number of posts")
+		require.Equal(t, 1, len(*posts), "expecting only one channel")
+	})
+
+	t.Run("get zero with included post for one channel", func(t *testing.T) {
+		c := (*channels)[0]
+		p := (*posts)[c.Id][99]
+		request := []model.ChannelWithPost{
+			{
+				ChannelId: c.Id,
+				PostId:    p,
+			},
+		}
+		counts := map[string]int{
+			c.Id: 0,
+		}
+		posts, err := ss.Post().GetAllPostsAfter(&request, &[]string{p}, &counts)
+		require.Nil(t, err)
+		list, exists := (*posts)[c.Id]
+		require.True(t, exists, "no posts for requested channel")
+		require.Equal(t, 1, len(*list), "wrong number of posts")
+		require.Equal(t, 1, len(*posts), "expecting only one channel")
+	})
+
+	t.Run("get posts for two channels", func(t *testing.T) {
+		c1 := (*channels)[0]
+		c2 := (*channels)[1]
+		request := []model.ChannelWithPost{
+			{ // Should have zero items
+				ChannelId: c1.Id,
+				PostId:    (*posts)[c1.Id][99],
+			},
+			{ // Should have 99 items
+				ChannelId: c2.Id,
+				PostId:    (*posts)[c2.Id][0],
+			},
+		}
+		counts := map[string]int{
+			c1.Id: 0,
+			c2.Id: 99,
+		}
+		posts, err := ss.Post().GetAllPostsAfter(&request, &[]string{}, &counts)
+		require.Nil(t, err)
+		require.Equal(t, 2, len(*posts), "expecting two channels")
+
+		list, exists := (*posts)[c1.Id]
+		require.True(t, exists, "no entry for requested channel 1")
+		require.Equal(t, 0, len(*list), "wrong number of posts")
+
+		list, exists = (*posts)[c2.Id]
+		require.True(t, exists, "no entry for requested channel 2")
+		require.Equal(t, 99, len(*list), "wrong number of posts")
+	})
+
+	t.Run("get all posts for three channels", func(t *testing.T) {
+		c1 := (*channels)[0]
+		c2 := (*channels)[1]
+		c3 := (*channels)[2]
+		request := []model.ChannelWithPost{
+			{
+				ChannelId: c1.Id,
+				PostId:    (*posts)[c1.Id][0],
+			},
+			{
+				ChannelId: c2.Id,
+				PostId:    (*posts)[c2.Id][0],
+			},
+			{
+				ChannelId: c3.Id,
+				PostId:    (*posts)[c3.Id][0],
+			},
+		}
+		counts := map[string]int{
+			c1.Id: 100,
+			c2.Id: 100,
+			c3.Id: 100,
+		}
+		received, err := ss.Post().GetAllPostsAfter(
+			&request,
+			&[]string{ // include the first posts so we get all of them
+				(*posts)[c1.Id][0],
+				(*posts)[c2.Id][0],
+				(*posts)[c3.Id][0],
+			},
+			&counts,
+		)
+		require.Nil(t, err)
+		require.Equal(t, 3, len(*received), "expecting three channels")
+
+		list, exists := (*received)[c1.Id]
+		require.True(t, exists, "no entry for requested channel 1")
+		require.Equal(t, 100, len(*list), "wrong number of posts")
+		expected := (*posts)[c1.Id]
+		checkPostsEqual(t, &expected, list)
+
+		list, exists = (*received)[c2.Id]
+		require.True(t, exists, "no entry for requested channel 2")
+		require.Equal(t, 100, len(*list), "wrong number of posts")
+		expected = (*posts)[c2.Id]
+		checkPostsEqual(t, &expected, list)
+
+		list, exists = (*received)[c3.Id]
+		require.True(t, exists, "no entry for requested channel 3")
+		require.Equal(t, 100, len(*list), "wrong number of posts")
+		expected = (*posts)[c3.Id]
+		checkPostsEqual(t, &expected, list)
+	})
+
+	// Manually truncate Channels table until testlib can handle cleanups
+	s.GetMaster().Exec("TRUNCATE Channels")
+}
+
+func testGetAllPostsAfterLimits(t *testing.T, ss store.Store, s SqlSupplier) {
+	channels, _, posts := populateChannels(t, ss, 2, 2000, 2)
+
+	t.Run("get no more than a limit for one channel", func(t *testing.T) {
+		c := (*channels)[0]
+		request := []model.ChannelWithPost{
+			{
+				ChannelId: c.Id,
+				PostId:    (*posts)[c.Id][0],
+			},
+		}
+		counts := map[string]int{
+			c.Id: 1999,
+		}
+		posts, err := ss.Post().GetAllPostsAfter(&request, &[]string{}, &counts)
+		require.Nil(t, err)
+		list, exists := (*posts)[c.Id]
+		require.True(t, exists, "no entry for requested channel")
+		require.Equal(t, 1000, len(*list), "wrong number of posts")
+		require.Equal(t, 1, len(*posts), "expecting only one channel")
+	})
+
+	// Manually truncate Channels table until testlib can handle cleanups
+	s.GetMaster().Exec("TRUNCATE Channels")
+}
+
+func testGetTotalPostsForChannels(t *testing.T, ss store.Store, s SqlSupplier) {
+	channels, _, _ := populateChannels(t, ss, 2, 500, 2)
+	emptyChannels, _, _ := populateChannels(t, ss, 1, 0, 2)
+
+	t.Run("get total posts for one channel", func(t *testing.T) {
+		c := (*channels)[0]
+		counts, err := ss.Post().GetTotalPostsForChannels(&[]string{c.Id})
+		require.Nil(t, err)
+		result, exists := (*counts)[c.Id]
+		require.True(t, exists, "no entry for requested channel")
+		require.Equal(t, 500, result, "wrong number of posts")
+		require.Equal(t, 1, len(*counts), "expecting only one channel")
+	})
+
+	t.Run("get total posts for two channels", func(t *testing.T) {
+		c1 := (*channels)[0]
+		c2 := (*channels)[1]
+		c3 := (*emptyChannels)[0]
+		counts, err := ss.Post().GetTotalPostsForChannels(&[]string{c1.Id, c2.Id, c3.Id})
+		require.Nil(t, err)
+		require.Equal(t, 3, len(*counts), "expecting 3 channels")
+
+		result, exists := (*counts)[c1.Id]
+		require.True(t, exists, "no entry for requested channel")
+		require.Equal(t, 500, result, "wrong number of posts")
+
+		result, exists = (*counts)[c2.Id]
+		require.True(t, exists, "no entry for requested channel")
+		require.Equal(t, 500, result, "wrong number of posts")
+
+		result, exists = (*counts)[c3.Id]
+		require.True(t, exists, "no entry for requested channel")
+		require.Equal(t, 0, result, "wrong number of posts")
+	})
+
+	// Manually truncate Channels table until testlib can handle cleanups
+	s.GetMaster().Exec("TRUNCATE Channels")
+}
+
+func testGetOldestPostsForChannels(t *testing.T, ss store.Store, s SqlSupplier) {
+	channels, _, posts := populateChannels(t, ss, 3, 500, 2)
+	emptyChannels, _, _ := populateChannels(t, ss, 1, 0, 2)
+
+	t.Run("get the oldest post for one channel", func(t *testing.T) {
+		c := (*channels)[0]
+		oldest, err := ss.Post().GetOldestPostsForChannels(&[]string{c.Id})
+		require.Nil(t, err)
+		postId, exists := (*oldest)[c.Id]
+		require.True(t, exists, "no entry for requested channel")
+		require.Equal(t, (*posts)[c.Id][0], postId, "mismatched oldest post id")
+		require.Equal(t, 1, len(*oldest), "expecting only one channel")
+	})
+
+	t.Run("get the oldest post for empty channel", func(t *testing.T) {
+		c := (*emptyChannels)[0]
+		oldest, err := ss.Post().GetOldestPostsForChannels(&[]string{c.Id})
+		require.Nil(t, err)
+		postId, exists := (*oldest)[c.Id]
+		require.True(t, exists, "no entry for requested channel")
+		require.Equal(t, "", postId, "mismatched oldest post id")
+		require.Equal(t, 1, len(*oldest), "expecting only one channel")
 	})
 
 	// Manually truncate Channels table until testlib can handle cleanups

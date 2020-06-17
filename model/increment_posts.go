@@ -5,18 +5,28 @@ import (
 	"io"
 )
 
-type ChannelWithLastPost struct {
-	ChannelId  string `json:"channel_id"`
-	LastPostId string `json:"last_post_id"`
+type ChannelWithPost struct {
+	ChannelId string `json:"channel_id"`
+	PostId    string `json:"post_id"`
+}
+
+type IncrementalPosts struct {
+	ChannelId string          `json:"channel_id"`
+	Posts     *PostListSimple `json:"posts"`
+	Complete  bool            `json:"complete"`
 }
 
 type IncrementPostsRequest struct {
-	Channels    []ChannelWithLastPost `json:"channels"`
-	MaxMessages int                   `json:"max_messages"`
+	Channels    []ChannelWithPost `json:"channels"`
+	MaxMessages int               `json:"max_messages"`
+}
+
+type IncrementPostsResponse struct {
+	Content *[]IncrementalPosts `json:"content"`
 }
 
 type IncrementCheckRequest struct {
-	Channels []ChannelWithLastPost `json:"channels"`
+	Channels []ChannelWithPost `json:"channels"`
 }
 
 type IncrementCheckResponse struct {
@@ -34,6 +44,21 @@ func IncrementCheckRequestDataFromJson(data io.Reader) *IncrementCheckRequest {
 }
 
 func (o *IncrementCheckResponse) ToJson() string {
+	b, _ := json.Marshal(o)
+	return string(b)
+}
+
+func IncrementPostsRequestDataFromJson(data io.Reader) *IncrementPostsRequest {
+	decoder := json.NewDecoder(data)
+	var d IncrementPostsRequest
+	err := decoder.Decode(&d)
+	if err != nil {
+		return nil
+	}
+	return &d
+}
+
+func (o *IncrementPostsResponse) ToJson() string {
 	b, _ := json.Marshal(o)
 	return string(b)
 }

@@ -24,7 +24,8 @@ const (
 	PAGE_DEFAULT                = 0
 	MAX_RECENT_TOTAL            = 1000
 	MAX_RECENT_PER_CHANNEL      = 30
-	MAX_INCREMENT_TOTAL         = 1000
+	MAX_INCREMENT_PAGE          = 1000
+	MAX_INCREMENT_TOTAL         = 1500
 )
 
 func (a *App) CreatePostAsUser(post *model.Post, currentSessionId string) (*model.Post, *model.AppError) {
@@ -1348,7 +1349,8 @@ func isPostMention(user *model.User, post *model.Post, keywords map[string][]str
 	return false
 }
 
-// GetRecentPosts returns a list of most recent posts for given channels.
+// GetRecentPosts() returns a list of most recent posts for given channels.
+//
 func (a *App) GetRecentPosts(request *model.RecentPostsRequestData) (*model.PostListSimple, *model.AppError) {
 	if request.MaxTotalMessages > MAX_RECENT_TOTAL {
 		return nil, model.NewAppError("GetRecentPosts", "app.post.get_recent_posts.total_too_big.app_error", nil, "", http.StatusBadRequest)
@@ -1391,38 +1393,153 @@ func (a *App) GetRecentPosts(request *model.RecentPostsRequestData) (*model.Post
 	// Copy pointers to a flattened list
 	result := model.PostListSimple{}
 	for i := range posts {
-		len := len(*posts[i])
 		// Reverse the order as the db returns posts sorted by date from the most recent to the oldest
-		for j := len - 1; j >= 0; j-- {
-			result = append(result, &(*posts[i])[j])
-		}
+		batch := convertPostsToPtrs(posts[i], true)
+		result = append(result, *batch...)
 	}
 	return &result, nil
 }
 
-// CheckIncrementPossible returns true if it is reasonable to proceed with downloading incremental updates for given chats.
+func convertPostsToPtrs(posts *[]model.Post, reverse bool) *[]*model.Post {
+	result := make([]*model.Post, len(*posts))[:0]
+	l := len(*posts)
+	if reverse {
+		for i := l - 1; i >= 0; i-- {
+			result = append(result, &((*posts)[i]))
+		}
+	} else {
+		for i := range *posts {
+			result = append(result, &((*posts)[i]))
+		}
+	}
+	return &result
+}
+
+// CheckIncrementPossible() returns true if it is reasonable to proceed with downloading incremental updates for given chats.
+//
 func (a *App) CheckIncrementPossible(request *model.IncrementCheckRequest) (bool, *model.AppError) {
-	channelsWithPosts := make([]model.ChannelWithLastPost, len(request.Channels))[:0]
+	channelsWithPosts := make([]model.ChannelWithPost, len(request.Channels))[:0]
 	missingChannels := []string{}
 	for _, v := range request.Channels {
-		if len(v.LastPostId) == 0 {
+		if len(v.PostId) == 0 {
 			missingChannels = append(missingChannels, v.ChannelId)
 		} else {
 			channelsWithPosts = append(channelsWithPosts, v)
 		}
 	}
 
-	count, err := a.Srv().Store.Post().GetPostsCountAfter(&channelsWithPosts)
+	count, err := a.Srv().Store.Post().GetPostCountAfter(&channelsWithPosts)
 	if err != nil {
 		return false, err
 	}
 
 	var missingCount int64 = 0
 	if len(missingChannels) > 0 {
-		missingCount, err = a.Srv().Store.Post().GetTotalPostsCount(&missingChannels)
+		missingCount, err = a.Srv().Store.Post().GetTotalPosts(&missingChannels)
 		if err != nil {
 			return false, err
 		}
 	}
 	return count+missingCount <= MAX_INCREMENT_TOTAL, nil
+}
+
+// GetIncrementalPosts() returns a list of posts for given channels after the given last post id
+// for each channel. The response is paginated and the method respects the limit of maximum
+// messages per page. The client can provide a desired page size no more than MAX_INCREMENT_PAGE.
+//
+func (a *App) GetIncrementalPosts(request *model.IncrementPostsRequest) (*[]model.IncrementalPosts, *model.AppError) {
+	if request.MaxMessages > MAX_INCREMENT_PAGE {
+		return nil, model.NewAppError("GetIncrementalPosts", "app.post.get_incremental_posts.page_too_big.app_error", nil, "", http.StatusBadRequest)
+	}
+
+	// Collect channel ids for which the request doesn't have a post id
+	channelsWithMissingPosts := []string{}
+	for _, v := range request.Channels {
+		if len(v.PostId) == 0 {
+			channelsWithMissingPosts = append(channelsWithMissingPosts, v.ChannelId)
+		}
+	}
+
+	// Get oldest posts for each channel that doesn't have a post id specified in the request
+	oldestPosts, err := a.Srv().Store.Post().GetOldestPostsForChannels(&channelsWithMissingPosts)
+	if err != nil {
+		return nil, model.NewAppError("GetIncrementalPosts", "app.post.get_incremental_posts.get_oldest_posts.app_error", nil, err.Error(), http.StatusInternalServerError)
+	}
+
+	// filter non-empty channels
+	channelsWithPosts := make([]model.ChannelWithPost, len(request.Channels))[:0]
+	includeIds := make([]string, len(*oldestPosts))[:0]
+	for _, v := range request.Channels {
+		firstPost, hasFirst := (*oldestPosts)[v.ChannelId]
+		if hasFirst && len(firstPost) > 0 {
+			v.PostId = firstPost
+			includeIds = append(includeIds, firstPost)
+		}
+		if len(v.PostId) != 0 {
+			channelsWithPosts = append(channelsWithPosts, v)
+		}
+	}
+
+	// Get the number of posts after a given post id for each non-empty channel
+	counts, err := a.Srv().Store.Post().GetPostCountAfterForChannels(&channelsWithPosts)
+	if err != nil {
+		return nil, model.NewAppError("GetIncrementalPosts", "app.post.get_incremental_posts.posts_counting.app_error", nil, err.Error(), http.StatusInternalServerError)
+	}
+	// Add zero counts to the map
+	for channelId, firstPostId := range *oldestPosts {
+		if len(firstPostId) == 0 {
+			(*counts)[channelId] = 0
+		}
+	}
+
+	// Get a slice of channels that fits MaxMessages limit
+	// Don't collect channels with zero counts.
+	pageChannels := make([]model.ChannelWithPost, len(request.Channels))[:0]
+	var total int
+	for _, v := range request.Channels {
+		channelCount := (*counts)[v.ChannelId]
+		if channelCount == 0 {
+			continue
+		}
+		if total+channelCount > request.MaxMessages {
+			// Too many messages already
+			break
+		} else {
+			if channelCount > request.MaxMessages-total {
+				// Channel will have some of its messages, but not all of them fit the page limit
+				total += request.MaxMessages - total
+			} else {
+				// All channel messages fit the page limit
+				total += channelCount
+			}
+			pageChannels = append(pageChannels, v)
+		}
+	}
+
+	// Get all the messages for all of the channels that fit the page limit
+	posts, err := a.Srv().Store.Post().GetAllPostsAfter(&pageChannels, &includeIds, counts)
+	if err != nil {
+		return nil, model.NewAppError("GetIncrementalPosts", "app.post.get_incremental_posts.get_posts.app_error", nil, err.Error(), http.StatusInternalServerError)
+	}
+
+	result := make([]model.IncrementalPosts, len(request.Channels))[:0]
+	for _, channel := range request.Channels {
+		// If channel has zero posts, always add it to the results
+		if c, exists := (*counts)[channel.ChannelId]; exists && c == 0 {
+			result = append(result, model.IncrementalPosts{
+				ChannelId: channel.ChannelId,
+				Posts:     &model.PostListSimple{},
+				Complete:  true,
+			})
+		} else if list, exists := (*posts)[channel.ChannelId]; exists {
+			var batch model.PostListSimple = *list
+			result = append(result, model.IncrementalPosts{
+				ChannelId: channel.ChannelId,
+				Posts:     &batch,
+				Complete:  len(*list) >= (*counts)[channel.ChannelId],
+			})
+		}
+	}
+
+	return &result, nil
 }

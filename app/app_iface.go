@@ -64,7 +64,8 @@ type AppIface interface {
 	// The result can be used, for example, to determine the set of users who would be removed from a channel if the
 	// channel were group-constrained with the given groups.
 	ChannelMembersMinusGroupMembers(channelID string, groupIDs []string, page, perPage int) ([]*model.UserWithGroups, int64, *model.AppError)
-	// CheckIncrementPossible returns true if it is reasonable to proceed with downloading incremental updates for given chats.
+	// CheckIncrementPossible() returns true if it is reasonable to proceed with downloading incremental updates for given chats.
+	//
 	CheckIncrementPossible(request *model.IncrementCheckRequest) (bool, *model.AppError)
 	// ClientConfigWithComputed gets the configuration in a format suitable for sending to the client.
 	ClientConfigWithComputed() map[string]string
@@ -164,6 +165,11 @@ type AppIface interface {
 	// the userId is a member of. Apart from the Channel structure itself,
 	// the ChannelSnapshot contains channel usage info and its last message.
 	GetGlobalChannels(teamId string, userId string) (*model.ChannelSnapshotList, *model.AppError)
+	// GetIncrementalPosts() returns a list of posts for given channels after the given last post id
+	// for each channel. The response is paginated and the method respects the limit of maximum
+	// messages per page. The client can provide a desired page size no more than MAX_INCREMENT_PAGE.
+	//
+	GetIncrementalPosts(request *model.IncrementPostsRequest) (*[]model.IncrementalPosts, *model.AppError)
 	// GetLdapGroup retrieves a single LDAP group by the given LDAP group id.
 	GetLdapGroup(ldapGroupID string) (*model.Group, *model.AppError)
 	// GetMarketplacePlugins returns a list of plugins from the marketplace-server,
@@ -193,7 +199,8 @@ type AppIface interface {
 	GetPluginsEnvironment() *plugin.Environment
 	// GetPublicKey will return the actual public key saved in the `name` file.
 	GetPublicKey(name string) ([]byte, *model.AppError)
-	// GetRecentPosts returns a list of most recent posts for given channels.
+	// GetRecentPosts() returns a list of most recent posts for given channels.
+	//
 	GetRecentPosts(request *model.RecentPostsRequestData) (*model.PostListSimple, *model.AppError)
 	// GetSanitizedConfig gets the configuration for a system admin without any secrets.
 	GetSanitizedConfig() *model.Config

@@ -4151,6 +4151,22 @@ func (s *TimerLayerPostStore) Get(id string, skipFetchThreads bool) (*model.Post
 	return resultVar0, resultVar1
 }
 
+func (s *TimerLayerPostStore) GetAllPostsAfter(channels *[]model.ChannelWithPost, includeIds *[]string, postCountsByChannel *map[string]int) (*map[string]*[]*model.Post, *model.AppError) {
+	start := timemodule.Now()
+
+	resultVar0, resultVar1 := s.PostStore.GetAllPostsAfter(channels, includeIds, postCountsByChannel)
+
+	elapsed := float64(timemodule.Since(start)) / float64(timemodule.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if resultVar1 == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("PostStore.GetAllPostsAfter", success, elapsed)
+	}
+	return resultVar0, resultVar1
+}
+
 func (s *TimerLayerPostStore) GetDirectPostParentsForExportAfter(limit int, afterId string) ([]*model.DirectPostForExport, *model.AppError) {
 	start := timemodule.Now()
 
@@ -4263,6 +4279,22 @@ func (s *TimerLayerPostStore) GetOldest() (*model.Post, *model.AppError) {
 	return resultVar0, resultVar1
 }
 
+func (s *TimerLayerPostStore) GetOldestPostsForChannels(channelIds *[]string) (*map[string]string, *model.AppError) {
+	start := timemodule.Now()
+
+	resultVar0, resultVar1 := s.PostStore.GetOldestPostsForChannels(channelIds)
+
+	elapsed := float64(timemodule.Since(start)) / float64(timemodule.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if resultVar1 == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("PostStore.GetOldestPostsForChannels", success, elapsed)
+	}
+	return resultVar0, resultVar1
+}
+
 func (s *TimerLayerPostStore) GetParentsForExportAfter(limit int, afterId string) ([]*model.PostForExport, *model.AppError) {
 	start := timemodule.Now()
 
@@ -4291,6 +4323,38 @@ func (s *TimerLayerPostStore) GetPostAfterTime(channelId string, time int64) (*m
 			success = "true"
 		}
 		s.Root.Metrics.ObserveStoreMethodDuration("PostStore.GetPostAfterTime", success, elapsed)
+	}
+	return resultVar0, resultVar1
+}
+
+func (s *TimerLayerPostStore) GetPostCountAfter(channels *[]model.ChannelWithPost) (int64, *model.AppError) {
+	start := timemodule.Now()
+
+	resultVar0, resultVar1 := s.PostStore.GetPostCountAfter(channels)
+
+	elapsed := float64(timemodule.Since(start)) / float64(timemodule.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if resultVar1 == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("PostStore.GetPostCountAfter", success, elapsed)
+	}
+	return resultVar0, resultVar1
+}
+
+func (s *TimerLayerPostStore) GetPostCountAfterForChannels(channels *[]model.ChannelWithPost) (*map[string]int, *model.AppError) {
+	start := timemodule.Now()
+
+	resultVar0, resultVar1 := s.PostStore.GetPostCountAfterForChannels(channels)
+
+	elapsed := float64(timemodule.Since(start)) / float64(timemodule.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if resultVar1 == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("PostStore.GetPostCountAfterForChannels", success, elapsed)
 	}
 	return resultVar0, resultVar1
 }
@@ -4407,22 +4471,6 @@ func (s *TimerLayerPostStore) GetPostsByIds(postIds []string) ([]*model.Post, *m
 	return resultVar0, resultVar1
 }
 
-func (s *TimerLayerPostStore) GetPostsCountAfter(channels *[]model.ChannelWithLastPost) (int64, *model.AppError) {
-	start := timemodule.Now()
-
-	resultVar0, resultVar1 := s.PostStore.GetPostsCountAfter(channels)
-
-	elapsed := float64(timemodule.Since(start)) / float64(timemodule.Second)
-	if s.Root.Metrics != nil {
-		success := "false"
-		if resultVar1 == nil {
-			success = "true"
-		}
-		s.Root.Metrics.ObserveStoreMethodDuration("PostStore.GetPostsCountAfter", success, elapsed)
-	}
-	return resultVar0, resultVar1
-}
-
 func (s *TimerLayerPostStore) GetPostsCreatedAt(channelId string, time int64) ([]*model.Post, *model.AppError) {
 	start := timemodule.Now()
 
@@ -4503,10 +4551,10 @@ func (s *TimerLayerPostStore) GetSingle(id string) (*model.Post, *model.AppError
 	return resultVar0, resultVar1
 }
 
-func (s *TimerLayerPostStore) GetTotalPostsCount(channelIds *[]string) (int64, *model.AppError) {
+func (s *TimerLayerPostStore) GetTotalPosts(channelIds *[]string) (int64, *model.AppError) {
 	start := timemodule.Now()
 
-	resultVar0, resultVar1 := s.PostStore.GetTotalPostsCount(channelIds)
+	resultVar0, resultVar1 := s.PostStore.GetTotalPosts(channelIds)
 
 	elapsed := float64(timemodule.Since(start)) / float64(timemodule.Second)
 	if s.Root.Metrics != nil {
@@ -4514,7 +4562,23 @@ func (s *TimerLayerPostStore) GetTotalPostsCount(channelIds *[]string) (int64, *
 		if resultVar1 == nil {
 			success = "true"
 		}
-		s.Root.Metrics.ObserveStoreMethodDuration("PostStore.GetTotalPostsCount", success, elapsed)
+		s.Root.Metrics.ObserveStoreMethodDuration("PostStore.GetTotalPosts", success, elapsed)
+	}
+	return resultVar0, resultVar1
+}
+
+func (s *TimerLayerPostStore) GetTotalPostsForChannels(channelIds *[]string) (*map[string]int, *model.AppError) {
+	start := timemodule.Now()
+
+	resultVar0, resultVar1 := s.PostStore.GetTotalPostsForChannels(channelIds)
+
+	elapsed := float64(timemodule.Since(start)) / float64(timemodule.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if resultVar1 == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("PostStore.GetTotalPostsForChannels", success, elapsed)
 	}
 	return resultVar0, resultVar1
 }
