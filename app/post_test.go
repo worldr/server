@@ -6,6 +6,7 @@ package app
 import (
 	"fmt"
 	"net/http"
+	"sort"
 	"sync"
 	"testing"
 	"time"
@@ -1593,5 +1594,413 @@ func TestCountMentionsFromPost(t *testing.T) {
 
 		assert.Nil(t, err)
 		assert.Equal(t, numPosts, count)
+	})
+}
+
+type ChannelList []*model.Channel
+
+func (a ChannelList) Len() int           { return len(a) }
+func (a ChannelList) Less(i, j int) bool { return a[i].Id < a[j].Id }
+func (a ChannelList) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+
+// Create some channels and posts for incremental and recent posts tests
+func populateChannels(
+	th *TestHelper,
+	channelsCount int,
+	postsPerChannel int,
+	usersCount int,
+) (*[]*model.Channel, *[]*model.User, *map[string][]string) {
+	team := th.CreateTeam()
+
+	users := make([]*model.User, usersCount)[:0]
+	for i := 0; i < usersCount; i++ {
+		u := th.CreateUser()
+		users = append(users, u)
+		th.LinkUserToTeam(u, team)
+	}
+
+	channels := make([]*model.Channel, channelsCount)
+	posts := make(map[string][]string, channelsCount)
+	for i := 0; i < channelsCount; i++ {
+		c := th.CreateChannel(team)
+		channels[i] = c
+		for _, u := range users {
+			th.AddUserToChannel(u, c)
+		}
+
+		list := make([]string, postsPerChannel)
+		posts[c.Id] = list
+		for j := 0; j < postsPerChannel; j++ {
+			p := th.CreatePost(c)
+			list[j] = p.Id
+		}
+	}
+
+	var l ChannelList = channels
+	sort.Sort(l)
+
+	return &channels, &users, &posts
+}
+
+func TestGetRecentPosts(t *testing.T) {
+	// regular case
+	t.Run("get recent posts", func(t *testing.T) {
+		th := Setup(t).InitBasic()
+		defer th.TearDown()
+
+		channels, _, posts := populateChannels(th, 3, 30, 2)
+		receivedPosts, err := th.App.GetRecentPosts(&model.RecentPostsRequestData{
+			ChannelIds: []string{
+				(*channels)[0].Id,
+				(*channels)[1].Id,
+				(*channels)[2].Id,
+			},
+			MaxTotalMessages:   100,
+			MessagesPerChannel: 30,
+		})
+		assert.Nil(t, err)
+		assert.Equal(t, 90, len(*receivedPosts), "wrong number of posts")
+
+		var expected []string
+		for i, v := range *receivedPosts {
+			expected = (*posts)[v.ChannelId]
+			assert.Equal(t, expected[i%30], v.Id, "post ids mismatch")
+		}
+	})
+
+	t.Run("get recent posts for channels with more messages", func(t *testing.T) {
+		th := Setup(t).InitBasic()
+		defer th.TearDown()
+
+		channels, _, posts := populateChannels(th, 3, 50, 2)
+		receivedPosts, err := th.App.GetRecentPosts(&model.RecentPostsRequestData{
+			ChannelIds: []string{
+				(*channels)[0].Id,
+				(*channels)[1].Id,
+				(*channels)[2].Id,
+			},
+			MaxTotalMessages:   80,
+			MessagesPerChannel: 30,
+		})
+		assert.Nil(t, err)
+		assert.Equal(t, 60, len(*receivedPosts), "wrong number of posts")
+
+		var expected []string
+		for i, v := range *receivedPosts {
+			expected = (*posts)[v.ChannelId]
+			assert.Equal(t, expected[20+i%30], v.Id, "post ids mismatch")
+		}
+	})
+
+	t.Run("get recent posts on a big number of channels with limit", func(t *testing.T) {
+		th := Setup(t).InitBasic()
+		defer th.TearDown()
+
+		channels, _, posts := populateChannels(th, 50, 20, 2)
+		channelIds := make([]string, 50)
+		for i := 0; i < 50; i++ {
+			channelIds[i] = (*channels)[i].Id
+		}
+		receivedPosts, err := th.App.GetRecentPosts(&model.RecentPostsRequestData{
+			ChannelIds:         channelIds,
+			MaxTotalMessages:   200, // 37 channels should not fit the limit
+			MessagesPerChannel: 15,  // 13 channels should fit the limit
+		})
+		assert.Nil(t, err)
+		assert.Equal(t, 195, len(*receivedPosts), "wrong number of posts")
+
+		receivedChannels := make(map[string]bool, 13)
+		var expected []string
+		for i, v := range *receivedPosts {
+			receivedChannels[v.ChannelId] = true
+			expected = (*posts)[v.ChannelId]
+			assert.Equal(t, expected[5+i%15], v.Id, "post ids mismatch")
+		}
+
+		for i := 13; i < 50; i++ {
+			channelId := (*channels)[i].Id
+			_, exists := receivedChannels[channelId]
+			assert.False(t, exists, "received unexpected channel")
+		}
+	})
+
+	t.Run("get recent posts from channels that have less messages than requested max", func(t *testing.T) {
+		th := Setup(t).InitBasic()
+		defer th.TearDown()
+		channels, _, posts := populateChannels(th, 5, 20, 2)
+		receivedPosts, err := th.App.GetRecentPosts(&model.RecentPostsRequestData{
+			ChannelIds: []string{
+				(*channels)[0].Id,
+				(*channels)[1].Id,
+				(*channels)[2].Id,
+				(*channels)[3].Id,
+				(*channels)[4].Id,
+			},
+			MaxTotalMessages:   100, // one channel should not fit
+			MessagesPerChannel: 30,  // max messages is more than the channels have
+		})
+		assert.Nil(t, err)
+		assert.Equal(t, 80, len(*receivedPosts), "wrong number of posts")
+
+		var expected []string
+		for i, v := range *receivedPosts {
+			expected = (*posts)[v.ChannelId]
+			assert.Equal(t, expected[i%20], v.Id, "post ids mismatch")
+		}
+	})
+
+	t.Run("request too much per channel", func(t *testing.T) {
+		th := Setup(t).InitBasic()
+		defer th.TearDown()
+
+		channels, _, _ := populateChannels(th, 3, 50, 2)
+		_, err := th.App.GetRecentPosts(&model.RecentPostsRequestData{
+			ChannelIds: []string{
+				(*channels)[0].Id,
+				(*channels)[1].Id,
+				(*channels)[2].Id,
+			},
+			MaxTotalMessages:   80,
+			MessagesPerChannel: MAX_RECENT_PER_CHANNEL + 1, // above the allowed maximum, expect error
+		})
+		assert.NotNil(t, err)
+		assert.Equal(t, "app.post.get_recent_posts.per_channel_too_big.app_error", err.Id, "wrong error id")
+	})
+
+	t.Run("request too much total messages", func(t *testing.T) {
+		th := Setup(t).InitBasic()
+		defer th.TearDown()
+
+		channels, _, _ := populateChannels(th, 3, 50, 2)
+		_, err := th.App.GetRecentPosts(&model.RecentPostsRequestData{
+			ChannelIds: []string{
+				(*channels)[0].Id,
+				(*channels)[1].Id,
+				(*channels)[2].Id,
+			},
+			MaxTotalMessages:   MAX_RECENT_TOTAL + 1, // above the allowed maximum, expect error
+			MessagesPerChannel: 30,
+		})
+		assert.NotNil(t, err)
+		assert.Equal(t, "app.post.get_recent_posts.total_too_big.app_error", err.Id, "wrong error id")
+	})
+}
+
+func TestCheckIncrementPossible(t *testing.T) {
+	t.Run("client has no posts for channels", func(t *testing.T) {
+		th := Setup(t).InitBasic()
+		defer th.TearDown()
+
+		channels, _, _ := populateChannels(th, 4, 500, 2)
+		allow, err := th.App.CheckIncrementPossible(&model.IncrementCheckRequest{
+			Channels: []model.ChannelWithPost{
+				{ChannelId: (*channels)[0].Id},
+				{ChannelId: (*channels)[1].Id},
+				{ChannelId: (*channels)[2].Id},
+				{ChannelId: (*channels)[3].Id},
+			},
+		})
+		assert.Nil(t, err)
+		assert.False(t, allow, "negative result expected")
+	})
+
+	t.Run("client has some posts for channels but update is not possible", func(t *testing.T) {
+		th := Setup(t).InitBasic()
+		defer th.TearDown()
+
+		channels, _, posts := populateChannels(th, 4, 500, 2)
+		// Arrange that the client has MAX_INCREMENT_TOTAL + 1 posts to download.
+		// This should be considered too much for incremental update.
+		allow, err := th.App.CheckIncrementPossible(&model.IncrementCheckRequest{
+			Channels: []model.ChannelWithPost{
+				{
+					ChannelId: (*channels)[0].Id,
+					PostId:    (*posts)[(*channels)[0].Id][99], // 400 posts after
+				},
+				{
+					ChannelId: (*channels)[1].Id,
+					PostId:    (*posts)[(*channels)[1].Id][99], // 400 posts after
+				},
+				{
+					ChannelId: (*channels)[2].Id,
+					PostId:    (*posts)[(*channels)[2].Id][99], // 400 posts after
+				},
+				{
+					ChannelId: (*channels)[3].Id,
+					PostId:    (*posts)[(*channels)[3].Id][198], // 301 posts after for a total of 1501
+				},
+			},
+		})
+		assert.Nil(t, err)
+		assert.False(t, allow, "negative result expected")
+	})
+
+	t.Run("client has some posts for channels and update is possible", func(t *testing.T) {
+		th := Setup(t).InitBasic()
+		defer th.TearDown()
+
+		channels, _, posts := populateChannels(th, 4, 500, 2)
+		// Arrange that the client has MAX_INCREMENT_TOTAL posts to download.
+		// This should be considered Ok for incremental update.
+		allow, err := th.App.CheckIncrementPossible(&model.IncrementCheckRequest{
+			Channels: []model.ChannelWithPost{
+				{
+					ChannelId: (*channels)[0].Id,
+					PostId:    (*posts)[(*channels)[0].Id][99], // 400 posts after
+				},
+				{
+					ChannelId: (*channels)[1].Id,
+					PostId:    (*posts)[(*channels)[1].Id][99], // 400 posts after
+				},
+				{
+					ChannelId: (*channels)[2].Id,
+					PostId:    (*posts)[(*channels)[2].Id][99], // 400 posts after
+				},
+				{
+					ChannelId: (*channels)[3].Id,
+					PostId:    (*posts)[(*channels)[3].Id][199], // 300 posts after for a total of 1500
+				},
+			},
+		})
+		assert.Nil(t, err)
+		assert.True(t, allow, "positive result expected")
+	})
+}
+
+func TestGetIncrementalPosts(t *testing.T) {
+	t.Run("get incremental posts complete", func(t *testing.T) {
+		th := Setup(t).InitBasic()
+		defer th.TearDown()
+
+		channels, _, posts := populateChannels(th, 3, 50, 2)
+		increment, err := th.App.GetIncrementalPosts(&model.IncrementPostsRequest{
+			Channels: []model.ChannelWithPost{
+				{
+					ChannelId: (*channels)[0].Id,
+					PostId:    (*posts)[(*channels)[0].Id][24],
+				},
+				{
+					ChannelId: (*channels)[1].Id,
+					PostId:    (*posts)[(*channels)[1].Id][24],
+				},
+				{
+					ChannelId: (*channels)[2].Id,
+					PostId:    (*posts)[(*channels)[2].Id][24],
+				},
+			},
+			MaxMessages: 75, // all posts should fit exactly
+		})
+		assert.Nil(t, err)
+		assert.Equal(t, 3, len(*increment), "wrong number of channels")
+		for i, v := range *increment {
+			assert.Equal(t, (*channels)[i].Id, v.ChannelId, "unexpected channel id")
+			assert.Equal(t, 25, len(*v.Posts), "wrong number of posts")
+			assert.True(t, v.Complete, "incremental update should be complete")
+			expectedPosts := (*posts)[v.ChannelId]
+			for j := 0; j < 25; j++ {
+				assert.Equal(t, expectedPosts[25+j], (*v.Posts)[j].Id, "unexpected post id")
+			}
+		}
+	})
+
+	t.Run("get incremental posts incomplete", func(t *testing.T) {
+		th := Setup(t).InitBasic()
+		defer th.TearDown()
+
+		channels, _, posts := populateChannels(th, 3, 50, 2)
+		increment, err := th.App.GetIncrementalPosts(&model.IncrementPostsRequest{
+			Channels: []model.ChannelWithPost{
+				{
+					ChannelId: (*channels)[0].Id,
+					PostId:    (*posts)[(*channels)[0].Id][24],
+				},
+				{
+					ChannelId: (*channels)[1].Id,
+					PostId:    (*posts)[(*channels)[1].Id][24],
+				},
+				{
+					ChannelId: (*channels)[2].Id,
+					PostId:    (*posts)[(*channels)[2].Id][24],
+				},
+			},
+			MaxMessages: 60, // the last chanel should have an incomplete update
+		})
+		assert.Nil(t, err)
+		assert.Equal(t, 3, len(*increment), "wrong number of channels")
+		for i, v := range *increment {
+			assert.Equal(t, (*channels)[i].Id, v.ChannelId, "unexpected channel id")
+			if i != 2 {
+				// complete channels
+				assert.Equal(t, 25, len(*v.Posts), "wrong number of posts")
+				assert.True(t, v.Complete, "incremental update should be complete")
+				expectedPosts := (*posts)[v.ChannelId]
+				for j := 0; j < 25; j++ {
+					assert.Equal(t, expectedPosts[25+j], (*v.Posts)[j].Id, "unexpected post id")
+				}
+			} else {
+				// incomplete channel
+				assert.Equal(t, 10, len(*v.Posts), "wrong number of posts")
+				assert.False(t, v.Complete, "incremental update should be incomplete")
+				expectedPosts := (*posts)[v.ChannelId]
+				for j := 0; j < 10; j++ {
+					assert.Equal(t, expectedPosts[25+j], (*v.Posts)[j].Id, "unexpected post id")
+				}
+			}
+		}
+	})
+
+	t.Run("get incremental posts one channel is empty", func(t *testing.T) {
+		th := Setup(t).InitBasic()
+		defer th.TearDown()
+
+		channels, _, posts := populateChannels(th, 3, 50, 2)
+		emptyChannels, _, _ := populateChannels(th, 1, 0, 2)
+		request := model.IncrementPostsRequest{
+			Channels: []model.ChannelWithPost{
+				{
+					ChannelId: (*channels)[0].Id,
+					PostId:    (*posts)[(*channels)[0].Id][24],
+				},
+				{
+					ChannelId: (*emptyChannels)[0].Id,
+				},
+				{
+					ChannelId: (*channels)[1].Id,
+					PostId:    (*posts)[(*channels)[1].Id][24],
+				},
+				{
+					ChannelId: (*channels)[2].Id,
+					PostId:    (*posts)[(*channels)[2].Id][24],
+				},
+			},
+			MaxMessages: 60, // the last chanel should have an incomplete update
+		}
+		increment, err := th.App.GetIncrementalPosts(&request)
+		assert.Nil(t, err)
+		assert.Equal(t, 4, len(*increment), "wrong number of channels")
+		for i, v := range *increment {
+			assert.Equal(t, request.Channels[i].ChannelId, v.ChannelId, "unexpected channel id")
+			if i == 1 {
+				// should be empty
+				assert.Equal(t, 0, len(*v.Posts), "wrong number of posts")
+				assert.True(t, v.Complete, "incremental update should be complete")
+			} else if i == 0 || i == 2 {
+				// complete channels
+				assert.Equal(t, 25, len(*v.Posts), "wrong number of posts")
+				assert.True(t, v.Complete, "incremental update should be complete")
+				expectedPosts := (*posts)[v.ChannelId]
+				for j := 0; j < 25; j++ {
+					assert.Equal(t, expectedPosts[25+j], (*v.Posts)[j].Id, "unexpected post id")
+				}
+			} else {
+				// incomplete channel
+				assert.Equal(t, 10, len(*v.Posts), "wrong number of posts")
+				assert.False(t, v.Complete, "incremental update should be incomplete")
+				expectedPosts := (*posts)[v.ChannelId]
+				for j := 0; j < 10; j++ {
+					assert.Equal(t, expectedPosts[25+j], (*v.Posts)[j].Id, "unexpected post id")
+				}
+			}
+		}
 	})
 }

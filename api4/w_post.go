@@ -132,6 +132,14 @@ func getIncrementalUpdate(c *Context, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	for _, v := range *posts {
+		for i := range *v.Posts {
+			p := (*v.Posts)[i]
+			p.StripActionIntegrations()
+			(*v.Posts)[i] = c.App.PreparePostForClient(p, false, false)
+		}
+	}
+
 	response := model.IncrementPostsResponse{Content: posts}
 	w.Write([]byte(response.ToJson()))
 }

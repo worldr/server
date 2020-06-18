@@ -559,6 +559,6 @@ ifeq ($(BUILD_ENTERPRISE_READY),true)
 	@! ag --ignore Makefile --ignore-dir vendor --ignore-dir runtime "FIX ME" enterprise/
 endif
 
-## Help documentatin à la https://marmelab.com/blog/2016/02/29/auto-documented-makefile.html
+## Help documentating à la https://marmelab.com/blog/2016/02/29/auto-documented-makefile.html
 help:
 	@grep -E '^[0-9a-zA-Z_-]+:.*?## .*$$' ./Makefile | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'

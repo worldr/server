@@ -1358,6 +1358,9 @@ func (a *App) GetRecentPosts(request *model.RecentPostsRequestData) (*model.Post
 	if request.MessagesPerChannel > MAX_RECENT_PER_CHANNEL {
 		return nil, model.NewAppError("GetRecentPosts", "app.post.get_recent_posts.per_channel_too_big.app_error", nil, "", http.StatusBadRequest)
 	}
+	if request.MaxTotalMessages < request.MessagesPerChannel {
+		return nil, model.NewAppError("GetRecentPosts", "app.post.get_recent_posts.total_less_than_per_channel.app_error", nil, "", http.StatusBadRequest)
+	}
 
 	total := len(request.ChannelIds)
 	// Don't load more posts if MessagesPerChannel doesn't fit the remaining amount before reaching the limit
@@ -1369,11 +1372,18 @@ func (a *App) GetRecentPosts(request *model.RecentPostsRequestData) (*model.Post
 	// Collect posts in batches.
 	// Stop when either all of the requested channels have been processed,
 	// or total posts limit has been reached.
-	for processedChannels < total && collectedPosts < lim {
+	for processedChannels < total && collectedPosts <= lim {
 		// Each batch is guaranteed to fit the limit for total messages,
 		// even if each channel in a batch has MessagesPerChannel messages.
 		// This means it's either a channel will have a full slice of posts up to MessagesPerChannel,
 		// or none at all (which means the client has to request again).
+		//
+		// Example: 5 channels have 20 messages each.
+		// Requested: 100 messages max in total, 30 messages max per channel.
+		// Result: 80 messages for the first 4 channels in the list, because there is no way
+		// of guessing whether the last channel will fit the total limit or not,
+		// and the method avoids requesting extra data.
+		//
 		batch := (request.MaxTotalMessages - collectedPosts) / request.MessagesPerChannel
 		if processedChannels+batch > total {
 			ids = request.ChannelIds[processedChannels:]
@@ -1495,6 +1505,7 @@ func (a *App) GetIncrementalPosts(request *model.IncrementPostsRequest) (*[]mode
 	// Get a slice of channels that fits MaxMessages limit
 	// Don't collect channels with zero counts.
 	pageChannels := make([]model.ChannelWithPost, len(request.Channels))[:0]
+	var trimmedChannel string = ""
 	var total int
 	for _, v := range request.Channels {
 		channelCount := (*counts)[v.ChannelId]
@@ -1502,17 +1513,15 @@ func (a *App) GetIncrementalPosts(request *model.IncrementPostsRequest) (*[]mode
 			continue
 		}
 		if total+channelCount > request.MaxMessages {
-			// Too many messages already
+			// Channel will have some of its messages, but not all of them fit the page limit
+			channelCount = request.MaxMessages - total
+			(*counts)[v.ChannelId] = channelCount
+			trimmedChannel = v.ChannelId
+		}
+		total += channelCount
+		pageChannels = append(pageChannels, v)
+		if total >= request.MaxMessages {
 			break
-		} else {
-			if channelCount > request.MaxMessages-total {
-				// Channel will have some of its messages, but not all of them fit the page limit
-				total += request.MaxMessages - total
-			} else {
-				// All channel messages fit the page limit
-				total += channelCount
-			}
-			pageChannels = append(pageChannels, v)
 		}
 	}
 
@@ -1533,10 +1542,21 @@ func (a *App) GetIncrementalPosts(request *model.IncrementPostsRequest) (*[]mode
 			})
 		} else if list, exists := (*posts)[channel.ChannelId]; exists {
 			var batch model.PostListSimple = *list
+			var trimmed bool
+			if len(*list) > c && trimmedChannel == channel.ChannelId {
+				// Limit the amount of messages received to the measured count.
+				// The list can have more messages than previously measured in two cases:
+				// 1. new posts have been published while we are here
+				// 2. this is the last channel in the sequence and it has more messages than fits the page limit
+				batch = (*list)[0:c]
+				trimmed = true
+			} else {
+				trimmed = false
+			}
 			result = append(result, model.IncrementalPosts{
 				ChannelId: channel.ChannelId,
 				Posts:     &batch,
-				Complete:  len(*list) >= (*counts)[channel.ChannelId],
+				Complete:  len(*list) >= c && !trimmed,
 			})
 		}
 	}
