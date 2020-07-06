@@ -24,6 +24,7 @@ func (api *API) InitWChannel() {
 	// channel with specific id
 	api.BaseRoutes.WChannel.Handle("/image", api.ApiSessionRequired(getChannelImage)).Methods("GET")
 }
+
 func getChannelImage(c *Context, w http.ResponseWriter, r *http.Request) {
 	c.RequireChannelId()
 	if c.Err != nil {

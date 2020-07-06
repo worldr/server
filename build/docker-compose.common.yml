@@ -1,5 +1,8 @@
 version: '2.4'
 services:
+
+#   _______
+#__/ MySQL \____________________________________________________________________
   mysql:
     image: "mysql:5.7"
     restart: always
@@ -11,8 +14,14 @@ services:
       MYSQL_PASSWORD: mostest
       MYSQL_USER: mmuser
       MYSQL_DATABASE: mattermost_test
+
+#   ________________
+#__/ PostgreSQL TDE \___________________________________________________________
   postgres:
     image: "postgres:9.4"
+    #image: "postgres:12.3"
+    #image: "postgres:12.3-alpine"
+    #image: "docker-registry.worldr.com/worldr-postgres-tde:latest"  # PG-TDE
     restart: always
     networks:
       - mm-test
@@ -22,7 +31,13 @@ services:
       POSTGRES_DB: mattermost_test
     command: postgres -c 'config_file=/etc/postgresql/postgresql.conf'
     volumes:
-     - "./docker/postgres.conf:/etc/postgresql/postgresql.conf"
+     - ./docker/postgres.conf:/etc/postgresql/postgresql.conf
+     #- ./docker/postgres-tde.conf:/etc/postgresql/postgresql.conf # PG-TDE
+     #- ./docker/certs:/usr/local/certs  # PG-TDE
+     - /etc/localtime:/etc/localtime:ro
+
+#   _______
+#__/ MinIO \____________________________________________________________________
   minio:
     image: "minio/minio:RELEASE.2019-10-11T00-38-09Z"
     command: "server /data"
@@ -32,11 +47,17 @@ services:
       MINIO_ACCESS_KEY: minioaccesskey
       MINIO_SECRET_KEY: miniosecretkey
       MINIO_SSE_MASTER_KEY: "my-minio-key:6368616e676520746869732070617373776f726420746f206120736563726574"
+
+#   __________
+#__/ Inbucket \_________________________________________________________________
   inbucket:
     image: "jhillyerd/inbucket:release-1.2.0"
     restart: always
     networks:
       - mm-test
+
+#   ___________
+#__/ Open LDAP \________________________________________________________________
   openldap:
     image: "osixia/openldap:1.2.2"
     restart: always
@@ -47,6 +68,9 @@ services:
       LDAP_ORGANISATION: "Mattermost Test"
       LDAP_DOMAIN: "mm.test.com"
       LDAP_ADMIN_PASSWORD: "mostest"
+
+#   ________________
+#__/ Elastic search \___________________________________________________________
   elasticsearch:
     image: "mattermost/mattermost-elasticsearch-docker:6.5.1"
     networks:

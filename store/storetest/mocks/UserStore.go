@@ -244,6 +244,38 @@ func (_m *UserStore) GetAllAfter(limit int, afterId string) ([]*model.User, *mod
 	return r0, r1
 }
 
+// GetAllPaginated provides a mock function with given fields: fromIndex, perPage
+func (_m *UserStore) GetAllPaginated(fromIndex uint64, perPage uint64) ([]*model.User, uint64, *model.AppError) {
+	ret := _m.Called(fromIndex, perPage)
+
+	var r0 []*model.User
+	if rf, ok := ret.Get(0).(func(uint64, uint64) []*model.User); ok {
+		r0 = rf(fromIndex, perPage)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*model.User)
+		}
+	}
+
+	var r1 uint64
+	if rf, ok := ret.Get(1).(func(uint64, uint64) uint64); ok {
+		r1 = rf(fromIndex, perPage)
+	} else {
+		r1 = ret.Get(1).(uint64)
+	}
+
+	var r2 *model.AppError
+	if rf, ok := ret.Get(2).(func(uint64, uint64) *model.AppError); ok {
+		r2 = rf(fromIndex, perPage)
+	} else {
+		if ret.Get(2) != nil {
+			r2 = ret.Get(2).(*model.AppError)
+		}
+	}
+
+	return r0, r1, r2
+}
+
 // GetAllProfiles provides a mock function with given fields: options
 func (_m *UserStore) GetAllProfiles(options *model.UserGetOptions) ([]*model.User, *model.AppError) {
 	ret := _m.Called(options)

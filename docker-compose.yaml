@@ -1,5 +1,8 @@
 version: "2.4"
 services:
+
+#   _______
+#__/ MySQL \____________________________________________________________________
   mysql:
     container_name: mattermost-mysql
     ports:
@@ -7,13 +10,20 @@ services:
     extends:
       file: build/docker-compose.common.yml
       service: mysql
+
+#   ________________
+#__/ PostgreSQL TDE \___________________________________________________________
   postgres:
-    container_name: mattermost-postgres
+    container_name: worldr-postgres
     ports:
       - "5432:5432"
+      #- "8888:8888" # PG-TDE
     extends:
       file: build/docker-compose.common.yml
       service: postgres
+
+#   _______
+#__/ MinIO \____________________________________________________________________
   minio:
     container_name: mattermost-minio
     ports:
@@ -21,6 +31,9 @@ services:
     extends:
         file: build/docker-compose.common.yml
         service: minio
+
+#   __________
+#__/ Inbucket \_________________________________________________________________
   inbucket:
     container_name: mattermost-inbucket
     ports:
@@ -30,23 +43,32 @@ services:
     extends:
       file: build/docker-compose.common.yml
       service: inbucket
-  # openldap:
-  # container_name: mattermost-openldap
-  # ports:
-  # - "389:389"
-  # - "636:636"
-  # extends:
-  # file: build/docker-compose.common.yml
-  # service: openldap
-  # The default Mattermost database search starts to show performance degradation at around 2.5 million posts
-  # elasticsearch:
-  # container_name: mattermost-elasticsearch
-  # ports:
-  # - "9200:9200"
-  # - "9300:9300"
-  # extends:
-  # file: build/docker-compose.common.yml
-  # service: elasticsearch
+
+##   ___________
+##__/ Open LDAP \________________________________________________________________
+#  # openldap:
+#  # container_name: mattermost-openldap
+#  # ports:
+#  # - "389:389"
+#  # - "636:636"
+#  # extends:
+#  # file: build/docker-compose.common.yml
+#  # service: openldap
+#  # The default Mattermost database search starts to show performance degradation at around 2.5 million posts
+#
+##   ________________
+##__/ Elastic search \___________________________________________________________
+#  # elasticsearch:
+#  # container_name: mattermost-elasticsearch
+#  # ports:
+#  # - "9200:9200"
+#  # - "9300:9300"
+#  # extends:
+#  # file: build/docker-compose.common.yml
+#  # service: elasticsearch
+
+#   ______________
+#__/ Dependencies \_____________________________________________________________
   start_dependencies:
     image: mattermost/mattermost-wait-for-dep:latest
     networks:
@@ -59,7 +81,10 @@ services:
       # - openldap
       # - elasticsearch
     command: postgres:5432 inbucket:10080 mysql:3306 minio:9000 # elasticsearch:9200 openldap:389
+    #command: postgres:8888 inbucket:10080 mysql:3306 minio:9000 # elasticsearch:9200 openldap:389  # PG-TDE
 
+#   _________
+#__/ Network \__________________________________________________________________
 networks:
   mm-test:
     driver: bridge

@@ -2364,3 +2364,21 @@ func (a *App) invalidateUserCacheAndPublish(userId string) {
 	message.Add("user", user)
 	a.Publish(message)
 }
+
+func (a *App) GetAllUsersPaginated(fromIndex uint64, perPage uint64) ([]*model.User, uint64, *model.AppError) {
+	return a.Srv().Store.User().GetAllPaginated(fromIndex, perPage)
+}
+
+func (a *App) IsAdminUsername(teamId string, userName string) (bool, *model.AppError) {
+	user, err := a.Srv().Store.User().GetByUsername(userName)
+	if err != nil {
+		return false, err
+	}
+
+	_, err = a.Srv().Store.Team().GetMember(teamId, user.Id)
+
+	if err != nil {
+		return false, err
+	}
+	return user.IsSystemAdmin(), nil
+}

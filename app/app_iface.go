@@ -465,6 +465,7 @@ type AppIface interface {
 	DoGuestRolesCreationMigration()
 	DoLocalRequest(rawURL string, body []byte) (*http.Response, *model.AppError)
 	DoLogin(w http.ResponseWriter, r *http.Request, user *model.User, deviceId string) *model.AppError
+	DoLoginAdmin(w http.ResponseWriter, r *http.Request, user *model.User, deviceId string) *model.AppError
 	DoPostAction(postId, actionId, userId, selectedOption string) (string, *model.AppError)
 	DoPostActionWithCookie(postId, actionId, userId, selectedOption string, cookie *model.PostActionCookie) (string, *model.AppError)
 	DoUploadFile(now time.Time, rawTeamId string, rawChannelId string, rawUserId string, rawFilename string, data []byte) (*model.FileInfo, *model.AppError)
@@ -497,6 +498,7 @@ type AppIface interface {
 	GetAllTeams() ([]*model.Team, *model.AppError)
 	GetAllTeamsPage(offset int, limit int) ([]*model.Team, *model.AppError)
 	GetAllTeamsPageWithCount(offset int, limit int) (*model.TeamsWithCount, *model.AppError)
+	GetAllUsersPaginated(fromIndex uint64, perPage uint64) ([]*model.User, uint64, *model.AppError)
 	GetAnalytics(name string, teamId string) (model.AnalyticsRows, *model.AppError)
 	GetAudits(userId string, limit int) (model.Audits, *model.AppError)
 	GetAuditsPage(userId string, page int, perPage int) (model.Audits, *model.AppError)
@@ -732,6 +734,7 @@ type AppIface interface {
 	InviteNewUsersToTeam(emailList []string, teamId, senderId string) *model.AppError
 	InviteNewUsersToTeamGracefully(emailList []string, teamId, senderId string) ([]*model.EmailInviteWithError, *model.AppError)
 	IpAddress() string
+	IsAdminUsername(teamId string, userName string) (bool, *model.AppError)
 	IsESAutocompletionEnabled() bool
 	IsESIndexingEnabled() bool
 	IsESSearchEnabled() bool

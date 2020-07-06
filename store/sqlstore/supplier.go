@@ -5,6 +5,7 @@ package sqlstore
 
 import (
 	"context"
+	"crypto/tls"
 	dbsql "database/sql"
 	"encoding/json"
 	"errors"
@@ -64,6 +65,10 @@ const (
 	EXIT_REMOVE_INDEX_SQLITE         = 136
 	EXIT_TABLE_EXISTS_SQLITE         = 137
 	EXIT_DOES_COLUMN_EXISTS_SQLITE   = 138
+)
+
+const (
+	KEY_LISTENER_PORT = "8888"
 )
 
 type SqlSupplierStores struct {
@@ -216,6 +221,31 @@ func NewSqlSupplier(settings model.SqlSettings, metrics einterfaces.MetricsInter
 	return supplier
 }
 
+// A key talker provider.
+// The service should be a "host:port" string.
+func keyTalker(service string) int {
+	TLSClientConfig := &tls.Config{InsecureSkipVerify: true} // FIXME!
+
+	conn, err := tls.Dial("tcp", service, TLSClientConfig)
+	if err != nil {
+		mlog.Warn("Key talker ", mlog.Err(err))
+		return 1
+	}
+
+	topSecretKey := "882fb7c12e80280fd664c69d2d636913" // FIXME!!!!
+	conn.Write([]byte(topSecretKey))
+
+	var buf [1024]byte
+	count, err := conn.Read(buf[0:])
+	if err != nil {
+		mlog.Warn("Key talker ", mlog.Err(err))
+		return 1
+	}
+
+	mlog.Info("Key listener quoth '" + string(buf[0:count]) + "'")
+	return 0
+}
+
 func setupConnection(con_type string, dataSource string, settings *model.SqlSettings) *gorp.DbMap {
 	db, err := dbsql.Open(*settings.DriverName, dataSource)
 	if err != nil {
@@ -224,6 +254,11 @@ func setupConnection(con_type string, dataSource string, settings *model.SqlSett
 		os.Exit(EXIT_DB_OPEN)
 	}
 
+	var dbHostName string
+	if strings.Index(dataSource, "@") > 0 {
+		// dataSource equals ":memory:" for driver "sqlite3"
+		dbHostName = strings.Split(strings.Split(dataSource, "@")[1], ":")[0]
+	}
 	for i := 0; i < DB_PING_ATTEMPTS; i++ {
 		mlog.Info("Pinging SQL", mlog.String("database", con_type))
 		ctx, cancel := context.WithTimeout(context.Background(), DB_PING_TIMEOUT_SECS*time.Second)
@@ -232,6 +267,16 @@ func setupConnection(con_type string, dataSource string, settings *model.SqlSett
 		if err == nil {
 			break
 		} else {
+
+			if len(dbHostName) > 0 {
+				// Call key talker in case we need it.
+				mlog.Info("Sending key to the database on " + dbHostName + ":" + KEY_LISTENER_PORT)
+				if keyTalker(dbHostName+":"+KEY_LISTENER_PORT) != 0 {
+					mlog.Warn("Key talker failed.")
+				}
+			}
+
+			// Continue pinging.
 			if i == DB_PING_ATTEMPTS-1 {
 				mlog.Critical("Failed to ping DB, server will exit.", mlog.Err(err))
 				time.Sleep(time.Second)

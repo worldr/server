@@ -1,35 +1,39 @@
 # Worldr Server
 
-
 [![CircleCI](https://circleci.com/gh/worldr/server.svg?style=shield&circle-token=66990f08c761df247eafc0a19fc2f975ffed14a6)](https://app.circleci.com/pipelines/github/worldr/server)
 
-# Populating server with sample data
+## PostgreSQL transparent data encryption
+
+We use the [CYBERTEC TDE patched version of PostgreSQL](https://www.cybertec-postgresql.com/en/products/postgresql-transparent-data-encryption/).
+
+This means we are building our own Alpine docker image for PostgreSQL. To get
+it, you need to run the following before starting the sever.
 
 ```bash
-# run in the server directory
-./bin/mattermost populatesample --admins "nox,max,hans,yann,sean,dz,tanel"
+docker login -p ${DOCKER_REGISTRY_PASSWORD} -u ${DOCKER_REGISTRY_USERNAME} ${DOCKER_REGISTRY_HOSTNAME}
 ```
 
+Where `DOCKER_REGISTRY_PASSWORD`, `DOCKER_REGISTRY_USERNAME`, and
+`DOCKER_REGISTRY_HOSTNAME` are available in the usual place™.
+
+Note that you might have to run `make clean-docker` to trash all the old
+docker images and the old database store.
+
+You can view the images currently in the registry via:
+
 ```bash
-./bin/mattermost populatesample --help
+docker image ls ${DOCKER_REGISTRY_HOSTNAME}/worldr-postgres-tde
+```
 
-Generate sample data
+## Populating server with sample data
 
-Usage:
-  mattermost populatesample [flags]
+There is an extra command `populate` that will populate the server with either
+random data or data taken from a configuration file.
 
-Flags:
-      --admins strings          Server admins.
-      --deactivated-users int   The number of deactivated users.
-  -g, --guests int              The number of sample guests.
-  -h, --help                    help for populatesample
-      --posts-per-channel int   The number of sample post per channel. (default 40)
-      --profile-images string   Optional. Path to folder with images to randomly pick as user profile image.
-      --channel-images string   Optional. Path to folder with images to randomly pick as channel image.			
-  -s, --seed int                Seed used for generating the random data (Different seeds generate different data). (default 3)
-  -u, --users int               The number of sample users. (default 15)
+Useful commands:
 
-Global Flags:
-  -c, --config string        Configuration file to use. (default "config.json")
-      --disableconfigwatch   When set config.json will not be loaded from disk when the file is changed.
+```[[bash]]
+$ ./bin/mattermost populate --help
+$ ./bin/mattermost populate --configuration-file /path/to/file.json
+$ ./bin/mattermost populatesample --admins "nox,max,hans,yann,sean,dz,tanel"
 ```

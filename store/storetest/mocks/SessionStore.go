@@ -117,6 +117,31 @@ func (_m *SessionStore) GetSessionsWithActiveDeviceIds(userId string) ([]*model.
 	return r0, r1
 }
 
+// GetSessionsWithDeviceId provides a mock function with given fields: userId, deviceId
+func (_m *SessionStore) GetSessionsWithDeviceId(userId string, deviceId string) ([]*model.Session, *model.AppError) {
+	ret := _m.Called(userId, deviceId)
+
+	var r0 []*model.Session
+	if rf, ok := ret.Get(0).(func(string, string) []*model.Session); ok {
+		r0 = rf(userId, deviceId)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*model.Session)
+		}
+	}
+
+	var r1 *model.AppError
+	if rf, ok := ret.Get(1).(func(string, string) *model.AppError); ok {
+		r1 = rf(userId, deviceId)
+	} else {
+		if ret.Get(1) != nil {
+			r1 = ret.Get(1).(*model.AppError)
+		}
+	}
+
+	return r0, r1
+}
+
 // PermanentDeleteSessionsByUser provides a mock function with given fields: teamId
 func (_m *SessionStore) PermanentDeleteSessionsByUser(teamId string) *model.AppError {
 	ret := _m.Called(teamId)

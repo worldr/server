@@ -36,7 +36,8 @@ type SqlUserStore struct {
 	metrics einterfaces.MetricsInterface
 
 	// usersQuery is a starting point for all queries that return one or more Users.
-	usersQuery sq.SelectBuilder
+	usersQuery               sq.SelectBuilder
+	usersShortQueryPaginated sq.SelectBuilder
 }
 
 func (us SqlUserStore) ClearCaches() {}
@@ -55,6 +56,12 @@ func newSqlUserStore(sqlStore SqlStore, metrics einterfaces.MetricsInterface) st
 			"b.UserId IS NOT NULL AS IsBot", "COALESCE(b.Description, '') AS BotDescription", "COALESCE(b.LastIconUpdate, 0) AS BotLastIconUpdate").
 		From("Users u").
 		LeftJoin("Bots b ON ( b.UserId = u.Id )")
+
+	us.usersShortQueryPaginated = us.getQueryBuilder().
+		Select("u.Id", "u.DeleteAt", "u.Username", "u.Email", "u.FirstName", "u.LastName",
+			"u.Position", "u.Roles", "u.LastPictureUpdate", "u.FailedAttempts", "u.Timezone",
+			"u.Location", "u.PhoneNumber", "u.WorkRole", "u.SocialMedia", "u.Biography").
+		From("Users u")
 
 	for _, db := range sqlStore.GetAllConns() {
 		table := db.AddTableWithName(model.User{}, "Users").SetKeys(false, "Id")
@@ -364,6 +371,26 @@ func (us SqlUserStore) GetAll() ([]*model.User, *model.AppError) {
 		return nil, model.NewAppError("SqlUserStore.GetAll", "store.sql_user.get.app_error", nil, err.Error(), http.StatusInternalServerError)
 	}
 	return data, nil
+}
+
+func (us SqlUserStore) GetAllPaginated(fromIndex uint64, perPage uint64) ([]*model.User, uint64, *model.AppError) {
+	query := us.usersShortQueryPaginated.OrderBy("Username ASC").Limit(perPage).Offset(fromIndex)
+
+	queryString, args, err := query.ToSql()
+	if err != nil {
+		return nil, 0, model.NewAppError("SqlUserStore.GetAllPaginated", "store.sql_user.app_error", nil, err.Error(), http.StatusInternalServerError)
+	}
+
+	total, err := us.GetReplica().SelectInt("SELECT count(*) FROM Users")
+	if err != nil {
+		return nil, 0, model.NewAppError("SqlUserStore.GetAllPaginated", "store.sql_user.get_count.app_error", nil, err.Error(), http.StatusInternalServerError)
+	}
+
+	var data []*model.User
+	if _, err := us.GetReplica().Select(&data, queryString, args...); err != nil {
+		return nil, 0, model.NewAppError("SqlUserStore.GetAllPaginated", "store.sql_user.get_page.app_error", nil, err.Error(), http.StatusInternalServerError)
+	}
+	return data, uint64(total), nil
 }
 
 func (us SqlUserStore) GetAllAfter(limit int, afterId string) ([]*model.User, *model.AppError) {

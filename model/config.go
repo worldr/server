@@ -288,6 +288,7 @@ type ServiceSettings struct {
 	SessionLengthWebInDays                            *int    `restricted:"true"`
 	SessionLengthMobileInDays                         *int    `restricted:"true"`
 	SessionLengthSSOInDays                            *int    `restricted:"true"`
+	SessionLengthAdminToolInHours                     *int    `restricted:"true"`
 	SessionCacheInMinutes                             *int    `restricted:"true"`
 	SessionIdleTimeoutInMinutes                       *int    `restricted:"true"`
 	WebsocketSecurePort                               *int    `restricted:"true"`
@@ -548,6 +549,10 @@ func (s *ServiceSettings) SetDefaults(isUpdate bool) {
 
 	if s.SessionLengthMobileInDays == nil {
 		s.SessionLengthMobileInDays = NewInt(180)
+	}
+
+	if s.SessionLengthAdminToolInHours == nil {
+		s.SessionLengthAdminToolInHours = NewInt(8)
 	}
 
 	if s.SessionLengthSSOInDays == nil {

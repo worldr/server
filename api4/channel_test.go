@@ -821,12 +821,20 @@ func TestGetPublicChannelsForTeam(t *testing.T) {
 	CheckNoError(t, resp)
 	require.Len(t, channels, 4, "wrong path")
 
-	for i, c := range channels {
+	defaultName1 := utils.T("api.channel.create_default_channels.town_square")
+	defaultName2 := utils.T("api.channel.create_default_channels.off_topic")
+
+	fmt.Printf("Channels: %v\n", channels)
+	for _, c := range channels {
 		// check all channels included are open
 		require.Equal(t, model.CHANNEL_OPEN, c.Type, "should include open channel only")
 
 		// only check the created 2 public channels
-		require.False(t, i < 2 && !(c.DisplayName == publicChannel1.DisplayName || c.DisplayName == publicChannel2.DisplayName), "should match public channel display name")
+		if c.DisplayName == defaultName1 || c.DisplayName == defaultName2 {
+			continue
+		} else {
+			require.False(t, !(c.DisplayName == publicChannel1.DisplayName || c.DisplayName == publicChannel2.DisplayName), "should match public channel display name")
+		}
 	}
 
 	privateChannel := th.CreatePrivateChannel()

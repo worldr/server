@@ -123,6 +123,7 @@ jobs:
       - run:
           name: Run Docker compose
           command: |
+            docker login -p ${DOCKER_REGISTRY_PASSWORD} -u ${DOCKER_REGISTRY_USERNAME} ${DOCKER_REGISTRY_HOSTNAME}
             cd mattermost-server/build
             docker-compose --no-ansi run --rm start_dependencies
             cat ../tests/test-data.ldif | docker-compose --no-ansi exec -T openldap bash -c 'ldapadd -x -D "cn=admin,dc=mm,dc=test,dc=com" -w mostest';
@@ -132,12 +133,14 @@ jobs:
       - run:
           name: Wait for docker compose
           command: |
+            docker login -p ${DOCKER_REGISTRY_PASSWORD} -u ${DOCKER_REGISTRY_USERNAME} ${DOCKER_REGISTRY_HOSTNAME}
             sleep 5
             docker run --net circleci_mm-test appropriate/curl:latest sh -c "until curl --max-time 5 --output - http://mysql:3306; do echo waiting for mysql; sleep 5; done;"
             docker run --net circleci_mm-test appropriate/curl:latest sh -c "until curl --max-time 5 --output - http://elasticsearch:9200; do echo waiting for elasticsearch; sleep 5; done;"
       - run:
           name: Run Tests
           command: |
+            docker login -p ${DOCKER_REGISTRY_PASSWORD} -u ${DOCKER_REGISTRY_USERNAME} ${DOCKER_REGISTRY_HOSTNAME}
             ulimit -n 8096
             mkdir -p mattermost-server/client/plugins
             docker run -it --net circleci_mm-test \
@@ -166,6 +169,7 @@ jobs:
           name: Capture docker logs
           when: always
           command: |
+            docker login -p ${DOCKER_REGISTRY_PASSWORD} -u ${DOCKER_REGISTRY_USERNAME} ${DOCKER_REGISTRY_HOSTNAME}
             cd mattermost-server/build
             # Capture docker logs
             mkdir -p logs
@@ -196,6 +200,7 @@ jobs:
           name: Run Docker compose
           command: |
             cd mattermost-server/build
+            docker login -p ${DOCKER_REGISTRY_PASSWORD} -u ${DOCKER_REGISTRY_USERNAME} ${DOCKER_REGISTRY_HOSTNAME}
             docker-compose --no-ansi run --rm start_dependencies
             cat ../tests/test-data.ldif | docker-compose --no-ansi exec -T openldap bash -c 'ldapadd -x -D "cn=admin,dc=mm,dc=test,dc=com" -w mostest';
             docker-compose --no-ansi exec -T minio sh -c 'mkdir -p /data/mattermost-test';
@@ -205,6 +210,7 @@ jobs:
           name: Wait for docker compose
           command: |
             sleep 5
+            docker login -p ${DOCKER_REGISTRY_PASSWORD} -u ${DOCKER_REGISTRY_USERNAME} ${DOCKER_REGISTRY_HOSTNAME}
             docker run --net circleci_mm-test appropriate/curl:latest sh -c "until curl --max-time 5 --output - http://mysql:3306; do echo waiting for mysql; sleep 5; done;"
             docker run --net circleci_mm-test appropriate/curl:latest sh -c "until curl --max-time 5 --output - http://elasticsearch:9200; do echo waiting for elasticsearch; sleep 5; done;"
       - run:
@@ -213,6 +219,8 @@ jobs:
             ulimit -n 8096
             mkdir -p mattermost-server/client/plugins
             cd mattermost-server/build
+            echo "Docker login to worldr registry."
+            docker login -p ${DOCKER_REGISTRY_PASSWORD} -u ${DOCKER_REGISTRY_USERNAME} ${DOCKER_REGISTRY_HOSTNAME}
             echo "Creating databases"
             docker-compose --no-ansi exec -T postgres sh -c 'exec echo "CREATE DATABASE migrated; CREATE DATABASE latest;" | exec psql -U mmuser mattermost_test'
             echo "Importing postgres dump from version 5.0"

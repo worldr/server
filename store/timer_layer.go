@@ -5269,6 +5269,22 @@ func (s *TimerLayerSessionStore) GetSessionsWithActiveDeviceIds(userId string) (
 	return resultVar0, resultVar1
 }
 
+func (s *TimerLayerSessionStore) GetSessionsWithDeviceId(userId string, deviceId string) ([]*model.Session, *model.AppError) {
+	start := timemodule.Now()
+
+	resultVar0, resultVar1 := s.SessionStore.GetSessionsWithDeviceId(userId, deviceId)
+
+	elapsed := float64(timemodule.Since(start)) / float64(timemodule.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if resultVar1 == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("SessionStore.GetSessionsWithDeviceId", success, elapsed)
+	}
+	return resultVar0, resultVar1
+}
+
 func (s *TimerLayerSessionStore) PermanentDeleteSessionsByUser(teamId string) *model.AppError {
 	start := timemodule.Now()
 
@@ -6703,6 +6719,22 @@ func (s *TimerLayerUserStore) GetAllAfter(limit int, afterId string) ([]*model.U
 		s.Root.Metrics.ObserveStoreMethodDuration("UserStore.GetAllAfter", success, elapsed)
 	}
 	return resultVar0, resultVar1
+}
+
+func (s *TimerLayerUserStore) GetAllPaginated(fromIndex uint64, perPage uint64) ([]*model.User, uint64, *model.AppError) {
+	start := timemodule.Now()
+
+	resultVar0, resultVar1, resultVar2 := s.UserStore.GetAllPaginated(fromIndex, perPage)
+
+	elapsed := float64(timemodule.Since(start)) / float64(timemodule.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if resultVar2 == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("UserStore.GetAllPaginated", success, elapsed)
+	}
+	return resultVar0, resultVar1, resultVar2
 }
 
 func (s *TimerLayerUserStore) GetAllProfiles(options *model.UserGetOptions) ([]*model.User, *model.AppError) {

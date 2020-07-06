@@ -112,6 +112,14 @@ func (me *Session) SetExpireInDays(days int) {
 	}
 }
 
+func (me *Session) SetExpireInHours(hours int) {
+	if me.CreateAt == 0 {
+		me.ExpiresAt = GetMillis() + (1000 * 60 * 60 * int64(hours))
+	} else {
+		me.ExpiresAt = me.CreateAt + (1000 * 60 * 60 * int64(hours))
+	}
+}
+
 func (me *Session) AddProp(key string, value string) {
 
 	if me.Props == nil {

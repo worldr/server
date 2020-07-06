@@ -48,12 +48,10 @@ func (a *App) AuthenticateUserForLogin(id, loginId, password, mfaToken string, l
 	if len(password) == 0 {
 		return nil, model.NewAppError("AuthenticateUserForLogin", "api.user.login.blank_pwd.app_error", nil, "", http.StatusBadRequest)
 	}
-
 	// Get the MM user we are trying to login
 	if user, err = a.GetUserForLogin(id, loginId); err != nil {
 		return nil, err
 	}
-
 	// If client side cert is enable and it's checking as a primary source
 	// then trust the proxy and cert that the correct user is supplied and allow
 	// them access
@@ -110,7 +108,15 @@ func (a *App) GetUserForLogin(id, loginId string) (*model.User, *model.AppError)
 	return nil, model.NewAppError("GetUserForLogin", "store.sql_user.get_for_login.app_error", nil, "", http.StatusBadRequest)
 }
 
+func (a *App) DoLoginAdmin(w http.ResponseWriter, r *http.Request, user *model.User, deviceId string) *model.AppError {
+	return a.executeLogin(w, r, user, deviceId, true)
+}
+
 func (a *App) DoLogin(w http.ResponseWriter, r *http.Request, user *model.User, deviceId string) *model.AppError {
+	return a.executeLogin(w, r, user, deviceId, false)
+}
+
+func (a *App) executeLogin(w http.ResponseWriter, r *http.Request, user *model.User, deviceId string, isAdmin bool) *model.AppError {
 	if pluginsEnvironment := a.GetPluginsEnvironment(); pluginsEnvironment != nil {
 		var rejectionReason string
 		pluginContext := a.PluginContext()
@@ -127,16 +133,20 @@ func (a *App) DoLogin(w http.ResponseWriter, r *http.Request, user *model.User, 
 	session := &model.Session{UserId: user.Id, Roles: user.GetRawRoles(), DeviceId: deviceId, IsOAuth: false}
 	session.GenerateCSRF()
 
-	if len(deviceId) > 0 {
+	if isAdmin {
+		session.SetExpireInHours(*a.Config().ServiceSettings.SessionLengthAdminToolInHours)
+	} else if len(deviceId) > 0 {
 		session.SetExpireInDays(*a.Config().ServiceSettings.SessionLengthMobileInDays)
+	} else {
+		session.SetExpireInDays(*a.Config().ServiceSettings.SessionLengthWebInDays)
+	}
 
+	if len(deviceId) > 0 {
 		// A special case where we logout of all other sessions with the same Id
 		if err := a.RevokeSessionsForDeviceId(user.Id, deviceId, ""); err != nil {
 			err.StatusCode = http.StatusInternalServerError
 			return err
 		}
-	} else {
-		session.SetExpireInDays(*a.Config().ServiceSettings.SessionLengthWebInDays)
 	}
 
 	ua := uasurfer.Parse(r.UserAgent())

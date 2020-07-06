@@ -81,18 +81,7 @@ func (api *API) InitUser() {
 	api.BaseRoutes.Users.Handle("/tokens/enable", api.ApiSessionRequired(enableUserAccessToken)).Methods("POST")
 }
 
-func createUser(c *Context, w http.ResponseWriter, r *http.Request) {
-	user := model.UserFromJson(r.Body)
-	if user == nil {
-		c.SetInvalidParam("user")
-		return
-	}
-
-	user.SanitizeInput(c.IsSystemAdmin())
-
-	tokenId := r.URL.Query().Get("t")
-	inviteId := r.URL.Query().Get("iid")
-
+func executeCreateUser(c *Context, user *model.User, tokenId, inviteId string) (*model.User, *model.AppError) {
 	auditRec := c.MakeAuditRecord("createUser", audit.Fail)
 	defer c.LogAuditRec(auditRec)
 	auditRec.AddMeta("invite_id", inviteId)
@@ -106,19 +95,19 @@ func createUser(c *Context, w http.ResponseWriter, r *http.Request) {
 		var token *model.Token
 		token, err = c.App.Srv().Store.Token().GetByToken(tokenId)
 		if err != nil {
-			c.Err = model.NewAppError("CreateUserWithToken", "api.user.create_user.signup_link_invalid.app_error", nil, err.Error(), http.StatusBadRequest)
-			return
+			err = model.NewAppError("CreateUserWithToken", "api.user.create_user.signup_link_invalid.app_error", nil, err.Error(), http.StatusBadRequest)
+			return nil, err
 		}
 		auditRec.AddMeta("token_type", token.Type)
 
 		if token.Type == app.TOKEN_TYPE_GUEST_INVITATION {
 			if c.App.License() == nil {
-				c.Err = model.NewAppError("CreateUserWithToken", "api.user.create_user.guest_accounts.license.app_error", nil, "", http.StatusBadRequest)
-				return
+				err = model.NewAppError("CreateUserWithToken", "api.user.create_user.guest_accounts.license.app_error", nil, "", http.StatusBadRequest)
+				return nil, err
 			}
 			if !*c.App.Config().GuestAccountsSettings.Enable {
-				c.Err = model.NewAppError("CreateUserWithToken", "api.user.create_user.guest_accounts.disabled.app_error", nil, "", http.StatusBadRequest)
-				return
+				err = model.NewAppError("CreateUserWithToken", "api.user.create_user.guest_accounts.disabled.app_error", nil, "", http.StatusBadRequest)
+				return nil, err
 			}
 		}
 		ruser, err = c.App.CreateUserWithToken(user, token)
@@ -132,12 +121,31 @@ func createUser(c *Context, w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err != nil {
-		c.Err = err
-		return
+		return nil, err
 	}
 
 	auditRec.Success()
 	auditRec.AddMeta("create_user_id", ruser.Id)
+
+	return ruser, nil
+}
+
+func createUser(c *Context, w http.ResponseWriter, r *http.Request) {
+	user := model.UserFromJson(r.Body)
+	if user == nil {
+		c.SetInvalidParam("user")
+		return
+	}
+	user.SanitizeInput(c.IsSystemAdmin())
+
+	tokenId := r.URL.Query().Get("t")
+	inviteId := r.URL.Query().Get("iid")
+
+	ruser, err := executeCreateUser(c, user, tokenId, inviteId)
+	if err != nil {
+		c.Err = err
+		return
+	}
 
 	w.WriteHeader(http.StatusCreated)
 	w.Write([]byte(ruser.ToJson()))
@@ -1434,22 +1442,27 @@ func maskSensitiveErrors(c *Context) {
 	}
 
 	c.Err = model.NewAppError("login", "api.user.login.invalid_credentials_email_username", nil, "", http.StatusUnauthorized)
-
 }
 
 func executeLogin(c *Context, w http.ResponseWriter, r *http.Request) (*model.User, *model.AppError) {
 	props := model.MapFromJson(r.Body)
+	return executeLoginWithProps(c, w, r, props)
+}
 
+func executeLoginWithProps(c *Context, w http.ResponseWriter, r *http.Request, props map[string]string) (*model.User, *model.AppError) {
+	defer maskSensitiveErrors(c)
 	id := props["id"]
 	loginId := props["login_id"]
 	password := props["password"]
 	mfaToken := props["token"]
 	deviceId := props["device_id"]
 	ldapOnly := props["ldap_only"] == "true"
+	useAdminTtl := props[model.USE_ADMIN_SESSION_TTL] == "true"
 
 	if *c.App.Config().ExperimentalSettings.ClientSideCertEnable {
 		if license := c.App.License(); license == nil || !*license.Features.SAML {
 			err := model.NewAppError("ClientSideCertNotAllowed", "api.user.login.client_side_cert.license.app_error", nil, "", http.StatusBadRequest)
+			c.Err = err
 			return nil, err
 		}
 		certPem, certSubject, certEmail := c.App.CheckForClientSideCert(r)
@@ -1457,6 +1470,7 @@ func executeLogin(c *Context, w http.ResponseWriter, r *http.Request) (*model.Us
 
 		if len(certPem) == 0 || len(certEmail) == 0 {
 			err := model.NewAppError("ClientSideCertMissing", "api.user.login.client_side_cert.certificate.app_error", nil, "", http.StatusBadRequest)
+			c.Err = err
 			return nil, err
 		}
 
@@ -1474,8 +1488,10 @@ func executeLogin(c *Context, w http.ResponseWriter, r *http.Request) (*model.Us
 	c.LogAuditWithUserId(id, "attempt - login_id="+loginId)
 
 	user, err := c.App.AuthenticateUserForLogin(id, loginId, password, mfaToken, ldapOnly)
+
 	if err != nil {
 		c.LogAuditWithUserId(id, "failure - login_id="+loginId)
+		c.Err = err
 		return nil, err
 	}
 	auditRec.AddMeta(audit.KeyUserID, user.Id)
@@ -1483,18 +1499,25 @@ func executeLogin(c *Context, w http.ResponseWriter, r *http.Request) (*model.Us
 	if user.IsGuest() {
 		if c.App.License() == nil {
 			err1 := model.NewAppError("login", "api.user.login.guest_accounts.license.error", nil, "", http.StatusUnauthorized)
+			c.Err = err1
 			return nil, err1
 		}
 		if !*c.App.Config().GuestAccountsSettings.Enable {
 			err1 := model.NewAppError("login", "api.user.login.guest_accounts.disabled.error", nil, "", http.StatusUnauthorized)
+			c.Err = err1
 			return nil, err1
 		}
 	}
 
 	c.LogAuditWithUserId(user.Id, "authenticated")
 
-	err = c.App.DoLogin(w, r, user, deviceId)
+	if useAdminTtl {
+		err = c.App.DoLoginAdmin(w, r, user, deviceId)
+	} else {
+		err = c.App.DoLogin(w, r, user, deviceId)
+	}
 	if err != nil {
+		c.Err = err
 		return nil, err
 	}
 
@@ -1506,6 +1529,7 @@ func executeLogin(c *Context, w http.ResponseWriter, r *http.Request) (*model.Us
 
 	userTermsOfService, err := c.App.GetUserTermsOfService(user.Id)
 	if err != nil && err.StatusCode != http.StatusNotFound {
+		c.Err = err
 		return nil, err
 	}
 
@@ -1522,10 +1546,7 @@ func executeLogin(c *Context, w http.ResponseWriter, r *http.Request) (*model.Us
 }
 
 func login(c *Context, w http.ResponseWriter, r *http.Request) {
-	defer maskSensitiveErrors(c)
-	if user, err := executeLogin(c, w, r); err != nil {
-		c.Err = err
-	} else {
+	if user, err := executeLogin(c, w, r); err == nil {
 		w.Write([]byte(user.ToJson()))
 	}
 }

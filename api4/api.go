@@ -61,8 +61,11 @@ type Routes struct {
 	Files *mux.Router // 'api/v4/files'
 	File  *mux.Router // 'api/v4/files/{file_id:[A-Za-z0-9]+}'
 
-	// Worldr get all files API.
+	// Worldr files API.
 	WFiles *mux.Router // '/api/worldr/v1/files/' for now, maybe later add '{user_id:[A-Za-z1-9_-]+}'
+
+	// Worldr admin API.
+	WAdmin *mux.Router // '/api/worldr/v1/admin'
 
 	Plugins *mux.Router // 'api/v4/plugins'
 	Plugin  *mux.Router // 'api/v4/plugins/{plugin_id:[A-Za-z0-9_-]+}'
@@ -146,6 +149,7 @@ func Init(configservice configservice.ConfigService, globalOptionsFunc app.AppOp
 	api.BaseRoutes.WUsers = api.BaseRoutes.WorldrRoot.PathPrefix("/users").Subrouter()
 	api.BaseRoutes.WFiles = api.BaseRoutes.WorldrRoot.PathPrefix("/files").Subrouter()
 	api.BaseRoutes.WPosts = api.BaseRoutes.WorldrRoot.PathPrefix("/posts").Subrouter()
+	api.BaseRoutes.WAdmin = api.BaseRoutes.WorldrRoot.PathPrefix("/admin").Subrouter()
 
 	// Mattermost original API
 
@@ -236,6 +240,7 @@ func Init(configservice configservice.ConfigService, globalOptionsFunc app.AppOp
 	api.BaseRoutes.TermsOfService = api.BaseRoutes.ApiRoot.PathPrefix("/terms_of_service").Subrouter()
 	api.BaseRoutes.Groups = api.BaseRoutes.ApiRoot.PathPrefix("/groups").Subrouter()
 
+	api.InitWAdmin()
 	api.InitUser()
 	api.InitWUser()
 	api.InitBot()

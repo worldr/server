@@ -26,10 +26,11 @@ import (
 )
 
 const (
-	LOWERCASE_LETTERS = "abcdefghijklmnopqrstuvwxyz"
-	UPPERCASE_LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-	NUMBERS           = "0123456789"
-	SYMBOLS           = " !\"\\#$%&'()*+,-./:;<=>?@[]^_`|~"
+	LOWERCASE_LETTERS     = "abcdefghijklmnopqrstuvwxyz"
+	UPPERCASE_LETTERS     = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	NUMBERS               = "0123456789"
+	SYMBOLS               = " !\"\\#$%&'()*+,-./:;<=>?@[]^_`|~"
+	USE_ADMIN_SESSION_TTL = "use_admin_session_ttl"
 )
 
 type StringInterface map[string]interface{}

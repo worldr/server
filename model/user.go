@@ -518,6 +518,18 @@ func (u *User) Patch(patch *UserPatch) {
 	if patch.Timezone != nil {
 		u.Timezone = patch.Timezone
 	}
+
+	if patch.WorkRole != nil {
+		u.WorkRole = *patch.WorkRole
+	}
+
+	if patch.PhoneNumber != nil {
+		u.PhoneNumber = *patch.PhoneNumber
+	}
+
+	if patch.Biography != nil {
+		u.Biography = *patch.Biography
+	}
 }
 
 // ToJson convert a User to a json string

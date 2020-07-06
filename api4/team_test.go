@@ -1,4 +1,4 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2017-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 package api4
@@ -681,9 +681,11 @@ func TestGetAllTeams(t *testing.T) {
 			}
 			CheckNoError(t, resp)
 			require.Equal(t, len(tc.ExpectedTeams), len(teams))
-			for idx, team := range teams {
-				assert.Equal(t, tc.ExpectedTeams[idx], team.Id)
+			var actualTeams []string
+			for _, team := range teams {
+				actualTeams = append(actualTeams, team.Id)
 			}
+			assert.ElementsMatch(t, tc.ExpectedTeams, actualTeams)
 			require.Equal(t, tc.ExpectedCount, count)
 		})
 	}
@@ -2334,7 +2336,7 @@ func TestInviteUsersToTeam(t *testing.T) {
 			"TeamDisplayName": th.BasicTeam.DisplayName,
 			"SiteName":        th.App.ClientConfig()["SiteName"]})
 
-	//Check if the email was send to the rigth email address
+	//Check if the email was send to the right email address
 	for _, email := range emailList {
 		var resultsMailbox mailservice.JSONMessageHeaderInbucket
 		err := mailservice.RetryInbucket(5, func() error {
@@ -2457,7 +2459,7 @@ func TestInviteGuestsToTeam(t *testing.T) {
 			"TeamDisplayName": th.BasicTeam.DisplayName,
 			"SiteName":        th.App.ClientConfig()["SiteName"]})
 
-	//Check if the email was send to the rigth email address
+	//Check if the email was sent to the right email address
 	for _, email := range emailList {
 		var resultsMailbox mailservice.JSONMessageHeaderInbucket
 		err := mailservice.RetryInbucket(5, func() error {

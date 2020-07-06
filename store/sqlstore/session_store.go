@@ -264,3 +264,22 @@ func (me SqlSessionStore) Cleanup(expiryTime int64, batchSize int64) {
 		time.Sleep(SESSIONS_CLEANUP_DELAY_MILLISECONDS * time.Millisecond)
 	}
 }
+
+func (me SqlSessionStore) GetSessionsWithDeviceId(userId string, deviceId string) ([]*model.Session, *model.AppError) {
+	var sessions []*model.Session
+	_, err := me.GetReplica().Select(
+		&sessions,
+		`
+		SELECT *
+		FROM Sessions
+		WHERE
+		UserId = :UserId AND
+		DeviceId = :DeviceId
+		`,
+		map[string]interface{}{"UserId": userId, "DeviceId": deviceId},
+	)
+	if err != nil {
+		return nil, model.NewAppError("SqlSessionStore.GetSessionWithDeviceId", "store.sql_session.get_session_with-device_id.app_error", nil, err.Error(), http.StatusInternalServerError)
+	}
+	return sessions, nil
+}

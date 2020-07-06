@@ -12,7 +12,6 @@ func (api *API) InitWUser() {
 }
 
 func loginWrapper(c *Context, w http.ResponseWriter, r *http.Request) {
-	defer maskSensitiveErrors(c)
 	if user, err := executeLogin(c, w, r); err != nil {
 		c.Err = err
 	} else {

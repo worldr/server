@@ -343,6 +343,7 @@ type UserStore interface {
 	PromoteGuestToUser(userID string) *model.AppError
 	DemoteUserToGuest(userID string) *model.AppError
 	DeactivateGuests() ([]string, *model.AppError)
+	GetAllPaginated(fromIndex uint64, perPage uint64) ([]*model.User, uint64, *model.AppError)
 }
 
 type BotStore interface {
@@ -367,6 +368,7 @@ type SessionStore interface {
 	UpdateProps(session *model.Session) *model.AppError
 	AnalyticsSessionCount() (int64, *model.AppError)
 	Cleanup(expiryTime int64, batchSize int64)
+	GetSessionsWithDeviceId(userId string, deviceId string) ([]*model.Session, *model.AppError)
 }
 
 type AuditStore interface {
