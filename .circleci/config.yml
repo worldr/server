@@ -355,6 +355,22 @@ jobs:
               --data parameters[external_branch]=$CIRCLE_BRANCH \
               --data parameters[external_sha]=$CIRCLE_SHA1
 
+  publish-github-release:
+    docker:
+      - image: cibuilds/github:0.12
+    steps:
+      - attach_workspace:
+          at: ~/mattermost
+      - run:
+          name: "Publish Release on GitHub"
+          command: |
+            ghr -t ${GITHUB_TOKEN} \
+              -u ${CIRCLE_PROJECT_USERNAME} \
+              -r ${CIRCLE_PROJECT_REPONAME} \
+              -c ${CIRCLE_SHA1} \
+              -delete ${CIRCLE_TAG} \
+              ~/mattermost/mattermost-server/dist/mattermost-team-linux-amd64.tar.gz
+
 workflows:
   version: 2
   untagged-build:
@@ -364,7 +380,7 @@ workflows:
             branches:
               ignore:
                 #- master  # We want to build master so we can install it!
-                - /^release-.*/
+                - /^v.*/
       # - check-i18n:
       #     requires:
       #       - setup
@@ -416,3 +432,37 @@ workflows:
           filters:
             branches:
               only: /^pull\/.*$/
+  tagged-build:
+    # Please use dump2version to change versions so the tag is always right.
+    jobs:
+      - setup:
+          filters:
+            tags:
+              only: /^v.*/
+            branches:
+              ignore: /.*/
+      - check-app-layers:
+          requires:
+            - setup
+          filters:
+            tags:
+              only: /^v.*/
+            branches:
+              ignore: /.*/
+      - build:
+          requires:
+            - check-app-layers
+          filters:
+            tags:
+              only: /^v.*/
+            branches:
+              ignore: /.*/
+      - publish-github-release:
+          context: worldr-build-github-token
+          requires:
+            - build
+          filters:
+            tags:
+              only: /^v.*/
+            branches:
+              ignore: /.*/
