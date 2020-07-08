@@ -105,7 +105,8 @@ type User struct {
 }
 
 type UserResponseWrapper struct {
-	Content *User `json:"content"`
+	User  *User  `json:"user"`
+	Token string `json:"token"`
 }
 
 func (o *UserResponseWrapper) ToJson() string {
