@@ -27,6 +27,7 @@ import (
 )
 
 var ApiClient *model.Client4
+var ApiWClient *model.WClient
 var URL string
 
 type TestHelper struct {
@@ -106,6 +107,7 @@ func setupTestHelper(t testing.TB, store store.Store, includeCacheLayer bool) *T
 	web := New(s, s.AppOptions, s.Router)
 	URL = fmt.Sprintf("http://localhost:%v", a.Srv().ListenAddr.Port)
 	ApiClient = model.NewAPIv4Client(URL)
+	ApiWClient = model.NewWorldrAPIClient(URL, ApiClient)
 
 	a.DoAppMigrations()
 

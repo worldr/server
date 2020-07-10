@@ -43,9 +43,6 @@ const (
 	API_URL_SUFFIX_V1 = "/api/v1"
 	API_URL_SUFFIX_V4 = "/api/v4"
 	API_URL_SUFFIX    = API_URL_SUFFIX_V4
-
-	API_URL_SUFFIX_WORLDR_V1 = "/api/worldr/v1"
-	API_URL_SUFFIX_WORLDR    = API_URL_SUFFIX_WORLDR_V1
 )
 
 type Response struct {
@@ -260,10 +257,6 @@ func (c *Client4) GetFilesRoute() string {
 	return fmt.Sprintf("/files")
 }
 
-func (c *Client4) GetWFilesRoute() string {
-	return "/files" // fmt.Sprintf("%s/files", API_URL_SUFFIX_WORLDR)
-}
-
 func (c *Client4) GetFileRoute(fileId string) string {
 	return fmt.Sprintf(c.GetFilesRoute()+"/%v", fileId)
 }
@@ -468,16 +461,32 @@ func (c *Client4) GetGroupSyncablesRoute(groupID string, syncableType GroupSynca
 	return fmt.Sprintf("%s/%ss", c.GetGroupRoute(groupID), strings.ToLower(syncableType.String()))
 }
 
+//
+// REQUEST METHODS
+//
+
 func (c *Client4) DoApiGet(url string, etag string) (*http.Response, *AppError) {
-	return c.DoApiRequest(http.MethodGet, c.ApiUrl+url, "", etag)
+	return c.DoApiGetWithUrl(url, etag, true)
 }
 
-func (c *Client4) DoWorldrApiGet(url string, etag string) (*http.Response, *AppError) {
-	return c.DoApiRequest(http.MethodGet, c.Url+API_URL_SUFFIX_WORLDR+url, "", etag)
+// When useApiUrl = false, the url parameter contains an absolute url.
+func (c *Client4) DoApiGetWithUrl(url string, etag string, useApiUrl bool) (*http.Response, *AppError) {
+	if useApiUrl {
+		url = c.ApiUrl + url
+	}
+	return c.DoApiRequest(http.MethodGet, url, "", etag)
 }
 
 func (c *Client4) DoApiPost(url string, data string) (*http.Response, *AppError) {
-	return c.DoApiRequest(http.MethodPost, c.ApiUrl+url, data, "")
+	return c.DoApiPostWithUrl(url, data, true)
+}
+
+// When useApiUrl = false, the url parameter contains an absolute url.
+func (c *Client4) DoApiPostWithUrl(url string, data string, useApiUrl bool) (*http.Response, *AppError) {
+	if useApiUrl {
+		url = c.ApiUrl + url
+	}
+	return c.DoApiRequest(http.MethodPost, url, data, "")
 }
 
 func (c *Client4) doApiPostBytes(url string, data []byte) (*http.Response, *AppError) {
@@ -485,7 +494,15 @@ func (c *Client4) doApiPostBytes(url string, data []byte) (*http.Response, *AppE
 }
 
 func (c *Client4) DoApiPut(url string, data string) (*http.Response, *AppError) {
-	return c.DoApiRequest(http.MethodPut, c.ApiUrl+url, data, "")
+	return c.DoApiPutWithUrl(url, data, true)
+}
+
+// When useApiUrl = false, the url parameter contains an absolute url.
+func (c *Client4) DoApiPutWithUrl(url string, data string, useApiUrl bool) (*http.Response, *AppError) {
+	if useApiUrl {
+		url = c.ApiUrl + url
+	}
+	return c.DoApiRequest(http.MethodPut, url, data, "")
 }
 
 func (c *Client4) doApiPutBytes(url string, data []byte) (*http.Response, *AppError) {
@@ -493,7 +510,15 @@ func (c *Client4) doApiPutBytes(url string, data []byte) (*http.Response, *AppEr
 }
 
 func (c *Client4) DoApiDelete(url string) (*http.Response, *AppError) {
-	return c.DoApiRequest(http.MethodDelete, c.ApiUrl+url, "", "")
+	return c.DoApiDeleteWithUrl(url, true)
+}
+
+// When useApiUrl = false, the url parameter contains an absolute url.
+func (c *Client4) DoApiDeleteWithUrl(url string, useApiUrl bool) (*http.Response, *AppError) {
+	if useApiUrl {
+		url = c.ApiUrl + url
+	}
+	return c.DoApiRequest(http.MethodDelete, url, "", "")
 }
 
 func (c *Client4) DoApiRequest(method, url, data, etag string) (*http.Response, *AppError) {
@@ -2990,16 +3015,6 @@ func (c *Client4) GetFileInfo(fileId string) (*FileInfo, *Response) {
 	}
 	defer closeBody(r)
 	return FileInfoFromJson(r.Body), BuildResponse(r)
-}
-
-// GetFileInfos gets all the files into objects.
-func (c *Client4) GetFileInfos() ([]*FileInfo, *Response) {
-	r, err := c.DoWorldrApiGet(c.GetWFilesRoute(), "")
-	if err != nil {
-		return nil, BuildErrorResponse(r, err)
-	}
-	defer closeBody(r)
-	return *FileInfoResponseWrapperFromJson(r.Body).Content, BuildResponse(r)
 }
 
 // GetFileInfosForPost gets all the file info objects attached to a post.

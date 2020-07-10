@@ -21,6 +21,7 @@ import (
 	"github.com/mattermost/mattermost-server/v5/model"
 	"github.com/mattermost/mattermost-server/v5/store"
 	"github.com/mattermost/mattermost-server/v5/store/localcachelayer"
+	"github.com/mattermost/mattermost-server/v5/store/sqlstore"
 	"github.com/mattermost/mattermost-server/v5/store/storetest/mocks"
 	"github.com/mattermost/mattermost-server/v5/testlib"
 	"github.com/mattermost/mattermost-server/v5/utils"
@@ -38,6 +39,7 @@ type TestHelper struct {
 	ConfigStore config.Store
 
 	Client               *model.Client4
+	WClient              *model.WClient
 	BasicUser            *model.User
 	BasicUser2           *model.User
 	TeamAdminUser        *model.User
@@ -50,9 +52,10 @@ type TestHelper struct {
 	BasicPost            *model.Post
 	Group                *model.Group
 
-	SystemAdminClient *model.Client4
-	SystemAdminUser   *model.User
-	tempWorkspace     string
+	SystemAdminClient  *model.Client4
+	WSystemAdminClient *model.WClient
+	SystemAdminUser    *model.User
+	tempWorkspace      string
 
 	IncludeCacheLayer bool
 }
@@ -142,7 +145,9 @@ func setupTestHelper(dbStore store.Store, enterprise bool, includeCache bool, up
 	}
 
 	th.Client = th.CreateClient()
+	th.WClient = th.CreateWorldrClient(th.Client)
 	th.SystemAdminClient = th.CreateClient()
+	th.WSystemAdminClient = th.CreateWorldrClient(th.SystemAdminClient)
 
 	if th.tempWorkspace == "" {
 		th.tempWorkspace = tempWorkspace
@@ -323,6 +328,14 @@ func (me *TestHelper) InitBasic() *TestHelper {
 	return me
 }
 
+func (me *TestHelper) CreateMainTeam() *model.Team {
+	mainTeam := me.CreateMainTeamWithClient(me.SystemAdminClient)
+	me.LinkUserToTeam(me.BasicUser, mainTeam)
+	me.LinkUserToTeam(me.BasicUser2, mainTeam)
+	me.LinkUserToTeam(me.SystemAdminUser, mainTeam)
+	return mainTeam
+}
+
 func (me *TestHelper) waitForConnectivity() {
 	for i := 0; i < 1000; i++ {
 		conn, err := net.Dial("tcp", fmt.Sprintf("localhost:%v", me.App.Srv().ListenAddr.Port))
@@ -337,6 +350,10 @@ func (me *TestHelper) waitForConnectivity() {
 
 func (me *TestHelper) CreateClient() *model.Client4 {
 	return model.NewAPIv4Client(fmt.Sprintf("http://localhost:%v", me.App.Srv().ListenAddr.Port))
+}
+
+func (me *TestHelper) CreateWorldrClient(mmClient *model.Client4) *model.WClient {
+	return model.NewWorldrAPIClient(fmt.Sprintf("http://localhost:%v", me.App.Srv().ListenAddr.Port), mmClient)
 }
 
 func (me *TestHelper) CreateWebSocketClient() (*model.WebSocketClient, *model.AppError) {
@@ -384,6 +401,23 @@ func (me *TestHelper) CreateTeamWithClient(client *model.Client4) *model.Team {
 	team := &model.Team{
 		DisplayName: "dn_" + id,
 		Name:        GenerateTestTeamName(),
+		Email:       me.GenerateTestEmail(),
+		Type:        model.TEAM_OPEN,
+	}
+
+	utils.DisableDebugLogForTest()
+	rteam, resp := client.CreateTeam(team)
+	if resp.Error != nil {
+		panic(resp.Error)
+	}
+	utils.EnableDebugLogForTest()
+	return rteam
+}
+
+func (me *TestHelper) CreateMainTeamWithClient(client *model.Client4) *model.Team {
+	team := &model.Team{
+		DisplayName: sqlstore.MAIN_TEAM_NAME,
+		Name:        sqlstore.MAIN_TEAM_NAME,
 		Email:       me.GenerateTestEmail(),
 		Type:        model.TEAM_OPEN,
 	}

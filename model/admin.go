@@ -2,6 +2,7 @@ package model
 
 import (
 	"encoding/json"
+	"io"
 )
 
 type AdminAuthResponse struct {
@@ -13,6 +14,12 @@ type AdminAuthResponse struct {
 func (me *AdminAuthResponse) ToJson() string {
 	b, _ := json.Marshal(me)
 	return string(b)
+}
+
+func AdminAuthResponseFromJson(data io.Reader) *AdminAuthResponse {
+	var w *AdminAuthResponse
+	json.NewDecoder(data).Decode(&w)
+	return w
 }
 
 type AdminUsersPage struct {
