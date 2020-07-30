@@ -48,9 +48,40 @@ func (c *WClient) GetLoginByAdminUrl() string {
 	return fmt.Sprintf("%v/admin/login", c.ApiUrl)
 }
 
+// Get absolute api url of the admin setup handle.
+func (c *WClient) GetSetupUrl() string {
+	return fmt.Sprintf("%v/admin/setup", c.ApiUrl)
+}
+
+// Get absolute api url of the initial admin creation handle.
+func (c *WClient) GetCreateIntialAdminUrl() string {
+	return fmt.Sprintf("%v/admin/setup/admin", c.ApiUrl)
+}
+
 //
 // METHODS
 //
+
+// Creates an administrator user if no administrators are present on the server.
+func (c *WClient) CreateInitialAdmin(u *User) (*User, *Response) {
+	r, err := c.MMClient.DoApiPostWithUrl(c.GetCreateIntialAdminUrl(), u.ToJson(), false)
+	if err != nil {
+		return nil, BuildErrorResponse(r, err)
+	}
+	defer closeBody(r)
+	return UserFromJson(r.Body), BuildResponse(r)
+}
+
+// Setup checks whether the main team and at least one admin is present on the server.
+// If the main team is absent, it gets created.
+func (c *WClient) Setup() (*AdminSetupStatus, *Response) {
+	r, err := c.MMClient.DoApiGetWithUrl(c.GetSetupUrl(), "", false)
+	if err != nil {
+		return nil, BuildErrorResponse(r, err)
+	}
+	defer closeBody(r)
+	return AdminSetupStatusFromJson(r.Body), BuildResponse(r)
+}
 
 // GetFileInfos gets all the files into objects.
 func (c *WClient) GetFileInfos() ([]*FileInfo, *Response) {

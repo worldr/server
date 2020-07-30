@@ -43,3 +43,19 @@ func (me *AdminTokenCheck) ToJson() string {
 	b, _ := json.Marshal(me)
 	return string(b)
 }
+
+type AdminSetupStatus struct {
+	Team  bool `json:"team"`
+	Admin bool `json:"admin"`
+}
+
+func (me *AdminSetupStatus) ToJson() string {
+	b, _ := json.Marshal(me)
+	return string(b)
+}
+
+func AdminSetupStatusFromJson(data io.Reader) *AdminSetupStatus {
+	var w *AdminSetupStatus
+	json.NewDecoder(data).Decode(&w)
+	return w
+}
