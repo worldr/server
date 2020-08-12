@@ -104,13 +104,20 @@ type User struct {
 	TermsOfServiceCreateAt int64     `db:"-" json:"terms_of_service_create_at,omitempty"`
 }
 
-type UserResponseWrapper struct {
-	Content *User `json:"content"`
+type LoginResponseWrapper struct {
+	User  *User  `json:"user"`
+	Token string `json:"token"`
 }
 
-func (o *UserResponseWrapper) ToJson() string {
+func (o *LoginResponseWrapper) ToJson() string {
 	b, _ := json.Marshal(o)
 	return string(b)
+}
+
+func LoginResponseFromJson(data io.Reader) *LoginResponseWrapper {
+	var w *LoginResponseWrapper
+	json.NewDecoder(data).Decode(&w)
+	return w
 }
 
 type UserUpdate struct {

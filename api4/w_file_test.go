@@ -23,9 +23,6 @@ func init() {
 func TestGetFileInfos(t *testing.T) {
 	th := Setup(t).InitBasic()
 	defer th.TearDown()
-	Client := th.Client
-	//user := th.BasicUser
-	channel := th.BasicChannel
 
 	if *th.App.Config().FileSettings.DriverName == "" {
 		t.Skip("skipping because no file driver is enabled")
@@ -34,16 +31,16 @@ func TestGetFileInfos(t *testing.T) {
 	sent, err := testutils.ReadTestFile("test.png")
 	require.NoError(t, err)
 
-	fileResp, resp := Client.UploadFile(sent, channel.Id, "test.png")
+	fileResp, resp := th.Client.UploadFile(sent, th.BasicChannel.Id, "test.png")
 	CheckNoError(t, resp)
 
-	fileResp, resp = Client.UploadFile(sent, channel.Id, "test.png")
+	fileResp, resp = th.Client.UploadFile(sent, th.BasicChannel.Id, "test.png")
 	CheckNoError(t, resp)
 
 	// Wait a bit for files to ready
 	time.Sleep(3 * time.Second)
 
-	info, resp := Client.GetFileInfos()
+	info, resp := th.WClient.GetFileInfos()
 	CheckNoError(t, resp)
 
 	userId := fileResp.FileInfos[0].CreatorId
@@ -57,16 +54,16 @@ func TestGetFileInfos(t *testing.T) {
 		require.Equal(t, "image/png", fileInfo.MimeType, "mime type should have been image/png")
 	}
 
-	Client.Logout()
-	_, resp = Client.GetFileInfos()
+	th.Client.Logout()
+	_, resp = th.WClient.GetFileInfos()
 	CheckUnauthorizedStatus(t, resp)
 
 	otherUser := th.CreateUser()
-	Client.Login(otherUser.Email, otherUser.Password)
-	info, _ = Client.GetFileInfos()
+	th.Client.Login(otherUser.Email, otherUser.Password)
+	info, _ = th.WClient.GetFileInfos()
 	assert.Empty(t, info)
 
-	Client.Logout()
-	_, resp = th.SystemAdminClient.GetFileInfos()
+	th.Client.Logout()
+	_, resp = th.WSystemAdminClient.GetFileInfos()
 	CheckNoError(t, resp)
 }

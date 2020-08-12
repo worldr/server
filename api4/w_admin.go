@@ -4,13 +4,17 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/mattermost/mattermost-server/v5/audit"
 	"github.com/mattermost/mattermost-server/v5/model"
+	"github.com/mattermost/mattermost-server/v5/store/sqlstore"
 )
 
 func (api *API) InitWAdmin() {
 	// Valid session IS NOT required
 	api.BaseRoutes.WAdmin.Handle("/token", api.ApiHandler(isAdminTokenValid)).Methods("POST")
 	api.BaseRoutes.WAdmin.Handle("/login", api.ApiHandler(loginByAdmin)).Methods("POST")
+	api.BaseRoutes.WAdmin.Handle("/setup", api.ApiHandler(getSetupStatus)).Methods("GET")
+	api.BaseRoutes.WAdmin.Handle("/setup/admin", api.ApiHandler(createInitialAdmin)).Methods("POST")
 
 	// Valid session is required
 	api.BaseRoutes.WAdmin.Handle("/logout", api.ApiSessionRequired(logout)).Methods("POST")
@@ -29,6 +33,128 @@ func isSystemAdmin(c *Context, where, errorId string) bool {
 	}
 	c.Err = model.NewAppError(where, errorId, nil, "user is not an administrator", http.StatusForbidden)
 	return false
+}
+
+func getTeamAndAdmin(c *Context) (*model.Team, *model.User, *model.AppError) {
+	team, err := c.App.MainTeam()
+	if err != nil {
+		auditRec1 := c.MakeAuditRecord("createMainTeam", audit.Attempt)
+		defer c.LogAuditRec(auditRec1)
+		team, err = c.App.CreateTeam(&model.Team{
+			DisplayName: sqlstore.MAIN_TEAM_NAME,
+			Name:        sqlstore.MAIN_TEAM_NAME,
+			Type:        model.TEAM_INVITE,
+		})
+		var auditRec2 *audit.Record
+		if err != nil {
+			auditRec2 = c.MakeAuditRecord("createMainTeam", audit.Fail)
+		} else {
+			auditRec2 = c.MakeAuditRecord("createMainTeam", audit.Success)
+		}
+		defer c.LogAuditRec(auditRec2)
+	}
+	if err != nil {
+		err = model.NewAppError("getTeamAndAdmin", "main_team", nil, err.Error(), http.StatusInternalServerError)
+		return nil, nil, err
+	}
+
+	userGetOptions := &model.UserGetOptions{
+		Role:    model.SYSTEM_ADMIN_ROLE_ID,
+		Sort:    "createat",
+		Page:    0,
+		PerPage: 1,
+	}
+	profiles, err := c.App.GetUsersPage(userGetOptions, c.IsSystemAdmin())
+	if err != nil || len(profiles) == 0 {
+		return team, nil, err
+	}
+
+	return team, profiles[0], nil
+}
+
+// getSetupStatus() Checks whether the main team is present in the db and
+// that it has a system administrator.
+func getSetupStatus(c *Context, w http.ResponseWriter, r *http.Request) {
+	team, admin, err := getTeamAndAdmin(c)
+	if err != nil {
+		c.Err = err
+		return
+	}
+	response := model.AdminSetupStatus{Team: team != nil, Admin: admin != nil}
+	w.Write([]byte(response.ToJson()))
+}
+
+func createInitialAdmin(c *Context, w http.ResponseWriter, r *http.Request) {
+	team, admin, err := getTeamAndAdmin(c)
+	if err != nil || team == nil {
+		msg := "main team should be available by the time the initial admin gets created"
+		if err != nil {
+			msg += ": " + err.Error()
+		}
+		c.Err = model.NewAppError(
+			"createInitialAdmin",
+			"main_team.not_available",
+			nil,
+			msg,
+			http.StatusInternalServerError,
+		)
+		return
+	}
+
+	if admin == nil {
+		auditRec1 := c.MakeAuditRecord("createMainAdmin", audit.Attempt)
+		defer c.LogAuditRec(auditRec1)
+
+		user := model.UserFromJson(r.Body)
+		if user == nil {
+			c.SetInvalidParam("user")
+			return
+		}
+		user.SanitizeInput(c.IsSystemAdmin())
+
+		user.Roles = model.SYSTEM_USER_ROLE_ID + " " + model.SYSTEM_ADMIN_ROLE_ID
+
+		// create the user
+		admin, err = c.App.CreateUser(user)
+		var auditRec2 *audit.Record
+		if err != nil {
+			auditRec2 = c.MakeAuditRecord("createMainAdmin", audit.Fail)
+		} else {
+			auditRec2 = c.MakeAuditRecord("createMainAdmin", audit.Success)
+		}
+		defer c.LogAuditRec(auditRec2)
+	} else {
+		err = model.NewAppError(
+			"createMainAdmin",
+			"initial_admin.already_present",
+			nil,
+			"at least one administrator is already present on the server",
+			http.StatusInternalServerError,
+		)
+	}
+	if err != nil {
+		c.Err = err
+		return
+	}
+
+	// Add to main team
+	_, err = c.App.AddTeamMember(team.Id, admin.Id)
+	var auditRec3 *audit.Record
+	if err != nil {
+		auditRec3 = c.MakeAuditRecord("addMainAdminToTeam", audit.Fail)
+	} else {
+		auditRec3 = c.MakeAuditRecord("addMainAdminToTeam", audit.Success)
+	}
+	defer c.LogAuditRec(auditRec3)
+
+	if err != nil {
+		c.Err = err
+		return
+	}
+
+	// Success
+	w.WriteHeader(http.StatusCreated)
+	w.Write([]byte(admin.ToJson()))
 }
 
 // Checks user id and device id first. If no such combination is found

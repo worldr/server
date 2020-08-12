@@ -62,7 +62,7 @@ type teamMemberWithSchemeRoles struct {
 
 type teamMemberWithSchemeRolesList []teamMemberWithSchemeRoles
 
-var mainTeam *model.Team = nil
+//var mainTeam *model.Team = nil
 
 func (db teamMemberWithSchemeRoles) ToModel() *model.TeamMember {
 	var roles []string
@@ -1225,9 +1225,9 @@ func (s SqlTeamStore) GroupSyncedTeamCount() (int64, *model.AppError) {
 // MainTeam returns the sandbox team for Worldr app.
 // Gets it from the db every time. TODO: cache it somewhere as it is not supposed to change.
 func (s SqlTeamStore) MainTeam() (*model.Team, *model.AppError) {
-	if mainTeam != nil {
-		return mainTeam, nil
-	}
+	//if mainTeam != nil {
+	//return mainTeam, nil
+	//}
 	var teams []*model.Team
 	_, err := s.GetReplica().Select(&teams, "SELECT * FROM Teams WHERE Name = :Name", map[string]interface{}{"Name": MAIN_TEAM_NAME})
 	if err != nil || len(teams) != 1 {
@@ -1252,6 +1252,6 @@ func (s SqlTeamStore) MainTeam() (*model.Team, *model.AppError) {
 			http.StatusInternalServerError,
 		)
 	}
-	mainTeam = teams[0]
+	//mainTeam = teams[0]
 	return teams[0], nil
 }
