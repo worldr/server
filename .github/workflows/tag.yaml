@@ -1,0 +1,29 @@
+name: release-workflow
+on:
+  push:
+    tags:
+      - '*'
+env:
+  COMPOSE_PROJECT_NAME: "circleci"
+jobs:
+  build-pack-release:
+    name: build-pack-release
+    runs-on: ubuntu-latest
+    env:
+      DOCKER_BUILDKIT: 1
+      COMPOSE_DOCKER_CLI_BUILD: 1
+      REGISTRY_PATH: ${{secrets.GCR_PATH}}
+      REGISTRY_HOST: ${{secrets.GCR_HOST}}
+      DOCKER_REGISTRY_USERNAME: ${{secrets.GCR_USERNAME}}
+    steps:
+      - name: checkout code
+        uses: actions/checkout@master
+      - name: define tag
+        run:  echo "::set-env name=RELEASE_TAG::$(git describe --tags)"
+      - name: docker registry login
+        run:  docker login $REGISTRY_HOST --username $DOCKER_REGISTRY_USERNAME --password ${{secrets.GCR_PASSWORD}}
+      - name: release app server
+        run: |
+          cd docker
+          docker build -t ${REGISTRY_HOST}/${REGISTRY_PATH}/app:${RELEASE_TAG} .
+          docker push ${REGISTRY_HOST}/${REGISTRY_PATH}/app:${RELEASE_TAG}
