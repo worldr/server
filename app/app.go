@@ -6,8 +6,10 @@ package app
 import (
 	"context"
 	"html/template"
+	"math/rand"
 	"net/http"
 	"strconv"
+	"time"
 
 	goi18n "github.com/mattermost/go-i18n/i18n"
 	"github.com/mattermost/mattermost-server/v5/einterfaces"
@@ -58,6 +60,8 @@ func New(options ...AppOption) *App {
 	for _, option := range options {
 		option(app)
 	}
+
+	rand.Seed(time.Now().UTC().UnixNano())
 
 	return app
 }

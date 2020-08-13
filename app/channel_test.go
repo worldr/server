@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/mattermost/mattermost-server/v5/model"
+	"github.com/mattermost/mattermost-server/v5/utils/fileutils"
 )
 
 func TestPermanentDeleteChannel(t *testing.T) {
@@ -265,6 +266,25 @@ func TestCreateChannelDisplayNameTrimsWhitespace(t *testing.T) {
 	defer th.App.PermanentDeleteChannel(channel)
 	require.Nil(t, err)
 	require.Equal(t, channel.DisplayName, "Public 1")
+}
+
+func TestCreateChannelDefaultImage(t *testing.T) {
+	th := Setup(t).InitBasic()
+	defer th.TearDown()
+
+	channel, err := th.App.CreateChannel(&model.Channel{DisplayName: "  Public 1  ", Name: "public1", Type: model.CHANNEL_OPEN, TeamId: th.BasicTeam.Id}, false)
+	defer th.App.PermanentDeleteChannel(channel)
+	require.Nil(t, err)
+
+	path, _ := fileutils.FindDir("tests")
+	file, imgErr := th.App.GetRandomImageForChannel(path)
+	require.Nil(t, imgErr)
+	require.NotNil(t, file)
+	err = th.App.SetChannelImageFromMultiPartFile(channel.Id, file)
+	require.Nil(t, err)
+	updated, err := th.App.GetChannel(channel.Id)
+	require.Nil(t, err)
+	require.True(t, updated.LastPictureUpdate > 0, "last picture update should be set")
 }
 
 func TestUpdateChannelPrivacy(t *testing.T) {

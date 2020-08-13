@@ -9,8 +9,13 @@ import (
 	"image"
 	"image/png"
 	"io"
+	"io/ioutil"
+	"math/rand"
 	"mime/multipart"
 	"net/http"
+	"os"
+	"path"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -20,6 +25,7 @@ import (
 	"github.com/mattermost/mattermost-server/v5/plugin"
 	"github.com/mattermost/mattermost-server/v5/store"
 	"github.com/mattermost/mattermost-server/v5/utils"
+	"github.com/pkg/errors"
 )
 
 // GetChannelsCategories returns the list of channels categories of the current user
@@ -237,12 +243,66 @@ func (a *App) RenameChannel(channel *model.Channel, newChannelName string, newDi
 	return newChannel, nil
 }
 
+func (a *App) GetRandomImageForChannel(imagesFolder string) (*os.File, error) {
+	var imagesStat os.FileInfo
+	imagesStat, err := os.Stat(imagesFolder)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, errors.New("Images folder doesn't exist")
+		} else {
+			return nil, errors.New("Images folder is not accessible" + err.Error())
+		}
+	}
+	if !imagesStat.IsDir() {
+		return nil, errors.New("Images path is not a directory")
+	}
+
+	allFiles, err := ioutil.ReadDir(imagesFolder)
+	if err != nil {
+		return nil, errors.New("Failed to read images folder: " + err.Error())
+	}
+	imagesFiles := make([]os.FileInfo, len(allFiles))[:0]
+	for _, v := range allFiles {
+		if !v.IsDir() {
+			ext := strings.ToLower(filepath.Ext(v.Name()))
+			if ext == ".png" || ext == ".jpg" || ext == ".jpeg" {
+				imagesFiles = append(imagesFiles, v)
+			}
+		}
+	}
+
+	if len(imagesFiles) == 0 {
+		return nil, errors.New("Folder containes no images")
+	}
+	info := imagesFiles[rand.Intn(len(imagesFiles))]
+	if info.IsDir() {
+		return nil, errors.New("Images folder contains directories")
+	}
+	path := path.Join(imagesFolder, info.Name())
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, errors.New("Unable to open channel image: " + err.Error())
+	}
+	return file, nil
+}
+
 func (a *App) CreateChannel(channel *model.Channel, addMember bool) (*model.Channel, *model.AppError) {
 	channel.DisplayName = strings.TrimSpace(channel.DisplayName)
 
 	sc, err := a.Srv().Store.Channel().Save(channel, *a.Config().TeamSettings.MaxChannelsPerTeam)
 	if err != nil {
 		return nil, err
+	}
+
+	image, imgErr := a.GetRandomImageForChannel("images/channels")
+	if imgErr != nil {
+		mlog.Error("Unable to find a suitable channel image.", mlog.Err(imgErr))
+	} else {
+		if err := a.SetChannelImageFromMultiPartFile(sc.Id, image); err != nil {
+			mlog.Error("Unable to set the channel image from a file.", mlog.Err(err))
+		} else {
+			sc.LastPictureUpdate = time.Now().Unix()
+		}
 	}
 
 	if addMember {
