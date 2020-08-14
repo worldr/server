@@ -16,14 +16,21 @@ jobs:
       REGISTRY_HOST: ${{secrets.GCR_HOST}}
       DOCKER_REGISTRY_USERNAME: ${{secrets.GCR_USERNAME}}
     steps:
-      - name: checkout code
+      - name: Checkout code.
         uses: actions/checkout@master
-      - name: define tag
+      - name: Define tag.
         run:  echo "::set-env name=RELEASE_TAG::$(git describe --tags)"
-      - name: docker registry login
+      - name: Docker registry login.
         run:  docker login $REGISTRY_HOST --username $DOCKER_REGISTRY_USERNAME --password ${{secrets.GCR_PASSWORD}}
-      - name: release app server
+      - name: Configuration reset.
+        run: make config-reset
+      - name: Build the server for linux.
         run: |
-          cd docker
-          docker build -t ${REGISTRY_HOST}/${REGISTRY_PATH}/app:${RELEASE_TAG} .
+          mkdir bin
+          make build-linux
+      - name: Package the linux server build.
+        run: make package BUILD_NUMBER=${RELEASE_TAG}
+      - name: Release (build and push) app server.
+        run: |
+          docker build -t ${REGISTRY_HOST}/${REGISTRY_PATH}/app:${RELEASE_TAG} -f docker/Dockerfile .
           docker push ${REGISTRY_HOST}/${REGISTRY_PATH}/app:${RELEASE_TAG}
