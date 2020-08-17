@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # Function to generate a random salt
 generate_salt() {
