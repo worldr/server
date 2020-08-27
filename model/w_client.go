@@ -58,6 +58,11 @@ func (c *WClient) GetCreateIntialAdminUrl() string {
 	return fmt.Sprintf("%v/admin/setup/admin", c.ApiUrl)
 }
 
+// Get absolute api url of the posts reactions handle.
+func (c *WClient) GetReactionsForPostsUrl() string {
+	return fmt.Sprintf("%v/posts/ids/reactions", c.ApiUrl)
+}
+
 //
 // METHODS
 //
@@ -134,4 +139,13 @@ func (c *WClient) GetRecentPosts(request *RecentPostsRequestData) (*RecentPostsR
 	}
 	defer closeBody(r)
 	return RecentResponseDataFromJson(r.Body), BuildResponse(r)
+}
+
+func (c *WClient) GetReactionsForPosts(request []string) (*PostsReactionsResponseWrapper, *Response) {
+	r, err := c.MMClient.DoApiPostWithUrl(c.GetReactionsForPostsUrl(), ArrayToJson(request), false)
+	if err != nil {
+		return nil, BuildErrorResponse(r, err)
+	}
+	defer closeBody(r)
+	return PostsReactionsResponseWrapperFromJson(r.Body), BuildResponse(r)
 }

@@ -90,3 +90,18 @@ func (o *Reaction) PreSave() {
 		o.CreateAt = GetMillis()
 	}
 }
+
+type PostsReactionsResponseWrapper struct {
+	Content map[string][]*Reaction `json:"content"`
+}
+
+func (o *PostsReactionsResponseWrapper) ToJson() string {
+	b, _ := json.Marshal(o)
+	return string(b)
+}
+
+func PostsReactionsResponseWrapperFromJson(data io.Reader) *PostsReactionsResponseWrapper {
+	var o *PostsReactionsResponseWrapper
+	json.NewDecoder(data).Decode(&o)
+	return o
+}
