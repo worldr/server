@@ -7,6 +7,7 @@ import (
 
 	"github.com/mattermost/mattermost-server/v5/model"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func populateChannels(th *TestHelper, msgCount int) ([]string, map[string][]string) {
@@ -114,5 +115,85 @@ func TestRecent(t *testing.T) {
 		r, err := th.WClient.GetRecentPosts(request)
 		CheckNoError(t, err)
 		checkRecentPosts(t, channels, perChannel/2, postsByChannel, r)
+	})
+}
+
+func TestGetReactionsForPosts(t *testing.T) {
+	th := Setup(t).InitBasic()
+	defer th.TearDown()
+	Client := th.Client
+	WClient := th.WClient
+	userId := th.BasicUser.Id
+	user2Id := th.BasicUser2.Id
+	post1 := &model.Post{UserId: userId, ChannelId: th.BasicChannel.Id, Message: "zz" + model.NewId() + "a"}
+	post2 := &model.Post{UserId: userId, ChannelId: th.BasicChannel.Id, Message: "zz" + model.NewId() + "a"}
+	post3 := &model.Post{UserId: userId, ChannelId: th.BasicChannel.Id, Message: "zz" + model.NewId() + "a"}
+
+	post4 := &model.Post{UserId: user2Id, ChannelId: th.BasicChannel.Id, Message: "zz" + model.NewId() + "a"}
+	post5 := &model.Post{UserId: user2Id, ChannelId: th.BasicChannel.Id, Message: "zz" + model.NewId() + "a"}
+
+	post1, _ = Client.CreatePost(post1)
+	post2, _ = Client.CreatePost(post2)
+	post3, _ = Client.CreatePost(post3)
+	post4, _ = Client.CreatePost(post4)
+	post5, _ = Client.CreatePost(post5)
+
+	expectedPostIdsReactionsMap := make(map[string][]*model.Reaction)
+	expectedPostIdsReactionsMap[post1.Id] = []*model.Reaction{}
+	expectedPostIdsReactionsMap[post2.Id] = []*model.Reaction{}
+	expectedPostIdsReactionsMap[post3.Id] = []*model.Reaction{}
+	expectedPostIdsReactionsMap[post5.Id] = []*model.Reaction{}
+
+	userReactions := []*model.Reaction{
+		{
+			UserId:    userId,
+			PostId:    post1.Id,
+			EmojiName: "happy",
+		},
+		{
+			UserId:    userId,
+			PostId:    post1.Id,
+			EmojiName: "sad",
+		},
+		{
+			UserId:    userId,
+			PostId:    post2.Id,
+			EmojiName: "smile",
+		},
+		{
+			UserId:    user2Id,
+			PostId:    post4.Id,
+			EmojiName: "smile",
+		},
+	}
+
+	for _, userReaction := range userReactions {
+		reactions := expectedPostIdsReactionsMap[userReaction.PostId]
+		reaction, err := th.App.Srv().Store.Reaction().Save(userReaction)
+		require.Nil(t, err)
+		reactions = append(reactions, reaction)
+		expectedPostIdsReactionsMap[userReaction.PostId] = reactions
+	}
+
+	postIds := []string{post1.Id, post2.Id, post3.Id, post4.Id, post5.Id}
+
+	t.Run("get-reactions", func(t *testing.T) {
+		response, resp := WClient.GetReactionsForPosts(postIds)
+		CheckNoError(t, resp)
+
+		assert.ElementsMatch(t, expectedPostIdsReactionsMap[post1.Id], response.Content[post1.Id])
+		assert.ElementsMatch(t, expectedPostIdsReactionsMap[post2.Id], response.Content[post2.Id])
+		assert.ElementsMatch(t, expectedPostIdsReactionsMap[post3.Id], response.Content[post3.Id])
+		assert.ElementsMatch(t, expectedPostIdsReactionsMap[post4.Id], response.Content[post4.Id])
+		assert.ElementsMatch(t, expectedPostIdsReactionsMap[post5.Id], response.Content[post5.Id])
+		assert.Equal(t, expectedPostIdsReactionsMap, response.Content)
+
+	})
+
+	t.Run("get-reactions-as-anonymous-user", func(t *testing.T) {
+		Client.Logout()
+
+		_, resp := WClient.GetReactionsForPosts(postIds)
+		CheckUnauthorizedStatus(t, resp)
 	})
 }

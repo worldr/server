@@ -10,6 +10,7 @@ func (api *API) InitWPosts() {
 	api.BaseRoutes.WPosts.Handle("/recent", api.ApiSessionRequired(getRecentPosts)).Methods("POST")
 	api.BaseRoutes.WPosts.Handle("/increment/check", api.ApiSessionRequired(checkIncrementPossible)).Methods("POST")
 	api.BaseRoutes.WPosts.Handle("/increment", api.ApiSessionRequired(getIncrementalUpdate)).Methods("POST")
+	api.BaseRoutes.WPosts.Handle("/ids/reactions", api.ApiSessionRequired(getReactionsForPosts)).Methods("POST")
 }
 
 // getRecentPosts() returns most recent posts for given channels and respects total and per channel limits.
@@ -141,5 +142,25 @@ func getIncrementalUpdate(c *Context, w http.ResponseWriter, r *http.Request) {
 	}
 
 	response := model.IncrementPostsResponse{Content: posts}
+	w.Write([]byte(response.ToJson()))
+}
+
+func getReactionsForPosts(c *Context, w http.ResponseWriter, r *http.Request) {
+	postIds := model.ArrayFromJson(r.Body)
+	for _, postId := range postIds {
+		if !c.App.SessionHasPermissionToChannelByPost(*c.App.Session(), postId, model.PERMISSION_READ_CHANNEL) {
+			c.SetPermissionError(model.PERMISSION_READ_CHANNEL)
+			return
+		}
+	}
+	reactions, err := c.App.GetBulkReactionsForPosts(postIds)
+	if err != nil {
+		c.Err = err
+		return
+	}
+
+	response := model.PostsReactionsResponseWrapper{
+		Content: reactions,
+	}
 	w.Write([]byte(response.ToJson()))
 }
