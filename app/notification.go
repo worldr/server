@@ -4,6 +4,7 @@
 package app
 
 import (
+	"fmt"
 	"sort"
 	"strings"
 	"unicode"
@@ -226,6 +227,8 @@ func (a *App) SendNotifications(post *model.Post, team *model.Team, channel *mod
 			sendPushNotifications = true
 		}
 	}
+
+	fmt.Println("SENDING PN", sendPushNotifications, len(mentionedUsersList), len(allActivityPushUserIds))
 
 	if sendPushNotifications {
 		for _, id := range mentionedUsersList {

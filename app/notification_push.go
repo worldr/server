@@ -4,6 +4,7 @@
 package app
 
 import (
+	"fmt"
 	"hash/fnv"
 	"net/http"
 	"strings"
@@ -153,6 +154,8 @@ func (a *App) sendPushNotification(notification *PostNotification, user *model.U
 
 	channelName := notification.GetChannelName(nameFormat, user.Id)
 	senderName := notification.GetSenderName(nameFormat, *cfg.ServiceSettings.EnablePostUsernameOverride)
+
+	fmt.Println("SEND PN FOR USER", user.Id, channelName)
 
 	c := a.Srv().PushNotificationsHub.GetGoChannelFromUserId(user.Id)
 	c <- PushNotification{
