@@ -59,3 +59,13 @@ func AdminSetupStatusFromJson(data io.Reader) *AdminSetupStatus {
 	json.NewDecoder(data).Decode(&w)
 	return w
 }
+
+type SigningPK struct {
+	X string `json:"x"`
+	Y string `json:"y"`
+}
+
+func (me *SigningPK) ToJson() string {
+	b, _ := json.Marshal(me)
+	return string(b)
+}

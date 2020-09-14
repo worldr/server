@@ -163,6 +163,30 @@ func (a *App) ensurePostActionCookieSecret() error {
 	return nil
 }
 
+func GenerateSigningKey(fieldName string) (*model.System, *model.SystemAsymmetricSigningKey, error) {
+	newECDSAKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		return nil, nil, err
+	}
+	newKey := &model.SystemAsymmetricSigningKey{
+		ECDSAKey: &model.SystemECDSAKey{
+			Curve: "P-256",
+			X:     newECDSAKey.X,
+			Y:     newECDSAKey.Y,
+			D:     newECDSAKey.D,
+		},
+	}
+	system := &model.System{
+		Name: fieldName,
+	}
+	v, err := json.Marshal(newKey)
+	if err != nil {
+		return nil, nil, err
+	}
+	system.Value = string(v)
+	return system, newKey, nil
+}
+
 // EnsureAsymmetricSigningKey ensures that an asymmetric signing key exists and future calls to
 // AsymmetricSigningKey will always return a valid signing key.
 func (a *App) ensureAsymmetricSigningKey() error {
@@ -181,26 +205,10 @@ func (a *App) ensureAsymmetricSigningKey() error {
 
 	// If we don't already have a key, try to generate one.
 	if key == nil {
-		newECDSAKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+		system, newKey, err := GenerateSigningKey(model.SYSTEM_ASYMMETRIC_SIGNING_KEY)
 		if err != nil {
 			return err
 		}
-		newKey := &model.SystemAsymmetricSigningKey{
-			ECDSAKey: &model.SystemECDSAKey{
-				Curve: "P-256",
-				X:     newECDSAKey.X,
-				Y:     newECDSAKey.Y,
-				D:     newECDSAKey.D,
-			},
-		}
-		system := &model.System{
-			Name: model.SYSTEM_ASYMMETRIC_SIGNING_KEY,
-		}
-		v, err := json.Marshal(newKey)
-		if err != nil {
-			return err
-		}
-		system.Value = string(v)
 		// If we were able to save the key, use it, otherwise log the error.
 		if appErr := a.Srv().Store.System().Save(system); appErr != nil {
 			mlog.Error("Failed to save AsymmetricSigningKey", mlog.Err(appErr))

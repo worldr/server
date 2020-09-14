@@ -16,6 +16,7 @@ const (
 	SYSTEM_ACTIVE_LICENSE_ID         = "ActiveLicenseId"
 	SYSTEM_LAST_COMPLIANCE_TIME      = "LastComplianceTime"
 	SYSTEM_ASYMMETRIC_SIGNING_KEY    = "AsymmetricSigningKey"
+	SYSTEM_CERTIFICATE_SIGNING_KEY   = "CertificateSigningKey"
 	SYSTEM_POST_ACTION_COOKIE_SECRET = "PostActionCookieSecret"
 	SYSTEM_INSTALLATION_DATE_KEY     = "InstallationDate"
 )
