@@ -49,8 +49,7 @@ func getPublicSignKey(c *Context, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	response := &model.SigningPK{
-		X: key.ECDSAKey.X.Text(16),
-		Y: key.ECDSAKey.Y.Text(16),
+		KeyXY: key.ECDSAKey.X.Text(16) + key.ECDSAKey.Y.Text(16),
 	}
 	w.Write([]byte(response.ToJson()))
 }

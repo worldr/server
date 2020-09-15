@@ -61,8 +61,7 @@ func AdminSetupStatusFromJson(data io.Reader) *AdminSetupStatus {
 }
 
 type SigningPK struct {
-	X string `json:"x"`
-	Y string `json:"y"`
+	KeyXY string `json:"key"`
 }
 
 func (me *SigningPK) ToJson() string {
