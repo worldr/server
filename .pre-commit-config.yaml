@@ -9,11 +9,11 @@ repos:
     -   id: check-yaml
     -   id: check-json
     -   id: check-toml
--   repo: https://github.com/codespell-project/codespell
-    rev: v1.16.0
-    hooks:
-    -   id: codespell
-        args: [-L, "usig,persistant,independent,THE,BE"]
+#-   repo: https://github.com/codespell-project/codespell
+#    rev: v1.16.0
+#    hooks:
+#    -   id: codespell
+#        args: [-L, "usig,persistant,independent,THE,BE"]
 ################################################################################
 # Go lang specific.
 - repo: git://github.com/dnephin/pre-commit-golang
