@@ -16,11 +16,13 @@ const (
 	VAULT_K8S_SERVICE_ACCOUNT_TOKEN_FILE = "/var/run/secrets/kubernetes.io/serviceaccount/token"
 	VAULT_WAIT_UNSEAL_ATTEMPTS           = 30
 	VAULT_WAIT_UNSEAL_TIMEOUT_SECS       = 10
+	VAULT_SERVER_DOMAIN                  = "http://vault.worldr/"
+	VAULT_SERVER_SEAL_STATUS_URL         = VAULT_SERVER_DOMAIN + "/v1/sys/seal-status"
 )
 
 type IVault interface {
 	Getk8sServiceAccountToken() (string, error)
-	WaitForVaultToUnseal() error
+	WaitForVaultToUnseal(url string, wait time.Duration, retry int) error
 }
 
 type Vault struct {
@@ -130,10 +132,17 @@ func KeyTalker(service string, vault IVault) error {
 		mlog.Critical("Cannot read token", mlog.Err(err))
 		return errors.Wrap(err, "There should be a k8s token but we cannot read it: Aborting")
 	}
-	mlog.Info(token)
+	if token == "" {
+		mlog.Warn("This does not need Vault, using unencrypted database.")
+		return nil
+	}
 
-	// 2. Wait for the vault server to be unsealed.
-	//vault.wait
+	// 3. Wait for the vault server to be unsealed.
+	err = vault.WaitForVaultToUnseal(VAULT_SERVER_SEAL_STATUS_URL, VAULT_WAIT_UNSEAL_TIMEOUT_SECS, VAULT_WAIT_UNSEAL_TIMEOUT_SECS)
+	if err != nil {
+		mlog.Critical("Vault seal problem.")
+		return errors.Wrap(err, "Vault seal problem")
+	}
 
 	// This is a success!
 	return nil

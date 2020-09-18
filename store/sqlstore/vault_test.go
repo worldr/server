@@ -4,6 +4,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/mattermost/mattermost-server/v5/plugin/plugintest/mock"
 	"github.com/mattermost/mattermost-server/v5/store/sqlstore/mocks"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/h2non/gock.v1"
@@ -46,6 +47,9 @@ const (
 	} `
 )
 
+//    _____________________________
+//___/ These are the UNHAPPY PATHS \____________________________________________
+//
 // There is no k8s service account token on the system.
 func TestKeyTalkerNoK8ServiceAccountToken(t *testing.T) {
 	mockVault := &mocks.IVault{}
@@ -64,15 +68,50 @@ func TestKeyTalkerCannotReadK8ServiceAccountToken(t *testing.T) {
 	assert.NotNil(t, err)
 }
 
-// There is a k8s service account token on the system and we can read it.
 func TestKeyTalkerGotK8ServiceAccountToken(t *testing.T) {
 	mockVault := &mocks.IVault{}
 	mockVault.On("Getk8sServiceAccountToken").Return(FAKE_K8S_SERVICE_ACCOUNT_TOKEN, nil)
+	mockVault.On("WaitForVaultToUnseal",
+		mock.AnythingOfType("string"),
+		mock.AnythingOfType("time.Duration"),
+		mock.AnythingOfType("int")).Return(nil)
 
 	err := KeyTalker("localhost:8888", mockVault)
 	assert.Nil(t, err)
 }
 
+// There is a k8s service account token on the system, we can read it, and vault is still sealed.
+func TestKeyTalkerGotK8ServiceAccountTokenSealed(t *testing.T) {
+	mockVault := &mocks.IVault{}
+	mockVault.On("Getk8sServiceAccountToken").Return(FAKE_K8S_SERVICE_ACCOUNT_TOKEN, nil)
+	mockVault.On("WaitForVaultToUnseal",
+		mock.AnythingOfType("string"),
+		mock.AnythingOfType("time.Duration"),
+		mock.AnythingOfType("int")).Return(errors.New("Unit test cannot read token"))
+
+	err := KeyTalker("localhost:8888", mockVault)
+	assert.NotNil(t, err)
+}
+
+//    ________________________
+//___/ This is the HAPPY PATH \_________________________________________________
+//
+// There is the HAPPY PATH!
+func TestKeyTalkerGotK8ServiceAccountTokenUnsealed(t *testing.T) {
+	mockVault := &mocks.IVault{}
+	mockVault.On("Getk8sServiceAccountToken").Return(FAKE_K8S_SERVICE_ACCOUNT_TOKEN, nil)
+	mockVault.On("WaitForVaultToUnseal",
+		mock.AnythingOfType("string"),
+		mock.AnythingOfType("time.Duration"),
+		mock.AnythingOfType("int")).Return(nil)
+
+	err := KeyTalker("localhost:8888", mockVault)
+	assert.Nil(t, err)
+}
+
+//    ________________________________
+//___/ These are helper methods/tests \_________________________________________
+//
 // Wait for vault to unseal: happy path.
 func TestWaitForVaultToUnseal(t *testing.T) {
 	defer gock.Off() // Flush pending mocks after test execution
@@ -140,7 +179,4 @@ func TestWaitForVaultToUnsealVaultIsSealed(t *testing.T) {
 	vault := Vault{}
 	err := vault.WaitForVaultToUnseal(VAULT_TEST_URL+"/"+VAULT_UNSEAL_PATH, 0, 2)
 	assert.Nil(t, err)
-
-	// Verify that we don't have pending mocks
-	//assert.Equal(t, true, gock.IsDone())
 }
