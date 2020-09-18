@@ -1,11 +1,12 @@
 package sqlstore
 
 import (
-	"errors"
 	"testing"
 
+	"github.com/mattermost/mattermost-server/v5/mlog"
 	"github.com/mattermost/mattermost-server/v5/plugin/plugintest/mock"
 	"github.com/mattermost/mattermost-server/v5/store/sqlstore/mocks"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/h2non/gock.v1"
 )
@@ -45,45 +46,36 @@ const (
 	  "recovery_seal": false,
 	  "storage_type": "file"
 	} `
+	FAKE_VAULT_TOKEN = "s.xzT4LmxwJItxrHdh5O595Wln"
 )
 
 //    _____________________________
 //___/ These are the UNHAPPY PATHS \____________________________________________
 //
-// There is no k8s service account token on the system.
-func TestKeyTalkerNoK8ServiceAccountToken(t *testing.T) {
+// All these tests go in order of possible failures.
+
+func TestKeyTalkerFailOnAccountToken(t *testing.T) {
 	mockVault := &mocks.IVault{}
-	mockVault.On("Getk8sServiceAccountToken").Return("", nil)
+	mockVault.On("Getk8sServiceAccountToken",
+		mock.AnythingOfType("string")).Return("", nil)
 
 	err := KeyTalker("localhost:8888", mockVault)
 	assert.Nil(t, err)
 }
 
-// There is a k8s service account token on the system but we cannot read it.
-func TestKeyTalkerCannotReadK8ServiceAccountToken(t *testing.T) {
+func TestKeyTalkerFailOnReadK8ServiceAccountToken(t *testing.T) {
 	mockVault := &mocks.IVault{}
-	mockVault.On("Getk8sServiceAccountToken").Return("", errors.New("Unit test cannot read token"))
+	mockVault.On("Getk8sServiceAccountToken",
+		mock.AnythingOfType("string")).Return("", errors.New("Unit test cannot read token"))
 
 	err := KeyTalker("localhost:8888", mockVault)
 	assert.NotNil(t, err)
 }
 
-func TestKeyTalkerGotK8ServiceAccountToken(t *testing.T) {
+func TestKeyTalkerFailOnVaultSealed(t *testing.T) {
 	mockVault := &mocks.IVault{}
-	mockVault.On("Getk8sServiceAccountToken").Return(FAKE_K8S_SERVICE_ACCOUNT_TOKEN, nil)
-	mockVault.On("WaitForVaultToUnseal",
-		mock.AnythingOfType("string"),
-		mock.AnythingOfType("time.Duration"),
-		mock.AnythingOfType("int")).Return(nil)
-
-	err := KeyTalker("localhost:8888", mockVault)
-	assert.Nil(t, err)
-}
-
-// There is a k8s service account token on the system, we can read it, and vault is still sealed.
-func TestKeyTalkerGotK8ServiceAccountTokenSealed(t *testing.T) {
-	mockVault := &mocks.IVault{}
-	mockVault.On("Getk8sServiceAccountToken").Return(FAKE_K8S_SERVICE_ACCOUNT_TOKEN, nil)
+	mockVault.On("Getk8sServiceAccountToken",
+		mock.AnythingOfType("string")).Return(FAKE_K8S_SERVICE_ACCOUNT_TOKEN, nil)
 	mockVault.On("WaitForVaultToUnseal",
 		mock.AnythingOfType("string"),
 		mock.AnythingOfType("time.Duration"),
@@ -93,17 +85,34 @@ func TestKeyTalkerGotK8ServiceAccountTokenSealed(t *testing.T) {
 	assert.NotNil(t, err)
 }
 
-//    ________________________
-//___/ This is the HAPPY PATH \_________________________________________________
-//
-// There is the HAPPY PATH!
-func TestKeyTalkerGotK8ServiceAccountTokenUnsealed(t *testing.T) {
+func TestKeyTalkerFailOnLogin(t *testing.T) {
 	mockVault := &mocks.IVault{}
-	mockVault.On("Getk8sServiceAccountToken").Return(FAKE_K8S_SERVICE_ACCOUNT_TOKEN, nil)
+	mockVault.On("Getk8sServiceAccountToken",
+		mock.AnythingOfType("string")).Return(FAKE_K8S_SERVICE_ACCOUNT_TOKEN, nil)
 	mockVault.On("WaitForVaultToUnseal",
 		mock.AnythingOfType("string"),
 		mock.AnythingOfType("time.Duration"),
 		mock.AnythingOfType("int")).Return(nil)
+	mockVault.On("Login",
+		mock.AnythingOfType("string")).Return("", errors.New("unit test cannot login"))
+
+	err := KeyTalker("localhost:8888", mockVault)
+	assert.NotNil(t, err)
+}
+
+//    ________________________
+//___/ This is the HAPPY PATH \_________________________________________________
+
+func TestKeyTalkerHappyPath(t *testing.T) {
+	mockVault := &mocks.IVault{}
+	mockVault.On("Getk8sServiceAccountToken",
+		mock.AnythingOfType("string")).Return(FAKE_K8S_SERVICE_ACCOUNT_TOKEN, nil)
+	mockVault.On("WaitForVaultToUnseal",
+		mock.AnythingOfType("string"),
+		mock.AnythingOfType("time.Duration"),
+		mock.AnythingOfType("int")).Return(nil)
+	mockVault.On("Login",
+		mock.AnythingOfType("string")).Return(FAKE_VAULT_TOKEN, nil)
 
 	err := KeyTalker("localhost:8888", mockVault)
 	assert.Nil(t, err)
@@ -112,6 +121,7 @@ func TestKeyTalkerGotK8ServiceAccountTokenUnsealed(t *testing.T) {
 //    ________________________________
 //___/ These are helper methods/tests \_________________________________________
 //
+
 // Wait for vault to unseal: happy path.
 func TestWaitForVaultToUnseal(t *testing.T) {
 	defer gock.Off() // Flush pending mocks after test execution
@@ -159,6 +169,42 @@ func TestWaitForVaultToUnsealNoBodyFailure(t *testing.T) {
 	// Your test code starts here...
 	vault := Vault{}
 	err := vault.WaitForVaultToUnseal(VAULT_TEST_URL+"/"+VAULT_UNSEAL_PATH, 0, 1)
+	assert.NotNil(t, err) // This HAS to fail.
+}
+
+// Wait for vault to unseal: reply error.
+func TestWaitForVaultToUnsealReplyError(t *testing.T) {
+	defer gock.Off() // Flush pending mocks after test execution
+
+	gock.New(VAULT_TEST_URL).
+		Get("v1/sys/seal-status").
+		ReplyError(errors.New("Computer says NON!"))
+
+	// Your test code starts here...
+	vault := Vault{}
+	err := vault.WaitForVaultToUnseal(VAULT_TEST_URL+"/bar", 0, 1)
+	assert.NotNil(t, err) // This HAS to fail.
+}
+
+type errReader struct{}
+
+func (errReader) Read(p []byte) (int, error) {
+	mlog.Info("FUCK YOU")
+	return 1, errors.New("Computer says NON!")
+}
+
+// Wait for vault to unseal: body error.
+func TestWaitForVaultToUnsealBodyError(t *testing.T) {
+	defer gock.Off() // Flush pending mocks after test execution
+
+	gock.New(VAULT_TEST_URL).
+		Get("v1/sys/seal-status").
+		Reply(200).
+		Body(errReader{})
+
+	// Your test code starts here...
+	vault := Vault{}
+	err := vault.WaitForVaultToUnseal(VAULT_TEST_URL+"/bar", 0, 1)
 	assert.NotNil(t, err) // This HAS to fail.
 }
 
