@@ -16,6 +16,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/url"
+	"os"
 	"time"
 
 	"github.com/dyatlov/go-opengraph/opengraph"
@@ -600,9 +601,9 @@ func (a *OpenTracingAppLayer) AsymmetricSigningKey() *ecdsa.PrivateKey {
 	return resultVar0
 }
 
-func (a *OpenTracingAppLayer) AttachDeviceId(sessionId string, deviceId string, expiresAt int64) *model.AppError {
+func (a *OpenTracingAppLayer) AttachDevice(sessionId string, device *model.Device, expiresAt int64) *model.AppError {
 	origCtx := a.ctx
-	span, newCtx := tracing.StartSpanWithParentByContext(a.ctx, "app.AttachDeviceId")
+	span, newCtx := tracing.StartSpanWithParentByContext(a.ctx, "app.AttachDevice")
 
 	a.ctx = newCtx
 	a.app.Srv().Store.SetContext(newCtx)
@@ -612,7 +613,7 @@ func (a *OpenTracingAppLayer) AttachDeviceId(sessionId string, deviceId string, 
 	}()
 
 	defer span.Finish()
-	resultVar0 := a.app.AttachDeviceId(sessionId, deviceId, expiresAt)
+	resultVar0 := a.app.AttachDevice(sessionId, device, expiresAt)
 
 	if resultVar0 != nil {
 		span.LogFields(spanlog.Error(resultVar0))
@@ -2924,6 +2925,28 @@ func (a *OpenTracingAppLayer) DemoteUserToGuest(user *model.User) *model.AppErro
 	return resultVar0
 }
 
+func (a *OpenTracingAppLayer) DetachDevice(sessionId string) *model.AppError {
+	origCtx := a.ctx
+	span, newCtx := tracing.StartSpanWithParentByContext(a.ctx, "app.DetachDevice")
+
+	a.ctx = newCtx
+	a.app.Srv().Store.SetContext(newCtx)
+	defer func() {
+		a.app.Srv().Store.SetContext(origCtx)
+		a.ctx = origCtx
+	}()
+
+	defer span.Finish()
+	resultVar0 := a.app.DetachDevice(sessionId)
+
+	if resultVar0 != nil {
+		span.LogFields(spanlog.Error(resultVar0))
+		ext.Error.Set(span, true)
+	}
+
+	return resultVar0
+}
+
 func (a *OpenTracingAppLayer) DiagnosticId() string {
 	origCtx := a.ctx
 	span, newCtx := tracing.StartSpanWithParentByContext(a.ctx, "app.DiagnosticId")
@@ -3111,7 +3134,7 @@ func (a *OpenTracingAppLayer) DoLocalRequest(rawURL string, body []byte) (*http.
 	return resultVar0, resultVar1
 }
 
-func (a *OpenTracingAppLayer) DoLogin(w http.ResponseWriter, r *http.Request, user *model.User, deviceId string) *model.AppError {
+func (a *OpenTracingAppLayer) DoLogin(w http.ResponseWriter, r *http.Request, user *model.User, device *model.Device) *model.AppError {
 	origCtx := a.ctx
 	span, newCtx := tracing.StartSpanWithParentByContext(a.ctx, "app.DoLogin")
 
@@ -3123,7 +3146,7 @@ func (a *OpenTracingAppLayer) DoLogin(w http.ResponseWriter, r *http.Request, us
 	}()
 
 	defer span.Finish()
-	resultVar0 := a.app.DoLogin(w, r, user, deviceId)
+	resultVar0 := a.app.DoLogin(w, r, user, device)
 
 	if resultVar0 != nil {
 		span.LogFields(spanlog.Error(resultVar0))
@@ -3133,7 +3156,7 @@ func (a *OpenTracingAppLayer) DoLogin(w http.ResponseWriter, r *http.Request, us
 	return resultVar0
 }
 
-func (a *OpenTracingAppLayer) DoLoginAdmin(w http.ResponseWriter, r *http.Request, user *model.User, deviceId string) *model.AppError {
+func (a *OpenTracingAppLayer) DoLoginAdmin(w http.ResponseWriter, r *http.Request, user *model.User, device *model.Device) *model.AppError {
 	origCtx := a.ctx
 	span, newCtx := tracing.StartSpanWithParentByContext(a.ctx, "app.DoLoginAdmin")
 
@@ -3145,7 +3168,7 @@ func (a *OpenTracingAppLayer) DoLoginAdmin(w http.ResponseWriter, r *http.Reques
 	}()
 
 	defer span.Finish()
-	resultVar0 := a.app.DoLoginAdmin(w, r, user, deviceId)
+	resultVar0 := a.app.DoLoginAdmin(w, r, user, device)
 
 	if resultVar0 != nil {
 		span.LogFields(spanlog.Error(resultVar0))
@@ -7155,6 +7178,23 @@ func (a *OpenTracingAppLayer) GetPublicKey(name string) ([]byte, *model.AppError
 		span.LogFields(spanlog.Error(resultVar1))
 		ext.Error.Set(span, true)
 	}
+
+	return resultVar0, resultVar1
+}
+
+func (a *OpenTracingAppLayer) GetRandomImageForChannel(imagesFolder string) (*os.File, error) {
+	origCtx := a.ctx
+	span, newCtx := tracing.StartSpanWithParentByContext(a.ctx, "app.GetRandomImageForChannel")
+
+	a.ctx = newCtx
+	a.app.Srv().Store.SetContext(newCtx)
+	defer func() {
+		a.app.Srv().Store.SetContext(origCtx)
+		a.ctx = origCtx
+	}()
+
+	defer span.Finish()
+	resultVar0, resultVar1 := a.app.GetRandomImageForChannel(imagesFolder)
 
 	return resultVar0, resultVar1
 }
@@ -11729,9 +11769,9 @@ func (a *OpenTracingAppLayer) RevokeSessionById(sessionId string) *model.AppErro
 	return resultVar0
 }
 
-func (a *OpenTracingAppLayer) RevokeSessionsForDeviceId(userId string, deviceId string, currentSessionId string) *model.AppError {
+func (a *OpenTracingAppLayer) RevokeSessionsForDevice(userId string, device *model.Device, currentSessionId string) *model.AppError {
 	origCtx := a.ctx
-	span, newCtx := tracing.StartSpanWithParentByContext(a.ctx, "app.RevokeSessionsForDeviceId")
+	span, newCtx := tracing.StartSpanWithParentByContext(a.ctx, "app.RevokeSessionsForDevice")
 
 	a.ctx = newCtx
 	a.app.Srv().Store.SetContext(newCtx)
@@ -11741,7 +11781,7 @@ func (a *OpenTracingAppLayer) RevokeSessionsForDeviceId(userId string, deviceId 
 	}()
 
 	defer span.Finish()
-	resultVar0 := a.app.RevokeSessionsForDeviceId(userId, deviceId, currentSessionId)
+	resultVar0 := a.app.RevokeSessionsForDevice(userId, device, currentSessionId)
 
 	if resultVar0 != nil {
 		span.LogFields(spanlog.Error(resultVar0))

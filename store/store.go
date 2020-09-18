@@ -364,11 +364,13 @@ type SessionStore interface {
 	PermanentDeleteSessionsByUser(teamId string) *model.AppError
 	UpdateLastActivityAt(sessionId string, time int64) *model.AppError
 	UpdateRoles(userId string, roles string) (string, *model.AppError)
-	UpdateDeviceId(id string, deviceId string, expiresAt int64) (string, *model.AppError)
+	UpdateDevice(id string, device *model.Device, expiresAt int64) *model.AppError
+	RemovePushToken(id string) *model.AppError
 	UpdateProps(session *model.Session) *model.AppError
 	AnalyticsSessionCount() (int64, *model.AppError)
 	Cleanup(expiryTime int64, batchSize int64)
 	GetSessionsWithDeviceId(userId string, deviceId string) ([]*model.Session, *model.AppError)
+	GetSessionsWithPushToken(userId string, pushToken string) ([]*model.Session, *model.AppError)
 }
 
 type AuditStore interface {

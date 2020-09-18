@@ -31,6 +31,8 @@ func newSqlSessionStore(sqlStore SqlStore) store.SessionStore {
 		table.ColMap("DeviceId").SetMaxSize(512)
 		table.ColMap("Roles").SetMaxSize(64)
 		table.ColMap("Props").SetMaxSize(1000)
+		table.ColMap("Platform").SetMaxSize(64)
+		table.ColMap("PushToken").SetMaxSize(512)
 	}
 
 	return us
@@ -195,14 +197,38 @@ func (me SqlSessionStore) UpdateRoles(userId, roles string) (string, *model.AppE
 	return userId, nil
 }
 
-func (me SqlSessionStore) UpdateDeviceId(id string, deviceId string, expiresAt int64) (string, *model.AppError) {
-	query := "UPDATE Sessions SET DeviceId = :DeviceId, ExpiresAt = :ExpiresAt WHERE Id = :Id"
+func (me SqlSessionStore) UpdateDevice(id string, device *model.Device, expiresAt int64) *model.AppError {
+	query :=
+		`UPDATE Sessions 
+		 SET 
+		 		Platform = :Platform, 
+				PushToken = :PushToken, 
+				DeviceId = :DeviceId, 
+				ExpiresAt = :ExpiresAt 
+		 WHERE Id = :Id`
 
-	_, err := me.GetMaster().Exec(query, map[string]interface{}{"DeviceId": deviceId, "Id": id, "ExpiresAt": expiresAt})
+	_, err := me.GetMaster().Exec(
+		query,
+		map[string]interface{}{
+			"DeviceId":  device.DeviceId,
+			"PushToken": device.PushToken,
+			"Platform":  device.Platform,
+			"Id":        id,
+			"ExpiresAt": expiresAt,
+		},
+	)
 	if err != nil {
-		return "", model.NewAppError("SqlSessionStore.UpdateDeviceId", "store.sql_session.update_device_id.app_error", nil, err.Error(), http.StatusInternalServerError)
+		return model.NewAppError("SqlSessionStore.UpdateDevice", "store.sql_session.update_device.app_error", nil, err.Error(), http.StatusInternalServerError)
 	}
-	return deviceId, nil
+	return nil
+}
+
+func (me SqlSessionStore) RemovePushToken(id string) *model.AppError {
+	_, err := me.GetMaster().Exec(`UPDATE Sessions SET PushToken = '' WHERE Id = :Id`)
+	if err != nil {
+		return model.NewAppError("SqlSessionStore.RemovePushToken", "store.sql_session.remove_push_token.app_error", nil, err.Error(), http.StatusInternalServerError)
+	}
+	return nil
 }
 
 func (me SqlSessionStore) UpdateProps(session *model.Session) *model.AppError {
@@ -280,6 +306,25 @@ func (me SqlSessionStore) GetSessionsWithDeviceId(userId string, deviceId string
 	)
 	if err != nil {
 		return nil, model.NewAppError("SqlSessionStore.GetSessionWithDeviceId", "store.sql_session.get_session_with-device_id.app_error", nil, err.Error(), http.StatusInternalServerError)
+	}
+	return sessions, nil
+}
+
+func (me SqlSessionStore) GetSessionsWithPushToken(userId string, pushToken string) ([]*model.Session, *model.AppError) {
+	var sessions []*model.Session
+	_, err := me.GetReplica().Select(
+		&sessions,
+		`
+		SELECT *
+		FROM Sessions
+		WHERE
+		UserId = :UserId AND
+		PushToken = :PushToken
+		`,
+		map[string]interface{}{"UserId": userId, "PushToken": pushToken},
+	)
+	if err != nil {
+		return nil, model.NewAppError("SqlSessionStore.GetSessionsWithPushToken", "store.sql_session.get_session_with-push_token.app_error", nil, err.Error(), http.StatusInternalServerError)
 	}
 	return sessions, nil
 }

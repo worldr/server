@@ -142,6 +142,31 @@ func (_m *SessionStore) GetSessionsWithDeviceId(userId string, deviceId string) 
 	return r0, r1
 }
 
+// GetSessionsWithPushToken provides a mock function with given fields: userId, pushToken
+func (_m *SessionStore) GetSessionsWithPushToken(userId string, pushToken string) ([]*model.Session, *model.AppError) {
+	ret := _m.Called(userId, pushToken)
+
+	var r0 []*model.Session
+	if rf, ok := ret.Get(0).(func(string, string) []*model.Session); ok {
+		r0 = rf(userId, pushToken)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*model.Session)
+		}
+	}
+
+	var r1 *model.AppError
+	if rf, ok := ret.Get(1).(func(string, string) *model.AppError); ok {
+		r1 = rf(userId, pushToken)
+	} else {
+		if ret.Get(1) != nil {
+			r1 = ret.Get(1).(*model.AppError)
+		}
+	}
+
+	return r0, r1
+}
+
 // PermanentDeleteSessionsByUser provides a mock function with given fields: teamId
 func (_m *SessionStore) PermanentDeleteSessionsByUser(teamId string) *model.AppError {
 	ret := _m.Called(teamId)
@@ -190,6 +215,22 @@ func (_m *SessionStore) RemoveAllSessions() *model.AppError {
 	return r0
 }
 
+// RemovePushToken provides a mock function with given fields: id
+func (_m *SessionStore) RemovePushToken(id string) *model.AppError {
+	ret := _m.Called(id)
+
+	var r0 *model.AppError
+	if rf, ok := ret.Get(0).(func(string) *model.AppError); ok {
+		r0 = rf(id)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*model.AppError)
+		}
+	}
+
+	return r0
+}
+
 // Save provides a mock function with given fields: session
 func (_m *SessionStore) Save(session *model.Session) (*model.Session, *model.AppError) {
 	ret := _m.Called(session)
@@ -215,27 +256,20 @@ func (_m *SessionStore) Save(session *model.Session) (*model.Session, *model.App
 	return r0, r1
 }
 
-// UpdateDeviceId provides a mock function with given fields: id, deviceId, expiresAt
-func (_m *SessionStore) UpdateDeviceId(id string, deviceId string, expiresAt int64) (string, *model.AppError) {
-	ret := _m.Called(id, deviceId, expiresAt)
+// UpdateDevice provides a mock function with given fields: id, device, expiresAt
+func (_m *SessionStore) UpdateDevice(id string, device *model.Device, expiresAt int64) *model.AppError {
+	ret := _m.Called(id, device, expiresAt)
 
-	var r0 string
-	if rf, ok := ret.Get(0).(func(string, string, int64) string); ok {
-		r0 = rf(id, deviceId, expiresAt)
+	var r0 *model.AppError
+	if rf, ok := ret.Get(0).(func(string, *model.Device, int64) *model.AppError); ok {
+		r0 = rf(id, device, expiresAt)
 	} else {
-		r0 = ret.Get(0).(string)
-	}
-
-	var r1 *model.AppError
-	if rf, ok := ret.Get(1).(func(string, string, int64) *model.AppError); ok {
-		r1 = rf(id, deviceId, expiresAt)
-	} else {
-		if ret.Get(1) != nil {
-			r1 = ret.Get(1).(*model.AppError)
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*model.AppError)
 		}
 	}
 
-	return r0, r1
+	return r0
 }
 
 // UpdateLastActivityAt provides a mock function with given fields: sessionId, time

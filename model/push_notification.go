@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
-	"strings"
 )
 
 const (
@@ -49,7 +48,7 @@ type PushNotification struct {
 	Platform         string `json:"platform"`
 	ServerTag        string `json:"server_tag"`
 	ServerId         string `json:"server_id"`
-	DeviceId         string `json:"device_id"`
+	DeviceId         string `json:"device_id"` // This is a push token really, not a device id. Leaving as is for now to avoid changing push proxy.
 	PostId           string `json:"post_id"`
 	Category         string `json:"category,omitempty"`
 	Sound            string `json:"sound,omitempty"`
@@ -76,14 +75,9 @@ func (me *PushNotification) ToJson() string {
 	return string(b)
 }
 
-func (me *PushNotification) SetDeviceIdAndPlatform(deviceId string) {
-
-	index := strings.Index(deviceId, ":")
-
-	if index > -1 {
-		me.Platform = deviceId[:index]
-		me.DeviceId = deviceId[index+1:]
-	}
+func (me *PushNotification) SetDeviceIdAndPlatform(session *Session) {
+	me.Platform = session.Platform
+	me.DeviceId = session.PushToken // Firebase-provided push token identifies the device
 }
 
 func (me *PushNotification) SetServerTag(tag *string) {

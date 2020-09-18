@@ -56,53 +56,6 @@ func TestPushNotificationAck(t *testing.T) {
 	})
 }
 
-func TestPushNotificationDeviceId(t *testing.T) {
-
-	msg := PushNotification{Platform: "test"}
-
-	msg.SetDeviceIdAndPlatform("android:12345")
-	require.Equal(t, msg.Platform, "android", msg.Platform)
-	require.Equal(t, msg.DeviceId, "12345", msg.DeviceId)
-	msg.Platform = ""
-	msg.DeviceId = ""
-
-	msg.SetDeviceIdAndPlatform("android:12:345")
-	require.Equal(t, msg.Platform, "android", msg.Platform)
-	require.Equal(t, msg.DeviceId, "12:345", msg.DeviceId)
-	msg.Platform = ""
-	msg.DeviceId = ""
-
-	msg.SetDeviceIdAndPlatform("android::12345")
-	require.Equal(t, msg.Platform, "android", msg.Platform)
-	require.Equal(t, msg.DeviceId, ":12345", msg.DeviceId)
-	msg.Platform = ""
-	msg.DeviceId = ""
-
-	msg.SetDeviceIdAndPlatform(":12345")
-	require.Equal(t, msg.Platform, "", msg.Platform)
-	require.Equal(t, msg.DeviceId, "12345", msg.DeviceId)
-	msg.Platform = ""
-	msg.DeviceId = ""
-
-	msg.SetDeviceIdAndPlatform("android:")
-	require.Equal(t, msg.Platform, "android", msg.Platform)
-	require.Equal(t, msg.DeviceId, "", msg.DeviceId)
-	msg.Platform = ""
-	msg.DeviceId = ""
-
-	msg.SetDeviceIdAndPlatform("")
-	require.Equal(t, msg.Platform, "", msg.Platform)
-	require.Equal(t, msg.DeviceId, "", msg.DeviceId)
-	msg.Platform = ""
-	msg.DeviceId = ""
-
-	msg.SetDeviceIdAndPlatform(":")
-	require.Equal(t, msg.Platform, "", msg.Platform)
-	require.Equal(t, msg.DeviceId, "", msg.DeviceId)
-	msg.Platform = ""
-	msg.DeviceId = ""
-}
-
 func TestPushNotificationServerTag(t *testing.T) {
 
 	msg := PushNotification{ServerTag: "test"}

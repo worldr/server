@@ -5285,6 +5285,22 @@ func (s *TimerLayerSessionStore) GetSessionsWithDeviceId(userId string, deviceId
 	return resultVar0, resultVar1
 }
 
+func (s *TimerLayerSessionStore) GetSessionsWithPushToken(userId string, pushToken string) ([]*model.Session, *model.AppError) {
+	start := timemodule.Now()
+
+	resultVar0, resultVar1 := s.SessionStore.GetSessionsWithPushToken(userId, pushToken)
+
+	elapsed := float64(timemodule.Since(start)) / float64(timemodule.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if resultVar1 == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("SessionStore.GetSessionsWithPushToken", success, elapsed)
+	}
+	return resultVar0, resultVar1
+}
+
 func (s *TimerLayerSessionStore) PermanentDeleteSessionsByUser(teamId string) *model.AppError {
 	start := timemodule.Now()
 
@@ -5333,6 +5349,22 @@ func (s *TimerLayerSessionStore) RemoveAllSessions() *model.AppError {
 	return resultVar0
 }
 
+func (s *TimerLayerSessionStore) RemovePushToken(id string) *model.AppError {
+	start := timemodule.Now()
+
+	resultVar0 := s.SessionStore.RemovePushToken(id)
+
+	elapsed := float64(timemodule.Since(start)) / float64(timemodule.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if resultVar0 == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("SessionStore.RemovePushToken", success, elapsed)
+	}
+	return resultVar0
+}
+
 func (s *TimerLayerSessionStore) Save(session *model.Session) (*model.Session, *model.AppError) {
 	start := timemodule.Now()
 
@@ -5349,20 +5381,20 @@ func (s *TimerLayerSessionStore) Save(session *model.Session) (*model.Session, *
 	return resultVar0, resultVar1
 }
 
-func (s *TimerLayerSessionStore) UpdateDeviceId(id string, deviceId string, expiresAt int64) (string, *model.AppError) {
+func (s *TimerLayerSessionStore) UpdateDevice(id string, device *model.Device, expiresAt int64) *model.AppError {
 	start := timemodule.Now()
 
-	resultVar0, resultVar1 := s.SessionStore.UpdateDeviceId(id, deviceId, expiresAt)
+	resultVar0 := s.SessionStore.UpdateDevice(id, device, expiresAt)
 
 	elapsed := float64(timemodule.Since(start)) / float64(timemodule.Second)
 	if s.Root.Metrics != nil {
 		success := "false"
-		if resultVar1 == nil {
+		if resultVar0 == nil {
 			success = "true"
 		}
-		s.Root.Metrics.ObserveStoreMethodDuration("SessionStore.UpdateDeviceId", success, elapsed)
+		s.Root.Metrics.ObserveStoreMethodDuration("SessionStore.UpdateDevice", success, elapsed)
 	}
-	return resultVar0, resultVar1
+	return resultVar0
 }
 
 func (s *TimerLayerSessionStore) UpdateLastActivityAt(sessionId string, time int64) *model.AppError {

@@ -205,13 +205,18 @@ func (a *App) SessionCacheLength() int {
 	return a.Srv().sessionCache.Len()
 }
 
-func (a *App) RevokeSessionsForDeviceId(userId string, deviceId string, currentSessionId string) *model.AppError {
+func (a *App) RevokeSessionsForDevice(userId string, device *model.Device, currentSessionId string) *model.AppError {
 	sessions, err := a.Srv().Store.Session().GetSessions(userId)
 	if err != nil {
 		return err
 	}
 	for _, session := range sessions {
-		if session.DeviceId == deviceId && session.Id != currentSessionId {
+		if session.Id != currentSessionId {
+			continue
+		}
+		d := len(device.DeviceId) > 0 && session.DeviceId == device.DeviceId
+		p := len(device.PushToken) > 0 && session.PushToken == device.PushToken
+		if d || p {
 			mlog.Debug("Revoking sessionId for userId. Re-login with the same device Id", mlog.String("session_id", session.Id), mlog.String("user_id", userId))
 			if err := a.RevokeSession(session); err != nil {
 				// Soft error so we still remove the other sessions
@@ -258,13 +263,12 @@ func (a *App) RevokeSession(session *model.Session) *model.AppError {
 	return nil
 }
 
-func (a *App) AttachDeviceId(sessionId string, deviceId string, expiresAt int64) *model.AppError {
-	_, err := a.Srv().Store.Session().UpdateDeviceId(sessionId, deviceId, expiresAt)
-	if err != nil {
-		return err
-	}
+func (a *App) AttachDevice(sessionId string, device *model.Device, expiresAt int64) *model.AppError {
+	return a.Srv().Store.Session().UpdateDevice(sessionId, device, expiresAt)
+}
 
-	return nil
+func (a *App) DetachDevice(sessionId string) *model.AppError {
+	return a.Srv().Store.Session().RemovePushToken(sessionId)
 }
 
 func (a *App) UpdateLastActivityAtIfNeeded(session model.Session) {

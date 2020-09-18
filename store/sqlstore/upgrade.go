@@ -5,6 +5,7 @@ package sqlstore
 
 import (
 	"os"
+	"strings"
 	"time"
 
 	"github.com/blang/semver"
@@ -15,11 +16,10 @@ import (
 )
 
 const (
-	CURRENT_SCHEMA_VERSION   = VERSION_6_0_0
-	VERSION_6_0_1            = "6.0.1"
+	CURRENT_SCHEMA_VERSION   = VERSION_6_1_0
+	VERSION_6_1_0            = "6.1.0"
 	VERSION_6_0_0            = "6.0.0"
-	VERSION_3_0_0            = "3.0.0"
-	OLDEST_SUPPORTED_VERSION = VERSION_3_0_0
+	OLDEST_SUPPORTED_VERSION = VERSION_6_0_0
 )
 
 const (
@@ -78,8 +78,7 @@ func upgradeDatabase(sqlStore SqlStore, currentModelVersionString string) error 
 		mlog.Warn("The database schema version and model versions do not match", mlog.String("schema_version", currentSchemaVersion.String()), mlog.String("model_version", currentModelVersion.String()))
 	}
 
-	upgradeDatabaseToVersion600(sqlStore)
-	upgradeDatabaseToVersion601(sqlStore)
+	upgradeDatabaseToVersion610(sqlStore)
 
 	return nil
 }
@@ -104,16 +103,38 @@ func shouldPerformUpgrade(sqlStore SqlStore, currentSchemaVersion string, expect
 	return false
 }
 
-func upgradeDatabaseToVersion600(sqlStore SqlStore) {
-	saveSchemaVersion(sqlStore, VERSION_6_0_0)
-}
+func upgradeDatabaseToVersion610(sqlStore SqlStore) {
+	if shouldPerformUpgrade(sqlStore, VERSION_6_0_0, VERSION_6_1_0) {
+		sqlStore.CreateColumnIfNotExists("Sessions", "Platform", "varchar(64)", "varchar(64)", "")
+		sqlStore.CreateColumnIfNotExists("Sessions", "PushToken", "varchar(512)", "varchar(512)", "")
 
-// Uncomment when need be
-func upgradeDatabaseToVersion601(sqlStore SqlStore) {
-	if shouldPerformUpgrade(sqlStore, VERSION_6_0_0, VERSION_6_0_1) {
-		//
-		// TODO
-		//
-		//saveSchemaVersion(sqlStore, VERSION_6_0_0)
+		transaction, err := sqlStore.GetMaster().Begin()
+		if err != nil {
+			mlog.Critical("Failed to migrate sessions", mlog.Err(err))
+			time.Sleep(time.Second)
+			os.Exit(EXIT_DB_OPEN)
+		}
+		defer finalizeTransaction(transaction)
+
+		var sessions []*model.Session
+		if _, err := sqlStore.GetReplica().Select(&sessions, "SELECT * FROM Sessions WHERE deviceid != ''"); err != nil {
+			mlog.Error("Error fetching Sessions without DeviceId", mlog.Err(err))
+		} else {
+			for _, s := range sessions {
+				chunks := strings.Split(s.DeviceId, ":")
+				d := &model.Device{DeviceId: ""}
+				if len(chunks) > 1 {
+					d.Platform = chunks[0]
+					d.PushToken = chunks[1]
+				} else {
+					d.PushToken = s.DeviceId
+				}
+				if err := sqlStore.Session().UpdateDevice(s.Id, d, s.ExpiresAt); err != nil {
+					mlog.Error("Error updating session device id", mlog.String("session_id", s.Id), mlog.Err(err))
+				}
+			}
+		}
+
+		saveSchemaVersion(sqlStore, VERSION_6_1_0)
 	}
 }

@@ -11,14 +11,12 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/mattermost/mattermost-server/v5/app"
 	"github.com/mattermost/mattermost-server/v5/audit"
 	"github.com/mattermost/mattermost-server/v5/mlog"
 	"github.com/mattermost/mattermost-server/v5/model"
 	"github.com/mattermost/mattermost-server/v5/store"
-	"github.com/mattermost/mattermost-server/v5/utils"
 )
 
 func (api *API) InitUser() {
@@ -1445,19 +1443,15 @@ func maskSensitiveErrors(c *Context) {
 }
 
 func executeLogin(c *Context, w http.ResponseWriter, r *http.Request) (*model.User, *model.AppError) {
-	props := model.MapFromJson(r.Body)
-	return executeLoginWithProps(c, w, r, props)
+	data, err := model.LoginDataFromJson(r.Body)
+	if err != nil {
+		return nil, model.NewAppError("executeLogin", "api.user.login.data", nil, err.Error(), http.StatusBadRequest)
+	}
+	return executeLoginWithProps(c, w, r, data)
 }
 
-func executeLoginWithProps(c *Context, w http.ResponseWriter, r *http.Request, props map[string]string) (*model.User, *model.AppError) {
+func executeLoginWithProps(c *Context, w http.ResponseWriter, r *http.Request, data *model.LoginData) (*model.User, *model.AppError) {
 	defer maskSensitiveErrors(c)
-	id := props["id"]
-	loginId := props["login_id"]
-	password := props["password"]
-	mfaToken := props["token"]
-	deviceId := props["device_id"]
-	ldapOnly := props["ldap_only"] == "true"
-	useAdminTtl := props[model.USE_ADMIN_SESSION_TTL] == "true"
 
 	if *c.App.Config().ExperimentalSettings.ClientSideCertEnable {
 		if license := c.App.License(); license == nil || !*license.Features.SAML {
@@ -1475,22 +1469,28 @@ func executeLoginWithProps(c *Context, w http.ResponseWriter, r *http.Request, p
 		}
 
 		if *c.App.Config().ExperimentalSettings.ClientSideCertCheck == model.CLIENT_SIDE_CERT_CHECK_PRIMARY_AUTH {
-			loginId = certEmail
-			password = "certificate"
+			data.LoginId = certEmail
+			data.Password = "certificate"
 		}
 	}
 
 	auditRec := c.MakeAuditRecord("login", audit.Fail)
 	defer c.LogAuditRec(auditRec)
-	auditRec.AddMeta("login_id", loginId)
-	auditRec.AddMeta("device_id", deviceId)
+	auditRec.AddMeta("login_id", data.LoginId)
+	auditRec.AddMeta("device_id", data.Device.DeviceId)
 
-	c.LogAuditWithUserId(id, "attempt - login_id="+loginId)
+	c.LogAuditWithUserId(data.Id, "attempt - login_id="+data.LoginId)
 
-	user, err := c.App.AuthenticateUserForLogin(id, loginId, password, mfaToken, ldapOnly)
+	user, err := c.App.AuthenticateUserForLogin(
+		data.Id,
+		data.LoginId,
+		data.Password,
+		data.MfaToken,
+		data.LdapOnly,
+	)
 
 	if err != nil {
-		c.LogAuditWithUserId(id, "failure - login_id="+loginId)
+		c.LogAuditWithUserId(data.Id, "failure - login_id="+data.LoginId)
 		c.Err = err
 		return nil, err
 	}
@@ -1511,10 +1511,10 @@ func executeLoginWithProps(c *Context, w http.ResponseWriter, r *http.Request, p
 
 	c.LogAuditWithUserId(user.Id, "authenticated")
 
-	if useAdminTtl {
-		err = c.App.DoLoginAdmin(w, r, user, deviceId)
+	if data.UseAdminSessionTtl {
+		err = c.App.DoLoginAdmin(w, r, user, data.Device)
 	} else {
-		err = c.App.DoLogin(w, r, user, deviceId)
+		err = c.App.DoLogin(w, r, user, data.Device)
 	}
 	if err != nil {
 		c.Err = err
@@ -1688,59 +1688,63 @@ func revokeAllSessionsAllUsers(c *Context, w http.ResponseWriter, r *http.Reques
 }
 
 func attachDeviceId(c *Context, w http.ResponseWriter, r *http.Request) {
-	props := model.MapFromJson(r.Body)
+	// This handle is no longer used, use Worldr's attachDevice() instead
+	w.WriteHeader(http.StatusNotImplemented)
+	/*
+		props := model.MapFromJson(r.Body)
 
-	deviceId := props["device_id"]
-	if len(deviceId) == 0 {
-		c.SetInvalidParam("device_id")
-		return
-	}
+		deviceId := props["device_id"]
+		if len(deviceId) == 0 {
+			c.SetInvalidParam("device_id")
+			return
+		}
 
-	auditRec := c.MakeAuditRecord("attachDeviceId", audit.Fail)
-	defer c.LogAuditRec(auditRec)
-	auditRec.AddMeta("device_id", deviceId)
+		auditRec := c.MakeAuditRecord("attachDeviceId", audit.Fail)
+		defer c.LogAuditRec(auditRec)
+		auditRec.AddMeta("device_id", deviceId)
 
-	// A special case where we logout of all other sessions with the same device id
-	if err := c.App.RevokeSessionsForDeviceId(c.App.Session().UserId, deviceId, c.App.Session().Id); err != nil {
-		c.Err = err
-		return
-	}
+		// A special case where we logout of all other sessions with the same device id
+		if err := c.App.RevokeSessionsForDeviceId(c.App.Session().UserId, deviceId, c.App.Session().Id); err != nil {
+			c.Err = err
+			return
+		}
 
-	c.App.ClearSessionCacheForUser(c.App.Session().UserId)
-	c.App.Session().SetExpireInDays(*c.App.Config().ServiceSettings.SessionLengthMobileInDays)
+		c.App.ClearSessionCacheForUser(c.App.Session().UserId)
+		c.App.Session().SetExpireInDays(*c.App.Config().ServiceSettings.SessionLengthMobileInDays)
 
-	maxAge := *c.App.Config().ServiceSettings.SessionLengthMobileInDays * 60 * 60 * 24
+		maxAge := *c.App.Config().ServiceSettings.SessionLengthMobileInDays * 60 * 60 * 24
 
-	secure := false
-	if app.GetProtocol(r) == "https" {
-		secure = true
-	}
+		secure := false
+		if app.GetProtocol(r) == "https" {
+			secure = true
+		}
 
-	subpath, _ := utils.GetSubpathFromConfig(c.App.Config())
+		subpath, _ := utils.GetSubpathFromConfig(c.App.Config())
 
-	expiresAt := time.Unix(model.GetMillis()/1000+int64(maxAge), 0)
-	sessionCookie := &http.Cookie{
-		Name:     model.SESSION_COOKIE_TOKEN,
-		Value:    c.App.Session().Token,
-		Path:     subpath,
-		MaxAge:   maxAge,
-		Expires:  expiresAt,
-		HttpOnly: true,
-		Domain:   c.App.GetCookieDomain(),
-		Secure:   secure,
-	}
+		expiresAt := time.Unix(model.GetMillis()/1000+int64(maxAge), 0)
+		sessionCookie := &http.Cookie{
+			Name:     model.SESSION_COOKIE_TOKEN,
+			Value:    c.App.Session().Token,
+			Path:     subpath,
+			MaxAge:   maxAge,
+			Expires:  expiresAt,
+			HttpOnly: true,
+			Domain:   c.App.GetCookieDomain(),
+			Secure:   secure,
+		}
 
-	http.SetCookie(w, sessionCookie)
+		http.SetCookie(w, sessionCookie)
 
-	if err := c.App.AttachDeviceId(c.App.Session().Id, deviceId, c.App.Session().ExpiresAt); err != nil {
-		c.Err = err
-		return
-	}
+		if err := c.App.AttachDeviceId(c.App.Session().Id, deviceId, c.App.Session().ExpiresAt); err != nil {
+			c.Err = err
+			return
+		}
 
-	auditRec.Success()
-	c.LogAudit("")
+		auditRec.Success()
+		c.LogAudit("")
 
-	ReturnStatusOK(w)
+		ReturnStatusOK(w)
+	*/
 }
 
 func getUserAudits(c *Context, w http.ResponseWriter, r *http.Request) {

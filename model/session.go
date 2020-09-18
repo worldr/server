@@ -39,6 +39,8 @@ type Session struct {
 	IsOAuth        bool          `json:"is_oauth"`
 	Props          StringMap     `json:"props"`
 	TeamMembers    []*TeamMember `json:"team_members" db:"-"`
+	Platform       string        `json:"platform"`
+	PushToken      string        `json:"push_token"`
 }
 
 func (me *Session) DeepCopy() *Session {

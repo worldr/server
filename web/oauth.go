@@ -297,7 +297,7 @@ func completeOAuth(c *Context, w http.ResponseWriter, r *http.Request) {
 	} else if action == model.OAUTH_ACTION_SSO_TO_EMAIL {
 		redirectUrl = app.GetProtocol(r) + "://" + r.Host + "/claim?email=" + url.QueryEscape(props["email"])
 	} else {
-		err = c.App.DoLogin(w, r, user, "")
+		err = c.App.DoLogin(w, r, user, &model.Device{})
 		if err != nil {
 			err.Translate(c.App.T)
 			c.Err = err

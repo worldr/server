@@ -5832,6 +5832,24 @@ func (s *OpenTracingLayerSessionStore) GetSessionsWithDeviceId(userId string, de
 	return resultVar0, resultVar1
 }
 
+func (s *OpenTracingLayerSessionStore) GetSessionsWithPushToken(userId string, pushToken string) ([]*model.Session, *model.AppError) {
+	origCtx := s.Root.Store.Context()
+	span, newCtx := tracing.StartSpanWithParentByContext(s.Root.Store.Context(), "SessionStore.GetSessionsWithPushToken")
+	s.Root.Store.SetContext(newCtx)
+	defer func() {
+		s.Root.Store.SetContext(origCtx)
+	}()
+
+	defer span.Finish()
+	resultVar0, resultVar1 := s.SessionStore.GetSessionsWithPushToken(userId, pushToken)
+	if resultVar1 != nil {
+		span.LogFields(spanlog.Error(resultVar1))
+		ext.Error.Set(span, true)
+	}
+
+	return resultVar0, resultVar1
+}
+
 func (s *OpenTracingLayerSessionStore) PermanentDeleteSessionsByUser(teamId string) *model.AppError {
 	origCtx := s.Root.Store.Context()
 	span, newCtx := tracing.StartSpanWithParentByContext(s.Root.Store.Context(), "SessionStore.PermanentDeleteSessionsByUser")
@@ -5886,6 +5904,24 @@ func (s *OpenTracingLayerSessionStore) RemoveAllSessions() *model.AppError {
 	return resultVar0
 }
 
+func (s *OpenTracingLayerSessionStore) RemovePushToken(id string) *model.AppError {
+	origCtx := s.Root.Store.Context()
+	span, newCtx := tracing.StartSpanWithParentByContext(s.Root.Store.Context(), "SessionStore.RemovePushToken")
+	s.Root.Store.SetContext(newCtx)
+	defer func() {
+		s.Root.Store.SetContext(origCtx)
+	}()
+
+	defer span.Finish()
+	resultVar0 := s.SessionStore.RemovePushToken(id)
+	if resultVar0 != nil {
+		span.LogFields(spanlog.Error(resultVar0))
+		ext.Error.Set(span, true)
+	}
+
+	return resultVar0
+}
+
 func (s *OpenTracingLayerSessionStore) Save(session *model.Session) (*model.Session, *model.AppError) {
 	origCtx := s.Root.Store.Context()
 	span, newCtx := tracing.StartSpanWithParentByContext(s.Root.Store.Context(), "SessionStore.Save")
@@ -5904,22 +5940,22 @@ func (s *OpenTracingLayerSessionStore) Save(session *model.Session) (*model.Sess
 	return resultVar0, resultVar1
 }
 
-func (s *OpenTracingLayerSessionStore) UpdateDeviceId(id string, deviceId string, expiresAt int64) (string, *model.AppError) {
+func (s *OpenTracingLayerSessionStore) UpdateDevice(id string, device *model.Device, expiresAt int64) *model.AppError {
 	origCtx := s.Root.Store.Context()
-	span, newCtx := tracing.StartSpanWithParentByContext(s.Root.Store.Context(), "SessionStore.UpdateDeviceId")
+	span, newCtx := tracing.StartSpanWithParentByContext(s.Root.Store.Context(), "SessionStore.UpdateDevice")
 	s.Root.Store.SetContext(newCtx)
 	defer func() {
 		s.Root.Store.SetContext(origCtx)
 	}()
 
 	defer span.Finish()
-	resultVar0, resultVar1 := s.SessionStore.UpdateDeviceId(id, deviceId, expiresAt)
-	if resultVar1 != nil {
-		span.LogFields(spanlog.Error(resultVar1))
+	resultVar0 := s.SessionStore.UpdateDevice(id, device, expiresAt)
+	if resultVar0 != nil {
+		span.LogFields(spanlog.Error(resultVar0))
 		ext.Error.Set(span, true)
 	}
 
-	return resultVar0, resultVar1
+	return resultVar0
 }
 
 func (s *OpenTracingLayerSessionStore) UpdateLastActivityAt(sessionId string, time int64) *model.AppError {

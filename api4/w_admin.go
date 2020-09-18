@@ -203,14 +203,13 @@ func loginByAdmin(c *Context, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	props := model.MapFromJson(r.Body)
-	loginId, exists := props["login_id"]
-	if !exists || len(loginId) == 0 {
-		c.Err = model.NewAppError("loginForAdmins", "admin_login_param", nil, "missing login parameter", http.StatusBadRequest)
+	data, dataErr := model.LoginDataFromJson(r.Body)
+	if dataErr != nil {
+		c.Err = model.NewAppError("loginForAdmins", "admin_login_data", nil, dataErr.Error(), http.StatusBadRequest)
 		return
 	}
 
-	isAdmin, err := c.App.IsAdminUsername(team.Id, loginId)
+	isAdmin, err := c.App.IsAdminUsername(team.Id, data.LoginId)
 
 	if err != nil {
 		c.Err = model.NewAppError("loginForAdmins", "admin_check_role", nil, err.Error(), http.StatusInternalServerError)
@@ -221,9 +220,9 @@ func loginByAdmin(c *Context, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	props[model.USE_ADMIN_SESSION_TTL] = "true"
+	data.UseAdminSessionTtl = true
 
-	if user, err := executeLoginWithProps(c, w, r, props); err == nil {
+	if user, err := executeLoginWithProps(c, w, r, data); err == nil {
 		c.App.AttachSessionCookies(w, r)
 		response := model.AdminAuthResponse{
 			Token:     w.Header().Get("Token"),

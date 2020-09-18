@@ -601,7 +601,8 @@ CREATE TABLE public.sessions (
     deviceid character varying(512),
     roles character varying(64),
     isoauth boolean,
-    props character varying(1000)
+    platform character varying(64),
+    pushtoken character varying(512)
 );
 
 

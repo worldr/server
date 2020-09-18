@@ -107,7 +107,7 @@ func (a *App) sendPushNotificationToAllSessions(msg *model.PushNotification, use
 
 		// We made a copy to avoid decoding and parsing all the time
 		tmpMessage := notification
-		tmpMessage.SetDeviceIdAndPlatform(session.DeviceId)
+		tmpMessage.SetDeviceIdAndPlatform(session)
 		tmpMessage.SetServerTag(a.Srv().Config().ServiceSettings.ServerTag)
 		tmpMessage.AckId = model.NewId()
 
@@ -342,7 +342,7 @@ func (a *App) sendToPushProxy(msg model.PushNotification, session *model.Session
 	pushResponse := model.PushResponseFromJson(resp.Body)
 
 	if pushResponse[model.PUSH_STATUS] == model.PUSH_STATUS_REMOVE {
-		a.AttachDeviceId(session.Id, "", session.ExpiresAt)
+		a.DetachDevice(session.Id)
 		a.ClearSessionCacheForUser(session.UserId)
 		return errors.New("Device was reported as removed")
 	}

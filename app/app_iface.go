@@ -16,6 +16,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/url"
+	"os"
 	"time"
 
 	"github.com/dyatlov/go-opengraph/opengraph"
@@ -360,7 +361,7 @@ type AppIface interface {
 	AllowOAuthAppAccessToUser(userId string, authRequest *model.AuthorizeRequest) (string, *model.AppError)
 	AssignCategory(channelId string, userId string, category string) (*model.ChannelCategory, *model.AppError)
 	AsymmetricSigningKey() *ecdsa.PrivateKey
-	AttachDeviceId(sessionId string, deviceId string, expiresAt int64) *model.AppError
+	AttachDevice(sessionId string, device *model.Device, expiresAt int64) *model.AppError
 	AttachSessionCookies(w http.ResponseWriter, r *http.Request)
 	AuthenticateUserForLogin(id, loginId, password, mfaToken string, ldapOnly bool) (*model.User, *model.AppError)
 	AuthorizeOAuthUser(w http.ResponseWriter, r *http.Request, service, code, state, redirectUri string) (io.ReadCloser, string, map[string]string, *model.AppError)
@@ -457,6 +458,7 @@ type AppIface interface {
 	DeleteReactionForPost(reaction *model.Reaction) *model.AppError
 	DeleteScheme(schemeId string) (*model.Scheme, *model.AppError)
 	DeleteToken(token *model.Token) *model.AppError
+	DetachDevice(sessionId string) *model.AppError
 	DiagnosticId() string
 	DisableAutoResponder(userId string, asAdmin bool) *model.AppError
 	DisableUserAccessToken(token *model.UserAccessToken) *model.AppError
@@ -464,8 +466,8 @@ type AppIface interface {
 	DoEmojisPermissionsMigration()
 	DoGuestRolesCreationMigration()
 	DoLocalRequest(rawURL string, body []byte) (*http.Response, *model.AppError)
-	DoLogin(w http.ResponseWriter, r *http.Request, user *model.User, deviceId string) *model.AppError
-	DoLoginAdmin(w http.ResponseWriter, r *http.Request, user *model.User, deviceId string) *model.AppError
+	DoLogin(w http.ResponseWriter, r *http.Request, user *model.User, device *model.Device) *model.AppError
+	DoLoginAdmin(w http.ResponseWriter, r *http.Request, user *model.User, device *model.Device) *model.AppError
 	DoPostAction(postId, actionId, userId, selectedOption string) (string, *model.AppError)
 	DoPostActionWithCookie(postId, actionId, userId, selectedOption string, cookie *model.PostActionCookie) (string, *model.AppError)
 	DoUploadFile(now time.Time, rawTeamId string, rawChannelId string, rawUserId string, rawFilename string, data []byte) (*model.FileInfo, *model.AppError)
@@ -624,6 +626,7 @@ type AppIface interface {
 	GetProfileImage(user *model.User) ([]byte, bool, *model.AppError)
 	GetPublicChannelsByIdsForTeam(teamId string, channelIds []string) (*model.ChannelList, *model.AppError)
 	GetPublicChannelsForTeam(teamId string, offset int, limit int) (*model.ChannelList, *model.AppError)
+	GetRandomImageForChannel(imagesFolder string) (*os.File, error)
 	GetReactionsForPost(postId string) ([]*model.Reaction, *model.AppError)
 	GetRecentlyActiveUsersForTeam(teamId string) (map[string]*model.User, *model.AppError)
 	GetRecentlyActiveUsersForTeamPage(teamId string, page, perPage int, asAdmin bool, viewRestrictions *model.ViewUsersRestrictions) ([]*model.User, *model.AppError)
@@ -833,7 +836,7 @@ type AppIface interface {
 	RevokeAllSessions(userId string) *model.AppError
 	RevokeSession(session *model.Session) *model.AppError
 	RevokeSessionById(sessionId string) *model.AppError
-	RevokeSessionsForDeviceId(userId string, deviceId string, currentSessionId string) *model.AppError
+	RevokeSessionsForDevice(userId string, device *model.Device, currentSessionId string) *model.AppError
 	RevokeUserAccessToken(token *model.UserAccessToken) *model.AppError
 	RolesGrantPermission(roleNames []string, permissionId string) bool
 	Saml() einterfaces.SamlInterface

@@ -176,10 +176,16 @@ func testSessionUpdateDeviceId(t *testing.T, ss store.Store) {
 	s1 := &model.Session{}
 	s1.UserId = model.NewId()
 
+	d := &model.Device{
+		Platform:  model.PUSH_NOTIFY_APPLE,
+		PushToken: "1234567890",
+		DeviceId:  "111",
+	}
+
 	s1, err := ss.Session().Save(s1)
 	require.Nil(t, err)
 
-	_, err = ss.Session().UpdateDeviceId(s1.Id, model.PUSH_NOTIFY_APPLE+":1234567890", s1.ExpiresAt)
+	err = ss.Session().UpdateDevice(s1.Id, d, s1.ExpiresAt)
 	require.Nil(t, err)
 
 	s2 := &model.Session{}
@@ -188,7 +194,7 @@ func testSessionUpdateDeviceId(t *testing.T, ss store.Store) {
 	s2, err = ss.Session().Save(s2)
 	require.Nil(t, err)
 
-	_, err = ss.Session().UpdateDeviceId(s2.Id, model.PUSH_NOTIFY_APPLE+":1234567890", s1.ExpiresAt)
+	err = ss.Session().UpdateDevice(s2.Id, d, s1.ExpiresAt)
 	require.Nil(t, err)
 }
 
@@ -196,10 +202,16 @@ func testSessionUpdateDeviceId2(t *testing.T, ss store.Store) {
 	s1 := &model.Session{}
 	s1.UserId = model.NewId()
 
+	d := &model.Device{
+		Platform:  model.PUSH_NOTIFY_ANDROID,
+		PushToken: "1234567890",
+		DeviceId:  "111",
+	}
+
 	s1, err := ss.Session().Save(s1)
 	require.Nil(t, err)
 
-	_, err = ss.Session().UpdateDeviceId(s1.Id, model.PUSH_NOTIFY_APPLE_REACT_NATIVE+":1234567890", s1.ExpiresAt)
+	err = ss.Session().UpdateDevice(s1.Id, d, s1.ExpiresAt)
 	require.Nil(t, err)
 
 	s2 := &model.Session{}
@@ -208,7 +220,7 @@ func testSessionUpdateDeviceId2(t *testing.T, ss store.Store) {
 	s2, err = ss.Session().Save(s2)
 	require.Nil(t, err)
 
-	_, err = ss.Session().UpdateDeviceId(s2.Id, model.PUSH_NOTIFY_APPLE_REACT_NATIVE+":1234567890", s1.ExpiresAt)
+	err = ss.Session().UpdateDevice(s2.Id, d, s1.ExpiresAt)
 	require.Nil(t, err)
 }
 
