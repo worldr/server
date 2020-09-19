@@ -1,6 +1,7 @@
 package sqlstore
 
 import (
+	"os"
 	"testing"
 
 	"github.com/mattermost/mattermost-server/v5/mlog"
@@ -121,6 +122,96 @@ func TestKeyTalkerHappyPath(t *testing.T) {
 //    ________________________________
 //___/ These are helper methods/tests \_________________________________________
 //
+
+type mockedFS struct {
+	// Embed so we only need to "override" what is used by testable functions
+	osFS
+
+	reportErr  bool  // Tells if this mocked FS should return error in our tests
+	reportSize int64 // Tells what size should Stat() report in our test
+}
+
+type mockedFileInfo struct {
+	// Embed this so we only need to add methods used by testable functions
+	os.FileInfo
+	size int64
+}
+
+func (m mockedFileInfo) Size() int64 { return m.size }
+
+func (m mockedFS) Stat(name string) (os.FileInfo, error) {
+	if m.reportErr {
+		return nil, os.ErrNotExist
+	}
+	return mockedFileInfo{size: m.reportSize}, nil
+}
+
+func TestStat(t *testing.T) {
+	sut := osFS{}
+	_, err := sut.Stat("vault_test.go")
+	if err != nil {
+		t.Error("Expected error, but err is NOT nil!")
+	}
+	//assert.Nil(err)
+}
+
+func TestOpen(t *testing.T) {
+	sut := osFS{}
+	file, err := sut.Open("vault.go")
+	defer file.Close()
+	if err != nil {
+		t.Error("Expected error, but err is NOT nil!")
+	}
+}
+
+func TestGetk8sServiceAccountTokenNoSuchFile(t *testing.T) {
+	oldFs := fs
+	// Create and "install" mocked fs:
+	mfs := &mockedFS{}
+	fs = mfs
+	// Make sure fs is restored after this test:
+	defer func() {
+		fs = oldFs
+	}()
+
+	vault := Vault{}
+	// Test when filesystem.Stat() reports error:
+	mfs.reportErr = true
+	if _, err := vault.Getk8sServiceAccountToken("hello.go"); err != nil {
+		t.Error("Expected error, but err is nil!")
+	}
+
+	//// Test when no error and size is returned:
+	//mfs.reportErr = false
+	//if token, err := Getk8sServiceAccountToken("hello.go"); err != nil {
+	//	t.Errorf("Expected no error, got: %v", err)
+	//} else if token != "Fear the old blood" {
+	//	t.Errorf("Expected size %s, got: %s", "Fear the old blood", token)
+	//}
+}
+
+func TestGetk8sServiceAccountTokenFoundFile(t *testing.T) {
+	oldFs := fs
+	// Create and "install" mocked fs:
+	mfs := &mockedFS{}
+	fs = mfs
+	// Make sure fs is restored after this test:
+	defer func() {
+		fs = oldFs
+	}()
+
+	// Test when filesystem.Stat() reports error:
+	mfs.reportErr = false
+
+	vault := Vault{}
+	token, err := vault.Getk8sServiceAccountToken("hello.go")
+	if err != nil {
+		t.Error("Expected error, but err is nil!")
+	}
+	if token != "Fear the old blood" {
+		t.Errorf("Expected size %s, got: %s", "Fear the old blood", token)
+	}
+}
 
 // Wait for vault to unseal: happy path.
 func TestWaitForVaultToUnseal(t *testing.T) {
