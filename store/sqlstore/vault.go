@@ -3,7 +3,6 @@ package sqlstore
 import (
 	"encoding/json"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -47,54 +46,26 @@ type VaultSealStatusMessage struct {
 	Storage_type  string `json:"storage_type"`
 }
 
-var fs fileSystem = osFS{}
-
-type fileSystem interface {
-	Open(name string) (file, error)
-	Stat(name string) (os.FileInfo, error)
-}
-
-type file interface {
-	io.Closer
-	io.Reader
-	io.ReaderAt
-	io.Seeker
-	Stat() (os.FileInfo, error)
-}
-
-// osFS implements fileSystem using the local disk.
-type osFS struct{}
-
-func (osFS) Open(name string) (file, error)        { return os.Open(name) }
-func (osFS) Stat(name string) (os.FileInfo, error) { return os.Stat(name) }
-
 // Get the k8s service account token.
 // There are three possible states:
 //   1. There is no token file. Fine, use unencrypted database.
-//   2. There is a token file but we cannot read it. This is bad. Abort.
+//   2. There is a token file but we cannot read it. This is bad and cannot happen.
 //   3. There is a token file and we can read it. All is good, proceed.
-func (v Vault) Getk8sServiceAccountToken(tokenFile string) (string, error) {
-	_, err := fs.Stat(tokenFile)
+func Getk8sServiceAccountToken(name string) (string, error) {
+
+	_, err := os.Stat(name)
 	if err != nil {
 		return "", nil
 	}
-	return "Fear the old blood", nil
 
-	//if _, err := os.Stat(tokenFile); os.IsNotExist(err) {
-	//	// File does not exist. No point in continuing this.
-	//	mlog.Info("Cannot find k8s service account token.")
-	//	return "", nil
-	//}
-	//return "", errors.New("Nope!")
-	//// File does exist.
-	//mlog.Info("Found a k8s service account token.")
-	//out, err := ioutil.ReadFile(VAULT_K8S_SERVICE_ACCOUNT_TOKEN_FILE)
-	//if err != nil {
-	//	mlog.Warn("Cannot read k8s service account token", mlog.Err(err))
-	//	return "", err
-	//} else {
-	//	return string(out), nil
-	//}
+	file, err := os.Open(name)
+	if err != nil {
+		return "", errors.Wrap(err, "Cannot open token file")
+	}
+	defer file.Close()
+
+	token, _ := ioutil.ReadAll(file)
+	return string(token), nil
 }
 
 func getVaultUnsealStatus(url string) error {
@@ -108,12 +79,8 @@ func getVaultUnsealStatus(url string) error {
 	if resp.StatusCode != 200 {
 		return errors.New(fmt.Sprintf("got return code %d, trying again", resp.StatusCode))
 	}
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return errors.Wrap(err, "cannot read body, trying again")
-	}
-	var status_message VaultSealStatusMessage
-	err = json.Unmarshal(body, &status_message)
+	status_message := new(VaultSealStatusMessage)
+	err = json.NewDecoder(resp.Body).Decode(status_message)
 	if err != nil {
 		return errors.Wrap(err, "cannot unmarshal JSON, trying again")
 	}
