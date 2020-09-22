@@ -14,9 +14,12 @@ import (
 const (
 	KEY_LISTENER_SERVER            = "localhost"
 	FAKE_K8S_SERVICE_ACCOUNT_TOKEN = "eyJhbGciOiJSUzI1NiIsImtpZCI6IlZ6dUtoUWxrYUkxX2cwcU44bDhoY1FaYkkxU2k0dUt2UTlhaVU1Q2Nxa2sifQ.eyJpc3MiOiJrdWJlcm5ldGVzL3NlcnZpY2VhY2NvdW50Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9uYW1lc3BhY2UiOiJ3b3JsZHIiLCJrdWJlcm5ldGVzLmlvL3NlcnZpY2VhY2NvdW50L3NlY3JldC5uYW1lIjoidmF1bHQtYXV0aC10b2tlbi13ODRuNCIsImt1YmVybmV0ZXMuaW8vc2VydmljZWFjY291bnQvc2VydmljZS1hY2NvdW50Lm5hbWUiOiJ2YXVsdC1hdXRoIiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9zZXJ2aWNlLWFjY291bnQudWlkIjoiMjNjOGNlYWQtZGEyYi00ZDU2LWI4NjktZGY5ODIzOTRiMmIyIiwic3ViIjoic3lzdGVtOnNlcnZpY2VhY2NvdW50Ondvcmxkcjp2YXVsdC1hdXRoIn0.OFhEd2TmeEOrsB6iPlwuupIqoinym8rX9Q0EZ8stGT-acq4PGw2lTZIuq_bui8ZX870YS4_f2Jxo3F8Fcaq1641yQsx_M9X2NtHY1QnAD171X8RenxyKZhi58bWOCT5uCxzu8_1HBUQDb-FLHcS1lKB2lTkJ-KgJJEMPOTzOME-_wG5obejEjMt5CkiPodzoI7qPAgPTKsX6dRv9D2TYpm4DhgFQmDIIzX4smwzqm9cuDwrl2tUf2GzIpyZypTK9d8NBAks4cP1stW7ikQgOD7AukkNy8aR0iFNHAH8e-lBkPcbHShGZ6CS2Dx0rlBn0MaHDQRmVy-1p33rMH6D2ow"
+	FAKE_VAULT_TOKEN               = "s.xzT4LmxwJItxrHdh5O595Wln"
+	FAKE_VAULT_PG_TDE_KEY          = "923930EDA20758FF5E4AB11B5A4DE357"
 	VAULT_TEST_URL                 = "http://unit.test.vault.worldr:8200"
 	VAULT_UNSEAL_PATH              = "v1/sys/seal-status"
 	VAULT_LOGIN_PATH               = "/v1/auth/kubernetes/login"
+	VAULT_KV_SECRET_PATH           = "/v1/kv/pg-tde"
 	VAULT_SEAL_STATUS_UNSEALED     = `{
 	  "type": "shamir",
 	  "initialise": true,
@@ -80,7 +83,18 @@ const (
 		"orphan": true
 	  }
 	}`
-	FAKE_VAULT_TOKEN = "s.xzT4LmxwJItxrHdh5O595Wln"
+	VAULT_KV_SECRET_RESPONSE = `{
+	  "request_id": "439cd3c5-4fa9-75c2-8a6a-775fa698528a",
+	  "lease_id": "",
+	  "renewable": false,
+	  "lease_duration": 2764800,
+	  "data": {
+		"TopSecretKey": "923930EDA20758FF5E4AB11B5A4DE357"
+	  },
+	  "wrap_info": null,
+	  "warnings": null,
+	  "auth": null
+	}`
 )
 
 //    _____________________________
@@ -135,6 +149,26 @@ func TestKeyTalkerFailOnLogin(t *testing.T) {
 	assert.NotNil(t, err)
 }
 
+func TestKeyTalkerFailOnSecret(t *testing.T) {
+	mockVault := &mocks.IVault{}
+	mockVault.On("Getk8sServiceAccountToken",
+		mock.AnythingOfType("string")).Return(FAKE_K8S_SERVICE_ACCOUNT_TOKEN, nil)
+	mockVault.On("WaitForVaultToUnseal",
+		mock.AnythingOfType("string"),
+		mock.AnythingOfType("time.Duration"),
+		mock.AnythingOfType("int")).Return(nil)
+	mockVault.On("Login",
+		mock.AnythingOfType("string"),
+		mock.AnythingOfType("string")).Return(FAKE_VAULT_TOKEN, nil)
+	mockVault.On("GetSecret",
+		mock.AnythingOfType("string"),
+		mock.AnythingOfType("string"),
+		mock.AnythingOfType("string")).Return("", errors.New("unit test cannot get PG TDE key"))
+
+	err := KeyTalker("localhost:8888", mockVault)
+	assert.NotNil(t, err)
+}
+
 //    ________________________
 //___/ This is the HAPPY PATH \_________________________________________________
 
@@ -149,6 +183,10 @@ func TestKeyTalkerHappyPath(t *testing.T) {
 	mockVault.On("Login",
 		mock.AnythingOfType("string"),
 		mock.AnythingOfType("string")).Return(FAKE_VAULT_TOKEN, nil)
+	mockVault.On("GetSecret",
+		mock.AnythingOfType("string"),
+		mock.AnythingOfType("string"),
+		mock.AnythingOfType("string")).Return(FAKE_VAULT_PG_TDE_KEY, nil)
 
 	err := KeyTalker("localhost:8888", mockVault)
 	assert.Nil(t, err)
@@ -198,7 +236,7 @@ func TestWaitForVaultToUnseal(t *testing.T) {
 	assert.Equal(t, true, gock.IsDone())
 }
 
-// Wait for vault to unseal: we have to wait for a little while.
+// Wait for vault to unseal: Got 404, we have to wait for a little while.
 func TestWaitForVaultToUnseal404(t *testing.T) {
 	defer gock.Off() // Flush pending mocks after test execution
 
@@ -216,7 +254,7 @@ func TestWaitForVaultToUnseal404(t *testing.T) {
 	assert.Nil(t, err)
 }
 
-// Wait for vault to unseal: we have to wait for a little while.
+// Wait for vault to unseal: No body, we have to wait for a little while.
 func TestWaitForVaultToUnsealNoBodyFailure(t *testing.T) {
 	defer gock.Off() // Flush pending mocks after test execution
 
@@ -316,6 +354,80 @@ func TestLoginBadBody(t *testing.T) {
 func TestLoginBadPOST(t *testing.T) {
 	vault := Vault{}
 	token, err := vault.Login("https://[::1]:22"+VAULT_LOGIN_PATH, "Fear the old blood")
+	assert.NotNil(t, err)
+	assert.Equal(t, "", token)
+}
+
+// Vault get KV secret: Happy path
+func TestGetVaultSecretHappyPath(t *testing.T) {
+	defer gock.Off() // Flush pending mocks after test execution
+
+	gock.New(VAULT_TEST_URL).
+		Get(VAULT_KV_SECRET_PATH).
+		Reply(200).
+		JSON(VAULT_KV_SECRET_RESPONSE)
+
+	// Your test code starts here…
+	vault := Vault{}
+	topSecretKey, err := vault.GetSecret(VAULT_TEST_URL+VAULT_KV_SECRET_PATH, "TopSecretKey", "Fear the old blood")
+	assert.Nil(t, err)
+	assert.Equal(t, FAKE_VAULT_PG_TDE_KEY, topSecretKey)
+
+	// Verify that we don't have pending mocks
+	assert.Equal(t, true, gock.IsDone())
+}
+
+// Vault get KV secret: request failed.
+func TestGetSecretRequestFailed(t *testing.T) {
+	defer gock.Off() // Flush pending mocks after test execution
+
+	gock.New(VAULT_TEST_URL).
+		Get(VAULT_KV_SECRET_PATH).
+		MatchType("json")
+
+	// Your test code starts here…
+	vault := Vault{}
+	token, err := vault.GetSecret(VAULT_TEST_URL+VAULT_KV_SECRET_PATH, "TopSecretKey", "Fear the old blood")
+	assert.NotNil(t, err)
+	assert.Equal(t, "", token)
+}
+
+// Vault get KV secret: status code is not 2XX.
+func TestGetSecretStatusCode(t *testing.T) {
+	defer gock.Off() // Flush pending mocks after test execution
+
+	gock.New(VAULT_TEST_URL).
+		Get(VAULT_KV_SECRET_PATH).
+		Reply(500)
+
+	// Your test code starts here…
+	vault := Vault{}
+	token, err := vault.GetSecret(VAULT_TEST_URL+VAULT_KV_SECRET_PATH, "TopSecretKey", "Fear the old blood")
+	assert.NotNil(t, err)
+	assert.Equal(t, "", token)
+}
+
+// Vault get KV secret: JSON is garbage.
+func TestGetSecretJSONFailed(t *testing.T) {
+	defer gock.Off() // Flush pending mocks after test execution
+
+	gock.New(VAULT_TEST_URL).
+		Get(VAULT_KV_SECRET_PATH).
+		Reply(200).
+		JSON("computer says NON")
+
+	// Your test code starts here…
+	vault := Vault{}
+	token, err := vault.GetSecret(VAULT_TEST_URL+VAULT_KV_SECRET_PATH, "TopSecretKey", "Fear the old blood")
+	assert.NotNil(t, err)
+	assert.Equal(t, "", token)
+}
+
+// Vault get KV secret: NewRequest is garbage.
+func TestGetSecretNewRequestFailed(t *testing.T) {
+	// Your test code starts here…
+	vault := Vault{}
+	token, err := vault.GetSecret("https://[::1]:22", "TopSecretKey", "Fear the old blood")
 	assert.NotNil(t, err)
 	assert.Equal(t, "", token)
 }

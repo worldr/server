@@ -15,6 +15,27 @@ type IVault struct {
 	mock.Mock
 }
 
+// GetSecret provides a mock function with given fields: url, secret, token
+func (_m *IVault) GetSecret(url string, secret string, token string) (string, error) {
+	ret := _m.Called(url, secret, token)
+
+	var r0 string
+	if rf, ok := ret.Get(0).(func(string, string, string) string); ok {
+		r0 = rf(url, secret, token)
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(string, string, string) error); ok {
+		r1 = rf(url, secret, token)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // Getk8sServiceAccountToken provides a mock function with given fields: tokenFile
 func (_m *IVault) Getk8sServiceAccountToken(tokenFile string) (string, error) {
 	ret := _m.Called(tokenFile)

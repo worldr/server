@@ -20,12 +20,17 @@ const (
 	VAULT_SERVER_DOMAIN                  = "http://vault.worldr:8200/"
 	VAULT_SERVER_SEAL_STATUS_URL         = VAULT_SERVER_DOMAIN + "/v1/sys/seal-status"
 	VAULT_SERVER_LOGIN_URL               = VAULT_SERVER_DOMAIN + "/v1/auth/kubernetes/login"
+	VAULT_KV_SECRET_URL                  = VAULT_SERVER_DOMAIN + "/v1/kv/pg-tde"
+	VAULT_SECRET_PG_TDE_KEY              = "TopSecretKey"
+	VAULT_SECRET_PG_USERNAME             = "" // TODO: later.
+	VAULT_SECRET_PG_PASSWORD             = "" // TODO: later.
 )
 
 type IVault interface {
 	Getk8sServiceAccountToken(tokenFile string) (string, error)
 	WaitForVaultToUnseal(url string, wait time.Duration, retry int) error
 	Login(url string, token string) (string, error)
+	GetSecret(url string, secret string, token string) (string, error)
 }
 
 type Vault struct {
@@ -180,6 +185,40 @@ func (v Vault) Login(url string, token string) (string, error) {
 	return message.Auth.ClientToken, nil
 }
 
+// Get secret from Vault.
+func (v Vault) GetSecret(url string, secret string, token string) (string, error) {
+	// Get the seal status from the Vault.
+
+	req, _ := http.NewRequest("GET", url, nil)
+	// I cannot fathom how to make this fail. Is it even possible?
+	//if err != nil {
+	//	mlog.Warn(fmt.Sprintf("New request is invalid because %s", err))
+	//	return "", errors.Wrap(err, "Bad new request")
+	//}
+	req.Header.Set("X-Vault-Token", os.ExpandEnv("$CLIENT_TOKEN"))
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		mlog.Warn(fmt.Sprintf("Cannot get response because %s", err))
+		return "", errors.Wrap(err, "Cannot get KV secrets")
+	}
+
+	// Got a reply, check if vault is unsealed.
+	defer resp.Body.Close()
+	if resp.StatusCode != 200 {
+		msg := fmt.Sprintf("got return code %d, trying again", resp.StatusCode)
+		mlog.Warn(msg)
+		return "", errors.New(msg)
+	}
+	message := new(VaultKVSecret)
+	err = json.NewDecoder(resp.Body).Decode(message)
+	if err != nil {
+		mlog.Warn(fmt.Sprintf("Cannot masrshal JSON because %s", err))
+		return "", errors.Wrap(err, "cannot unmarshal JSON, trying again")
+	}
+	return message.Data.TopSecretKey, nil // This is the only success possible.
+}
+
 // A key talker provider.
 // The service should be a "host:port" string.
 //
@@ -219,7 +258,14 @@ func KeyTalker(service string, vault IVault) error {
 		mlog.Critical("Cannot login to Vault")
 		return errors.Wrap(err, "Cannot login to Vault")
 	}
-	mlog.Info(tokenVault)
+
+	// 5. Finally, get the PG TDE password from Vault.
+	topSecretKey, err := vault.GetSecret(VAULT_KV_SECRET_URL, VAULT_SECRET_PG_TDE_KEY, tokenVault)
+	if err != nil {
+		mlog.Critical("Cannot get PG TDE secret!")
+		return errors.Wrap(err, "Cannot get PG TDE secret!")
+	}
+	mlog.Info(topSecretKey)
 
 	// This is a success!
 	return nil
