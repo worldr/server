@@ -36,20 +36,20 @@ func (_m *IVault) Getk8sServiceAccountToken(tokenFile string) (string, error) {
 	return r0, r1
 }
 
-// Login provides a mock function with given fields: url
-func (_m *IVault) Login(url string) (string, error) {
-	ret := _m.Called(url)
+// Login provides a mock function with given fields: url, token
+func (_m *IVault) Login(url string, token string) (string, error) {
+	ret := _m.Called(url, token)
 
 	var r0 string
-	if rf, ok := ret.Get(0).(func(string) string); ok {
-		r0 = rf(url)
+	if rf, ok := ret.Get(0).(func(string, string) string); ok {
+		r0 = rf(url, token)
 	} else {
 		r0 = ret.Get(0).(string)
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(string) error); ok {
-		r1 = rf(url)
+	if rf, ok := ret.Get(1).(func(string, string) error); ok {
+		r1 = rf(url, token)
 	} else {
 		r1 = ret.Error(1)
 	}

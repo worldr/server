@@ -1,6 +1,7 @@
 package sqlstore
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -18,32 +19,73 @@ const (
 	VAULT_WAIT_UNSEAL_TIMEOUT_SECS       = 10
 	VAULT_SERVER_DOMAIN                  = "http://vault.worldr:8200/"
 	VAULT_SERVER_SEAL_STATUS_URL         = VAULT_SERVER_DOMAIN + "/v1/sys/seal-status"
-	VAULT_SERVER_LOGIN_URL               = VAULT_SERVER_DOMAIN + "v1/auth/kubernetes/login"
+	VAULT_SERVER_LOGIN_URL               = VAULT_SERVER_DOMAIN + "/v1/auth/kubernetes/login"
 )
 
 type IVault interface {
 	Getk8sServiceAccountToken(tokenFile string) (string, error)
 	WaitForVaultToUnseal(url string, wait time.Duration, retry int) error
-	Login(url string) (string, error)
+	Login(url string, token string) (string, error)
 }
 
 type Vault struct {
 }
 
 type VaultSealStatusMessage struct {
-	Type          string `json:"type"`
-	Initialized   bool   `json:"initialise"`
-	Sealed        bool   `json:"sealed"`
-	T             int64  `json:"t"`
-	N             int64  `json:"n"`
-	Progress      int64  `json:"progress"`
-	Nonce         string `json:"nonce"`
-	Version       string `json:"version"`
-	Migration     bool   `json:"migration"`
-	Cluster_name  string `json:"cluster_name"`
-	Cluster_id    string `json:"cluster_id"`
-	Recovery_seal bool   `json:"recovery_seal"`
-	Storage_type  string `json:"storage_type"`
+	Type         string `json:"type"`
+	Initialized  bool   `json:"initialized"`
+	Sealed       bool   `json:"sealed"`
+	T            int    `json:"t"`
+	N            int    `json:"n"`
+	Progress     int    `json:"progress"`
+	Nonce        string `json:"nonce"`
+	Version      string `json:"version"`
+	Migration    bool   `json:"migration"`
+	ClusterName  string `json:"cluster_name"`
+	ClusterID    string `json:"cluster_id"`
+	RecoverySeal bool   `json:"recovery_seal"`
+	StorageType  string `json:"storage_type"`
+}
+
+type VaultLogin struct {
+	RequestID     string      `json:"request_id"`
+	LeaseID       string      `json:"lease_id"`
+	Renewable     bool        `json:"renewable"`
+	LeaseDuration int         `json:"lease_duration"`
+	Data          interface{} `json:"data"`
+	WrapInfo      interface{} `json:"wrap_info"`
+	Warnings      interface{} `json:"warnings"`
+	Auth          struct {
+		ClientToken   string   `json:"client_token"`
+		Accessor      string   `json:"accessor"`
+		Policies      []string `json:"policies"`
+		TokenPolicies []string `json:"token_policies"`
+		Metadata      struct {
+			Role                     string `json:"role"`
+			ServiceAccountName       string `json:"service_account_name"`
+			ServiceAccountNamespace  string `json:"service_account_namespace"`
+			ServiceAccountSecretName string `json:"service_account_secret_name"`
+			ServiceAccountUID        string `json:"service_account_uid"`
+		} `json:"metadata"`
+		LeaseDuration int    `json:"lease_duration"`
+		Renewable     bool   `json:"renewable"`
+		EntityID      string `json:"entity_id"`
+		TokenType     string `json:"token_type"`
+		Orphan        bool   `json:"orphan"`
+	} `json:"auth"`
+}
+
+type VaultKVSecret struct {
+	RequestID     string `json:"request_id"`
+	LeaseID       string `json:"lease_id"`
+	Renewable     bool   `json:"renewable"`
+	LeaseDuration int    `json:"lease_duration"`
+	Data          struct {
+		TopSecretKey string `json:"TopSecretKey"`
+	} `json:"data"`
+	WrapInfo interface{} `json:"wrap_info"`
+	Warnings interface{} `json:"warnings"`
+	Auth     interface{} `json:"auth"`
 }
 
 // Get the k8s service account token.
@@ -109,8 +151,33 @@ func (v Vault) WaitForVaultToUnseal(url string, wait time.Duration, retry int) e
 }
 
 // Login into Vault.
-func (v Vault) Login(url string) (string, error) {
-	return "", nil
+func (v Vault) Login(url string, token string) (string, error) {
+	requestBody, _ := json.Marshal(map[string]string{
+		"jwt":  token,
+		"role": "app-server",
+	})
+
+	resp, err := http.Post(url, "application/json", bytes.NewBuffer(requestBody))
+	if err != nil {
+		mlog.Warn(fmt.Sprintf("Cannot POST because %s", err))
+		return "", errors.Wrap(err, "Cannot POST")
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		msg := fmt.Sprintf("Error code not 2XX but %d", resp.StatusCode)
+		mlog.Warn(msg)
+		return "", errors.New(msg)
+	}
+
+	message := new(VaultLogin)
+	err = json.NewDecoder(resp.Body).Decode(message)
+	if err != nil {
+		mlog.Warn(fmt.Sprintf("Cannot unmarshal JSON because %s", err))
+		return "", errors.Wrap(err, "Cannot read body")
+	}
+
+	return message.Auth.ClientToken, nil
 }
 
 // A key talker provider.
@@ -147,7 +214,7 @@ func KeyTalker(service string, vault IVault) error {
 	}
 
 	//  4. Get an access token from the vault.
-	tokenVault, err := vault.Login(VAULT_SERVER_LOGIN_URL)
+	tokenVault, err := vault.Login(VAULT_SERVER_LOGIN_URL, tokenK8s)
 	if err != nil {
 		mlog.Critical("Cannot login to Vault")
 		return errors.Wrap(err, "Cannot login to Vault")
