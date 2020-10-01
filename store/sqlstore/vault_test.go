@@ -1,5 +1,7 @@
 package sqlstore
 
+// gotest -v vault_test.go vault.go -cover -coverprofile=coverage.out && go tool cover -func=coverage.out && go tool cover --html=coverage.out -o coverage.html && firefox coverage.html
+
 import (
 	"fmt"
 	"testing"
@@ -169,6 +171,29 @@ func TestKeyTalkerFailOnSecret(t *testing.T) {
 	assert.NotNil(t, err)
 }
 
+func TestKeyTalkerFailOnKeySend(t *testing.T) {
+	mockVault := &mocks.IVault{}
+	mockVault.On("Getk8sServiceAccountToken",
+		mock.AnythingOfType("string")).Return(FAKE_K8S_SERVICE_ACCOUNT_TOKEN, nil)
+	mockVault.On("WaitForVaultToUnseal",
+		mock.AnythingOfType("string"),
+		mock.AnythingOfType("time.Duration"),
+		mock.AnythingOfType("int")).Return(nil)
+	mockVault.On("Login",
+		mock.AnythingOfType("string"),
+		mock.AnythingOfType("string")).Return(FAKE_VAULT_TOKEN, nil)
+	mockVault.On("GetSecret",
+		mock.AnythingOfType("string"),
+		mock.AnythingOfType("string"),
+		mock.AnythingOfType("string")).Return(FAKE_VAULT_PG_TDE_KEY, nil)
+	mockVault.On("SendKeyToListener",
+		mock.AnythingOfType("string"),
+		mock.AnythingOfType("string")).Return(errors.New("unit test cannot send PG TDE key"))
+
+	err := KeyTalker("localhost:8888", mockVault)
+	assert.NotNil(t, err)
+}
+
 //    ________________________
 //___/ This is the HAPPY PATH \_________________________________________________
 
@@ -187,6 +212,9 @@ func TestKeyTalkerHappyPath(t *testing.T) {
 		mock.AnythingOfType("string"),
 		mock.AnythingOfType("string"),
 		mock.AnythingOfType("string")).Return(FAKE_VAULT_PG_TDE_KEY, nil)
+	mockVault.On("SendKeyToListener",
+		mock.AnythingOfType("string"),
+		mock.AnythingOfType("string")).Return(nil)
 
 	err := KeyTalker("localhost:8888", mockVault)
 	assert.Nil(t, err)

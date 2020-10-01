@@ -78,6 +78,20 @@ func (_m *IVault) Login(url string, token string) (string, error) {
 	return r0, r1
 }
 
+// SendKeyToListener provides a mock function with given fields: service, topSecretKey
+func (_m *IVault) SendKeyToListener(service string, topSecretKey string) error {
+	ret := _m.Called(service, topSecretKey)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(string, string) error); ok {
+		r0 = rf(service, topSecretKey)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // WaitForVaultToUnseal provides a mock function with given fields: url, wait, retry
 func (_m *IVault) WaitForVaultToUnseal(url string, wait time.Duration, retry int) error {
 	ret := _m.Called(url, wait, retry)

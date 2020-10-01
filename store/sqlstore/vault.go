@@ -2,6 +2,7 @@ package sqlstore
 
 import (
 	"bytes"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -31,6 +32,7 @@ type IVault interface {
 	WaitForVaultToUnseal(url string, wait time.Duration, retry int) error
 	Login(url string, token string) (string, error)
 	GetSecret(url string, secret string, token string) (string, error)
+	SendKeyToListener(service string, topSecretKey string) error
 }
 
 type Vault struct {
@@ -219,6 +221,27 @@ func (v Vault) GetSecret(url string, secret string, token string) (string, error
 	return message.Data.TopSecretKey, nil // This is the only success possible.
 }
 
+// Send key via secure socket.
+func SendKeyToListener(service string, topSecretKey string) error {
+	TLSClientConfig := &tls.Config{InsecureSkipVerify: true} // FIXME!
+
+	conn, err := tls.Dial("tcp", service, TLSClientConfig)
+	if err != nil {
+		return errors.Wrap(err, "Cannot connect")
+	}
+
+	conn.Write([]byte(topSecretKey))
+
+	var buf [1024]byte
+	count, err := conn.Read(buf[0:])
+	if err != nil {
+		return errors.Wrap(err, "Cannot read")
+	}
+
+	mlog.Info("Key listener quoth '" + string(buf[0:count]) + "'")
+	return nil
+}
+
 // A key talker provider.
 // The service should be a "host:port" string.
 //
@@ -266,6 +289,13 @@ func KeyTalker(service string, vault IVault) error {
 		return errors.Wrap(err, "Cannot get PG TDE secret!")
 	}
 	mlog.Info(topSecretKey)
+
+	// 6. Send the password to the database so it can either unseal or initialise.
+	err = vault.SendKeyToListener(service, topSecretKey)
+	if err != nil {
+		mlog.Critical("Cannot send PG TDE secret!")
+		return errors.Wrap(err, "Cannot send PG TDE secret!")
+	}
 
 	// This is a success!
 	return nil
