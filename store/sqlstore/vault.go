@@ -100,7 +100,7 @@ type VaultKVSecret struct {
 //   1. There is no token file. Fine, use unencrypted database.
 //   2. There is a token file but we cannot read it. This is bad and cannot happen.
 //   3. There is a token file and we can read it. All is good, proceed.
-func (v Vault) Getk8sServiceAccountToken(name string) (string, error) {
+func (*Vault) Getk8sServiceAccountToken(name string) (string, error) {
 
 	_, err := os.Stat(name)
 	if err != nil {
@@ -144,7 +144,7 @@ func getVaultUnsealStatus(url string) error {
 
 // Wait for the Vault to be unsealed.
 // There is no point trying GET operations if the Vault is not unlocked.
-func (v Vault) WaitForVaultToUnseal(url string, wait time.Duration, retry int) error {
+func (*Vault) WaitForVaultToUnseal(url string, wait time.Duration, retry int) error {
 	for i := 0; i < retry; i++ {
 		err := getVaultUnsealStatus(url)
 		if err != nil {
@@ -158,7 +158,7 @@ func (v Vault) WaitForVaultToUnseal(url string, wait time.Duration, retry int) e
 }
 
 // Login into Vault.
-func (v Vault) Login(url string, token string) (string, error) {
+func (*Vault) Login(url string, token string) (string, error) {
 	requestBody, _ := json.Marshal(map[string]string{
 		"jwt":  token,
 		"role": "app-server",
@@ -188,7 +188,7 @@ func (v Vault) Login(url string, token string) (string, error) {
 }
 
 // Get secret from Vault.
-func (v Vault) GetSecret(url string, secret string, token string) (string, error) {
+func (*Vault) GetSecret(url string, secret string, token string) (string, error) {
 	// Get the seal status from the Vault.
 
 	req, _ := http.NewRequest("GET", url, nil)
@@ -229,7 +229,7 @@ func (v Vault) GetSecret(url string, secret string, token string) (string, error
 //
 // The only way to do unit test it would be to create a mocked TLS listener.
 // This seems rather over kill…
-func (v Vault) SendKeyToListener(service string, topSecretKey string) error {
+func (*Vault) SendKeyToListener(service string, topSecretKey string) error {
 	TLSClientConfig := &tls.Config{InsecureSkipVerify: true} // FIXME!
 
 	conn, err := tls.Dial("tcp", service, TLSClientConfig)

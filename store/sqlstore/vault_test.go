@@ -294,7 +294,7 @@ func TestWaitForVaultToUnsealNoBodyFailure(t *testing.T) {
 		Reply(200)
 
 	// Your test code starts here...
-	vault := Vault{}
+	vault := &Vault{}
 	err := vault.WaitForVaultToUnseal(VAULT_TEST_URL+"/"+VAULT_UNSEAL_PATH, 0, 1)
 	assert.NotNil(t, err) // This HAS to fail.
 }
@@ -308,7 +308,7 @@ func TestWaitForVaultToUnsealReplyError(t *testing.T) {
 		ReplyError(errors.New("Computer says NON!"))
 
 	// Your test code starts here...
-	vault := Vault{}
+	vault := &Vault{}
 	err := vault.WaitForVaultToUnseal(VAULT_TEST_URL+"/bar", 0, 1)
 	assert.NotNil(t, err) // This HAS to fail.
 }
@@ -327,7 +327,7 @@ func TestWaitForVaultToUnsealVaultIsSealed(t *testing.T) {
 		JSON(VAULT_SEAL_STATUS_UNSEALED)
 
 	// Your test code starts here...
-	vault := Vault{}
+	vault := &Vault{}
 	err := vault.WaitForVaultToUnseal(VAULT_TEST_URL+"/"+VAULT_UNSEAL_PATH, 0, 2)
 	assert.Nil(t, err)
 }
@@ -343,7 +343,7 @@ func TestLoginHappyPath(t *testing.T) {
 		JSON(VAULT_LOGIN_RESPONSE)
 
 	// Your test code starts here…
-	vault := Vault{}
+	vault := &Vault{}
 	token, err := vault.Login(VAULT_TEST_URL+VAULT_LOGIN_PATH, "Fear the old blood")
 	assert.Nil(t, err)
 	assert.Equal(t, FAKE_VAULT_TOKEN, token)
@@ -359,7 +359,7 @@ func TestLoginStatusCode(t *testing.T) {
 		Reply(500)
 
 	// Your test code starts here…
-	vault := Vault{}
+	vault := &Vault{}
 	token, err := vault.Login(VAULT_TEST_URL+VAULT_LOGIN_PATH, "Fear the old blood")
 	assert.NotNil(t, err)
 	assert.Equal(t, "", token)
@@ -375,7 +375,7 @@ func TestLoginBadBody(t *testing.T) {
 		Reply(200)
 
 	// Your test code starts here…
-	vault := Vault{}
+	vault := &Vault{}
 	token, err := vault.Login(VAULT_TEST_URL+VAULT_LOGIN_PATH, "Fear the old blood")
 	assert.NotNil(t, err)
 	assert.Equal(t, "", token)
@@ -383,7 +383,7 @@ func TestLoginBadBody(t *testing.T) {
 
 // Vault login: cannot POST.
 func TestLoginBadPOST(t *testing.T) {
-	vault := Vault{}
+	vault := &Vault{}
 	token, err := vault.Login("https://[::1]:22"+VAULT_LOGIN_PATH, "Fear the old blood")
 	assert.NotNil(t, err)
 	assert.Equal(t, "", token)
@@ -399,7 +399,7 @@ func TestGetVaultSecretHappyPath(t *testing.T) {
 		JSON(VAULT_KV_SECRET_RESPONSE)
 
 	// Your test code starts here…
-	vault := Vault{}
+	vault := &Vault{}
 	topSecretKey, err := vault.GetSecret(VAULT_TEST_URL+VAULT_KV_SECRET_PATH, "TopSecretKey", "Fear the old blood")
 	assert.Nil(t, err)
 	assert.Equal(t, FAKE_VAULT_PG_TDE_KEY, topSecretKey)
@@ -417,7 +417,7 @@ func TestGetSecretRequestFailed(t *testing.T) {
 		MatchType("json")
 
 	// Your test code starts here…
-	vault := Vault{}
+	vault := &Vault{}
 	token, err := vault.GetSecret(VAULT_TEST_URL+VAULT_KV_SECRET_PATH, "TopSecretKey", "Fear the old blood")
 	assert.NotNil(t, err)
 	assert.Equal(t, "", token)
@@ -432,7 +432,7 @@ func TestGetSecretStatusCode(t *testing.T) {
 		Reply(500)
 
 	// Your test code starts here…
-	vault := Vault{}
+	vault := &Vault{}
 	token, err := vault.GetSecret(VAULT_TEST_URL+VAULT_KV_SECRET_PATH, "TopSecretKey", "Fear the old blood")
 	assert.NotNil(t, err)
 	assert.Equal(t, "", token)
@@ -448,7 +448,7 @@ func TestGetSecretJSONFailed(t *testing.T) {
 		JSON("computer says NON")
 
 	// Your test code starts here…
-	vault := Vault{}
+	vault := &Vault{}
 	token, err := vault.GetSecret(VAULT_TEST_URL+VAULT_KV_SECRET_PATH, "TopSecretKey", "Fear the old blood")
 	assert.NotNil(t, err)
 	assert.Equal(t, "", token)
@@ -457,7 +457,7 @@ func TestGetSecretJSONFailed(t *testing.T) {
 // Vault get KV secret: NewRequest is garbage.
 func TestGetSecretNewRequestFailed(t *testing.T) {
 	// Your test code starts here…
-	vault := Vault{}
+	vault := &Vault{}
 	token, err := vault.GetSecret("https://[::1]:22", "TopSecretKey", "Fear the old blood")
 	assert.NotNil(t, err)
 	assert.Equal(t, "", token)

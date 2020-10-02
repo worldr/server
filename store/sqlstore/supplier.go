@@ -270,10 +270,10 @@ func setupConnection(con_type string, dataSource string, settings *model.SqlSett
 
 			if len(dbHostName) > 0 {
 				// Call key talker in case we need it.
-				mlog.Info("Sending key to the database on " + dbHostName + ":" + KEY_LISTENER_PORT)
-				err = KeyTalker(dbHostName+":"+KEY_LISTENER_PORT, Vault{})
+				mlog.Info(fmt.Sprintf("If needed, call Vault and key talker (%s:%s) for database key transactions", dbHostName, KEY_LISTENER_PORT))
+				err = KeyTalker(dbHostName+":"+KEY_LISTENER_PORT, &Vault{})
 				if err != nil {
-					mlog.Warn("Key talker failed.")
+					mlog.Warn("Key talker failed: see above messages for reason")
 				}
 			}
 
@@ -283,7 +283,7 @@ func setupConnection(con_type string, dataSource string, settings *model.SqlSett
 				time.Sleep(time.Second)
 				os.Exit(EXIT_PING)
 			} else {
-				mlog.Error("Failed to ping DB", mlog.Err(err), mlog.Int("retrying in seconds", DB_PING_TIMEOUT_SECS))
+				mlog.Error("Failed to ping DB", mlog.Int("retrying in seconds", DB_PING_TIMEOUT_SECS), mlog.Err(err))
 				time.Sleep(DB_PING_TIMEOUT_SECS * time.Second)
 			}
 		}
