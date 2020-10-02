@@ -223,7 +223,7 @@ func NewSqlSupplier(settings model.SqlSettings, metrics einterfaces.MetricsInter
 
 // A key talker provider.
 // The service should be a "host:port" string.
-func keyTalker(service string) int {
+func keyTalkerOriginal(service string) int {
 	TLSClientConfig := &tls.Config{InsecureSkipVerify: true} // FIXME!
 
 	conn, err := tls.Dial("tcp", service, TLSClientConfig)
@@ -271,7 +271,8 @@ func setupConnection(con_type string, dataSource string, settings *model.SqlSett
 			if len(dbHostName) > 0 {
 				// Call key talker in case we need it.
 				mlog.Info("Sending key to the database on " + dbHostName + ":" + KEY_LISTENER_PORT)
-				if keyTalker(dbHostName+":"+KEY_LISTENER_PORT) != 0 {
+				err = KeyTalker(dbHostName+":"+KEY_LISTENER_PORT, Vault{})
+				if err != nil {
 					mlog.Warn("Key talker failed.")
 				}
 			}

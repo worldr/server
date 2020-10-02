@@ -28,11 +28,11 @@ const (
 )
 
 type IVault interface {
-	Getk8sServiceAccountToken(tokenFile string) (string, error)
-	WaitForVaultToUnseal(url string, wait time.Duration, retry int) error
-	Login(url string, token string) (string, error)
 	GetSecret(url string, secret string, token string) (string, error)
+	Getk8sServiceAccountToken(tokenFile string) (string, error)
+	Login(url string, token string) (string, error)
 	SendKeyToListener(service string, topSecretKey string) error
+	WaitForVaultToUnseal(url string, wait time.Duration, retry int) error
 }
 
 type Vault struct {
@@ -100,7 +100,7 @@ type VaultKVSecret struct {
 //   1. There is no token file. Fine, use unencrypted database.
 //   2. There is a token file but we cannot read it. This is bad and cannot happen.
 //   3. There is a token file and we can read it. All is good, proceed.
-func Getk8sServiceAccountToken(name string) (string, error) {
+func (v Vault) Getk8sServiceAccountToken(name string) (string, error) {
 
 	_, err := os.Stat(name)
 	if err != nil {
@@ -222,7 +222,14 @@ func (v Vault) GetSecret(url string, secret string, token string) (string, error
 }
 
 // Send key via secure socket.
-func SendKeyToListener(service string, topSecretKey string) error {
+//
+// There is little point in unit testing this. We are not testing TLS and this
+// does not do anything clever at all with the data it gets. If it does not
+// work, a simple manual test (which is done all the time) should show it.
+//
+// The only way to do unit test it would be to create a mocked TLS listener.
+// This seems rather over kill…
+func (v Vault) SendKeyToListener(service string, topSecretKey string) error {
 	TLSClientConfig := &tls.Config{InsecureSkipVerify: true} // FIXME!
 
 	conn, err := tls.Dial("tcp", service, TLSClientConfig)

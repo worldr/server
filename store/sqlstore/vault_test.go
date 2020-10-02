@@ -226,14 +226,16 @@ func TestKeyTalkerHappyPath(t *testing.T) {
 
 // K8s service account: no token file.
 func TestGetk8sServiceAccountTokenNoTokenFile(t *testing.T) {
-	token, err := Getk8sServiceAccountToken("cthulhu/fhtagn")
+	vault := Vault{}
+	token, err := vault.Getk8sServiceAccountToken("cthulhu/fhtagn")
 	assert.Nil(t, err)
 	assert.Equal(t, "", token)
 }
 
 // K8s service account: cannot open the k8s token file.
 func TestGetk8sServiceAccountTokenCannotOpen(t *testing.T) {
-	token, err := Getk8sServiceAccountToken("/etc/shadow")
+	vault := Vault{}
+	token, err := vault.Getk8sServiceAccountToken("/etc/shadow")
 	assert.NotNil(t, err)
 	fmt.Printf("ERROR: %s\n", err)
 	assert.Equal(t, "", token)
@@ -241,7 +243,8 @@ func TestGetk8sServiceAccountTokenCannotOpen(t *testing.T) {
 
 // K8s service account: success.
 func TestGetk8sServiceAccountTokenSuccess(t *testing.T) {
-	token, err := Getk8sServiceAccountToken("test_token.txt")
+	vault := Vault{}
+	token, err := vault.Getk8sServiceAccountToken("test_token.txt")
 	assert.Nil(t, err)
 	assert.Equal(t, "Fear the old blood", token)
 }
