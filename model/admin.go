@@ -60,11 +60,19 @@ func AdminSetupStatusFromJson(data io.Reader) *AdminSetupStatus {
 	return w
 }
 
-type SigningPK struct {
-	Key string `json:"key"`
+type SingleValue struct {
+	Value     string `json:"value,omitempty"`
+	Version   string `json:"version"`
+	Signature string `json:"signature"` // server certificate signature
 }
 
-func (me *SigningPK) ToJson() string {
+func (me *SingleValue) ToJson() string {
 	b, _ := json.Marshal(me)
 	return string(b)
+}
+
+func SingleValueFromJson(data io.Reader) *SingleValue {
+	var w *SingleValue
+	json.NewDecoder(data).Decode(&w)
+	return w
 }

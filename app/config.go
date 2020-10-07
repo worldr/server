@@ -5,13 +5,16 @@ package app
 
 import (
 	"crypto/ecdsa"
+	"crypto/ed25519"
 	"crypto/elliptic"
 	"crypto/md5"
 	"crypto/rand"
 	"crypto/x509"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"runtime/debug"
@@ -23,6 +26,7 @@ import (
 	"github.com/mattermost/mattermost-server/v5/config"
 	"github.com/mattermost/mattermost-server/v5/mlog"
 	"github.com/mattermost/mattermost-server/v5/model"
+	"github.com/mattermost/mattermost-server/v5/store"
 	"github.com/mattermost/mattermost-server/v5/utils"
 )
 
@@ -187,6 +191,43 @@ func GenerateSigningKey(fieldName string) (*model.System, *model.SystemAsymmetri
 	return system, newKey, nil
 }
 
+// GetCertSigningKey reads the certificate pinning Ed25519 key from the database,
+// generates one if none exists.
+func GetCertSigningKey(s store.SystemStore) (*model.SystemEd25519Key, *model.AppError) {
+	var key *model.SystemEd25519Key
+	value, err := s.GetByName(model.SYSTEM_CERTIFICATE_SIGNING_KEY)
+	if err == nil {
+		if err := json.Unmarshal([]byte(value.Value), &key); err != nil {
+			return nil, model.NewAppError("getPublicSignKey", "get_sign_key.db", nil, err.Error(), http.StatusInternalServerError)
+		}
+	}
+	if key == nil {
+		pk, sk, keyErr := ed25519.GenerateKey(nil)
+		if keyErr != nil {
+			return nil, model.NewAppError("getPublicSignKey", "get_sign_key.generate", nil, keyErr.Error(), http.StatusInternalServerError)
+		}
+		key = &model.SystemEd25519Key{
+			Public:  hex.EncodeToString(pk),
+			Secret:  hex.EncodeToString(sk),
+			Version: 1,
+		}
+		system := &model.System{
+			Name: model.SYSTEM_CERTIFICATE_SIGNING_KEY,
+		}
+		v, keyErr := json.Marshal(key)
+		if keyErr != nil {
+			return nil, model.NewAppError("getPublicSignKey", "get_sign_key.serialise", nil, keyErr.Error(), http.StatusInternalServerError)
+		}
+		system.Value = string(v)
+
+		// If we were able to save the key, use it, otherwise respond with error.
+		if appErr := s.Save(system); appErr != nil {
+			return nil, appErr
+		}
+	}
+	return key, nil
+}
+
 // EnsureAsymmetricSigningKey ensures that an asymmetric signing key exists and future calls to
 // AsymmetricSigningKey will always return a valid signing key.
 func (a *App) ensureAsymmetricSigningKey() error {
@@ -271,6 +312,40 @@ func (a *App) ensureInstallationDate() error {
 		return err
 	}
 	return nil
+}
+
+func (s *Server) CertSignature() (*model.SingleValue, *model.AppError) {
+	if s.certSignature == nil {
+		key, err := s.CertSigningKey()
+		if err != nil {
+			return nil, err
+		}
+		cert, fileErr := ioutil.ReadFile(*s.Config().ServiceSettings.TLSCertFile)
+		if fileErr != nil {
+			return nil, model.NewAppError("CertSignature", "cert_signature_create", nil, fileErr.Error(), http.StatusInternalServerError)
+		}
+		sk, hexErr := hex.DecodeString(key.Secret)
+		if hexErr != nil {
+			return nil, model.NewAppError("CertSignature", "cert_signature_decode_sk", nil, hexErr.Error(), http.StatusInternalServerError)
+		}
+		signature := ed25519.Sign(sk, cert)
+		s.certSignature = &model.SingleValue{
+			Version:   strconv.Itoa(key.Version),
+			Signature: hex.EncodeToString(signature),
+		}
+	}
+	return s.certSignature, nil
+}
+
+func (s *Server) CertSigningKey() (*model.SystemEd25519Key, *model.AppError) {
+	if s.certSigningKey == nil {
+		key, err := GetCertSigningKey(s.Store.System())
+		if err != nil {
+			return nil, err
+		}
+		s.certSigningKey = key
+	}
+	return s.certSigningKey, nil
 }
 
 // AsymmetricSigningKey will return a private key that can be used for asymmetric signing.
