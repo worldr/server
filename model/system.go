@@ -52,6 +52,12 @@ type SystemECDSAKey struct {
 	D     *big.Int `json:"d,omitempty"`
 }
 
+type SystemEd25519Key struct {
+	Secret  string `json:"secret"`
+	Public  string `json:"public"`
+	Version int    `json:"version"`
+}
+
 // ServerBusyState provides serialization for app.Busy.
 type ServerBusyState struct {
 	Busy       bool   `json:"busy"`

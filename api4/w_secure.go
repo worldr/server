@@ -4,10 +4,11 @@
 package api4
 
 import (
+	"crypto/ed25519"
+	"encoding/hex"
 	"encoding/json"
 	"net/http"
 
-	"github.com/mattermost/mattermost-server/v5/app"
 	"github.com/mattermost/mattermost-server/v5/model"
 	"github.com/mattermost/mattermost-server/v5/store"
 )
@@ -17,10 +18,10 @@ func (api *API) InitWSecure() {
 	api.BaseRoutes.WSecure.Handle("/pk", api.ApiHandler(getPublicSignKey)).Methods("GET")
 }
 
-// GetSigningKey reads the certificate pinning ECDSA key from the database,
+// GetCertSigningKey reads the certificate pinning Ed25519 key from the database,
 // generates one if none exists.
-func GetSigningKey(s store.SystemStore) (*model.SystemAsymmetricSigningKey, *model.AppError) {
-	var key *model.SystemAsymmetricSigningKey
+func GetCertSigningKey(s store.SystemStore) (*model.SystemEd25519Key, *model.AppError) {
+	var key *model.SystemEd25519Key
 	value, err := s.GetByName(model.SYSTEM_CERTIFICATE_SIGNING_KEY)
 	if err == nil {
 		if err := json.Unmarshal([]byte(value.Value), &key); err != nil {
@@ -28,28 +29,41 @@ func GetSigningKey(s store.SystemStore) (*model.SystemAsymmetricSigningKey, *mod
 		}
 	}
 	if key == nil {
-		system, newKey, err := app.GenerateSigningKey(model.SYSTEM_CERTIFICATE_SIGNING_KEY)
-		if err != nil {
-			return nil, model.NewAppError("getPublicSignKey", "get_sign_key.generate", nil, err.Error(), http.StatusInternalServerError)
+		pk, sk, keyErr := ed25519.GenerateKey(nil)
+		if keyErr != nil {
+			return nil, model.NewAppError("getPublicSignKey", "get_sign_key.generate", nil, keyErr.Error(), http.StatusInternalServerError)
 		}
+		key = &model.SystemEd25519Key{
+			Public:  hex.EncodeToString(pk),
+			Secret:  hex.EncodeToString(sk),
+			Version: 1,
+		}
+		system := &model.System{
+			Name: model.SYSTEM_CERTIFICATE_SIGNING_KEY,
+		}
+		v, keyErr := json.Marshal(key)
+		if keyErr != nil {
+			return nil, model.NewAppError("getPublicSignKey", "get_sign_key.serialise", nil, keyErr.Error(), http.StatusInternalServerError)
+		}
+		system.Value = string(v)
+
 		// If we were able to save the key, use it, otherwise respond with error.
 		if appErr := s.Save(system); appErr != nil {
 			return nil, appErr
 		}
-		key = newKey
 	}
 	return key, nil
 }
 
 // Get public signing key for certificate pinning
 func getPublicSignKey(c *Context, w http.ResponseWriter, r *http.Request) {
-	key, err := GetSigningKey(c.App.Srv().Store.System())
+	key, err := GetCertSigningKey(c.App.Srv().Store.System())
 	if err != nil {
 		c.Err = err
 		return
 	}
 	response := &model.SigningPK{
-		KeyXY: key.ECDSAKey.X.Text(16) + key.ECDSAKey.Y.Text(16),
+		Key: key.Public,
 	}
 	w.Write([]byte(response.ToJson()))
 }

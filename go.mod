@@ -1,6 +1,6 @@
 module github.com/mattermost/mattermost-server/v5
 
-go 1.12
+go 1.13
 
 require (
 	github.com/Masterminds/squirrel v1.1.0
@@ -20,7 +20,6 @@ require (
 	github.com/fortytw2/leaktest v1.3.0 // indirect
 	github.com/fsnotify/fsnotify v1.4.7
 	github.com/go-gorp/gorp v2.0.0+incompatible // indirect
-	github.com/go-ldap/ldap v3.0.3+incompatible // indirect
 	github.com/go-sql-driver/mysql v1.5.0
 	github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0
 	github.com/google/uuid v1.1.1 // indirect
@@ -44,10 +43,8 @@ require (
 	github.com/icrowley/fake v0.0.0-20180203215853-4178557ae428
 	github.com/jaytaylor/html2text v0.0.0-20190408195923-01ec452cbe43
 	github.com/jmoiron/sqlx v1.2.0
-	github.com/jonboulle/clockwork v0.1.0
+	github.com/jonboulle/clockwork v0.1.0 // indirect
 	github.com/konsorten/go-windows-terminal-sequences v1.0.2 // indirect
-	github.com/kyoh86/richgo v0.3.3 // indirect
-	github.com/kyoh86/xdg v1.2.0 // indirect
 	github.com/lib/pq v1.3.0
 	github.com/magiconair/properties v1.8.1 // indirect
 	github.com/mailru/easyjson v0.7.0 // indirect
@@ -55,7 +52,6 @@ require (
 	github.com/mattermost/gorp v2.0.1-0.20190301154413-3b31e9a39d05+incompatible
 	github.com/mattermost/gosaml2 v0.3.2
 	github.com/mattermost/ldap v0.0.0-20191128190019-9f62ba4b8d4d
-	github.com/mattermost/mattermost-server v5.11.1+incompatible
 	github.com/mattermost/rsc v0.0.0-20160330161541-bbaefb05eaa0
 	github.com/mattermost/viper v1.0.4
 	github.com/mattn/go-isatty v0.0.12 // indirect
@@ -64,9 +60,7 @@ require (
 	github.com/miekg/dns v1.1.27 // indirect
 	github.com/minio/minio-go/v6 v6.0.45
 	github.com/mitchellh/go-testing-interface v1.0.0 // indirect
-	github.com/morikuni/aec v1.0.0 // indirect
 	github.com/muesli/smartcrop v0.3.0 // indirect
-	github.com/nicksnyder/go-i18n v1.10.1 // indirect
 	github.com/oklog/run v1.1.0 // indirect
 	github.com/olekukonko/tablewriter v0.0.4 // indirect
 	github.com/olivere/elastic v6.2.27+incompatible // indirect
@@ -75,9 +69,8 @@ require (
 	github.com/pelletier/go-toml v1.6.0 // indirect
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.4.0
-	github.com/prometheus/client_model v0.2.0
 	github.com/rs/cors v1.7.0
-	github.com/russellhaering/goxmldsig v0.0.0-20180430223755-7acd5e4a6ef7
+	github.com/russellhaering/goxmldsig v0.0.0-20180430223755-7acd5e4a6ef7 // indirect
 	github.com/rwcarlsen/goexif v0.0.0-20190401172101-9e8deecbddbd
 	github.com/segmentio/analytics-go v3.1.0+incompatible
 	github.com/segmentio/backo-go v0.0.0-20160424052352-204274ad699c // indirect
@@ -96,7 +89,6 @@ require (
 	github.com/tylerb/graceful v1.2.15
 	github.com/uber/jaeger-client-go v2.22.1+incompatible
 	github.com/uber/jaeger-lib v2.2.0+incompatible
-	github.com/wacul/ptr v1.0.0 // indirect
 	github.com/wiggin77/logr v1.0.3
 	github.com/wiggin77/merror v1.0.2
 	github.com/xtgo/uuid v0.0.0-20140804021211-a0b114877d4c // indirect
@@ -115,7 +107,6 @@ require (
 	google.golang.org/genproto v0.0.0-20200128133413-58ce757ed39b // indirect
 	google.golang.org/grpc v1.26.0 // indirect
 	gopkg.in/alexcesaro/quotedprintable.v3 v3.0.0-20150716171945-2caba252f4dc // indirect
-	gopkg.in/asn1-ber.v1 v1.0.0-20181015200546-f715ec2f112d // indirect
 	gopkg.in/ini.v1 v1.51.1 // indirect
 	gopkg.in/mail.v2 v2.3.1
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0
