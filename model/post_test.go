@@ -64,6 +64,30 @@ func TestPostIsValid(t *testing.T) {
 	err = o.IsValid(maxPostSize)
 	require.NotNil(t, err)
 
+	// BEGIN test non-threaded replies
+
+	o.RootId = NewId()
+	o.ParentId = o.RootId
+	o.ReplyToId = NewId()
+	err = o.IsValid(maxPostSize)
+	require.NotNil(t, err)
+
+	o.RootId = ""
+	o.ParentId = ""
+	o.ReplyToId = NewId()
+	err = o.IsValid(maxPostSize)
+	require.Nil(t, err)
+
+	o.RootId = ""
+	o.ParentId = ""
+	o.ReplyToId = "123"
+	err = o.IsValid(maxPostSize)
+	require.NotNil(t, err)
+
+	o.ReplyToId = ""
+
+	// END test non-threaded replies
+
 	o.ParentId = ""
 	o.Message = strings.Repeat("0", maxPostSize+1)
 	err = o.IsValid(maxPostSize)

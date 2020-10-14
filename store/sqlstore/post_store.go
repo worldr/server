@@ -31,7 +31,27 @@ func (s *SqlPostStore) ClearCaches() {
 }
 
 func postSliceColumns() []string {
-	return []string{"Id", "CreateAt", "UpdateAt", "EditAt", "DeleteAt", "IsPinned", "UserId", "ChannelId", "RootId", "ParentId", "OriginalId", "Message", "Type", "Props", "Hashtags", "Filenames", "FileIds", "HasReactions"}
+	return []string{
+		"Id",
+		"CreateAt",
+		"UpdateAt",
+		"EditAt",
+		"DeleteAt",
+		"IsPinned",
+		"UserId",
+		"ChannelId",
+		"RootId",
+		"ParentId",
+		"ReplyToId",
+		"OriginalId",
+		"Message",
+		"Type",
+		"Props",
+		"Hashtags",
+		"Filenames",
+		"FileIds",
+		"HasReactions",
+	}
 }
 
 func postToSlice(post *model.Post) []interface{} {
@@ -46,6 +66,7 @@ func postToSlice(post *model.Post) []interface{} {
 		post.ChannelId,
 		post.RootId,
 		post.ParentId,
+		post.ReplyToId,
 		post.OriginalId,
 		post.Message,
 		post.Type,
@@ -71,6 +92,7 @@ func newSqlPostStore(sqlStore SqlStore, metrics einterfaces.MetricsInterface) st
 		table.ColMap("ChannelId").SetMaxSize(26)
 		table.ColMap("RootId").SetMaxSize(26)
 		table.ColMap("ParentId").SetMaxSize(26)
+		table.ColMap("ReplyToId").SetMaxSize(26)
 		table.ColMap("OriginalId").SetMaxSize(26)
 		table.ColMap("Message").SetMaxSize(model.POST_MESSAGE_MAX_BYTES_V2)
 		table.ColMap("Type").SetMaxSize(26)

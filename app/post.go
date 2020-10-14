@@ -177,6 +177,33 @@ func (a *App) CreatePost(post *model.Post, channel *model.Channel, triggerWebhoo
 		}()
 	}
 
+	if len(post.ReplyToId) > 0 {
+		r, pErr := a.Srv().Store.Post().Get(post.ReplyToId, true)
+		if pErr != nil {
+			return nil, pErr
+		}
+		if len(r.Posts) != 1 {
+			return nil, model.NewAppError(
+				"createPost",
+				"api.post.create_post.simple_reply_not_found",
+				nil,
+				"failed to find the post specified as the reply target",
+				http.StatusNotFound,
+			)
+		}
+		for _, v := range r.Posts {
+			if v.ChannelId != channel.Id {
+				return nil, model.NewAppError(
+					"createPost",
+					"api.post.create_post.simple_reply_channel",
+					nil,
+					"the post specified as the reply target belongs to a different channel",
+					http.StatusBadRequest,
+				)
+			}
+		}
+	}
+
 	user, err := a.Srv().Store.User().Get(post.UserId)
 	if err != nil {
 		return nil, err

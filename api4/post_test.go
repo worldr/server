@@ -34,7 +34,12 @@ func TestCreatePost(t *testing.T) {
 	CheckNoError(t, resp)
 	CheckCreatedStatus(t, resp)
 
-	require.Equal(t, post.Message, rpost.Message, "message didn't match")
+	postDifferentChannel := &model.Post{ChannelId: th.BasicChannel2.Id, Message: "#hashtag a" + model.NewId() + "a", Props: model.StringInterface{model.PROPS_ADD_CHANNEL_MEMBER: "no good"}}
+	rpostDifferentChannel, resp := Client.CreatePost(postDifferentChannel)
+	CheckNoError(t, resp)
+	CheckCreatedStatus(t, resp)
+
+	require.Equal(t, post.Message, rpost.Message, "message didn't matchDifferentChannel")
 	require.Equal(t, "#hashtag", rpost.Hashtags, "hashtag didn't match")
 	require.Empty(t, rpost.FileIds)
 	require.Equal(t, 0, int(rpost.EditAt), "newly created post shouldn't have EditAt set")
@@ -53,6 +58,40 @@ func TestCreatePost(t *testing.T) {
 	post.ParentId = "junk"
 	_, resp = Client.CreatePost(post)
 	CheckBadRequestStatus(t, resp)
+
+	// BEGIN Test non-threaded repies
+
+	// Should use either root id or reply to id, not both
+	post.RootId = rpost.Id
+	post.ParentId = ""
+	post.ReplyToId = rpost.Id
+	_, resp = Client.CreatePost(post)
+	CheckBadRequestStatus(t, resp)
+
+	// Bad reply to id
+	post.RootId = ""
+	post.ParentId = ""
+	post.ReplyToId = "junk"
+	_, resp = Client.CreatePost(post)
+	CheckNotFoundStatus(t, resp)
+
+	// Reply to id is from a different channel
+	post.RootId = ""
+	post.ParentId = ""
+	post.ReplyToId = rpostDifferentChannel.Id
+	_, resp = Client.CreatePost(post)
+	CheckBadRequestStatus(t, resp)
+
+	// Simple reply successful
+	post.RootId = ""
+	post.ParentId = ""
+	post.ReplyToId = rpost.Id
+	_, resp = Client.CreatePost(post)
+	CheckNoError(t, resp)
+
+	post.ReplyToId = ""
+
+	// END Test non-threaded repies
 
 	post2 := &model.Post{ChannelId: th.BasicChannel2.Id, Message: "zz" + model.NewId() + "a", CreateAt: 123}
 	rpost2, _ := Client.CreatePost(post2)

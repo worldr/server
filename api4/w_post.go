@@ -7,6 +7,7 @@ import (
 )
 
 func (api *API) InitWPosts() {
+	api.BaseRoutes.WPosts.Handle("", api.ApiSessionRequired(createPost)).Methods("POST")
 	api.BaseRoutes.WPosts.Handle("/recent", api.ApiSessionRequired(getRecentPosts)).Methods("POST")
 	api.BaseRoutes.WPosts.Handle("/increment/check", api.ApiSessionRequired(checkIncrementPossible)).Methods("POST")
 	api.BaseRoutes.WPosts.Handle("/increment", api.ApiSessionRequired(getIncrementalUpdate)).Methods("POST")
