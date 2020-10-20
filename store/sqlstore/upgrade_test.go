@@ -47,22 +47,19 @@ func TestStoreUpgrade(t *testing.T) {
 			require.Equal(t, CURRENT_SCHEMA_VERSION, sqlStore.GetCurrentSchemaVersion())
 		})
 
-		// TODO: This test is irrelevant to Worldr. Add it back when we have a new minor version.
-		// The test is going to be relevant when we have at least two migrations.
-		// Right now we have only one and the test doesn't do anything.
-		// t.Run("upgrade schema running earlier minor version", func(t *testing.T) {
-		// 	saveSchemaVersion(sqlStore, "6.0.0")
-		// 	err := upgradeDatabase(sqlStore, "6.1.0")
-		// 	require.NoError(t, err)
-		// 	// The migrations will move past 6.1.0 regardless of the input parameter.
-		// 	require.Equal(t, CURRENT_SCHEMA_VERSION, sqlStore.GetCurrentSchemaVersion())
-		// })
+		t.Run("upgrade schema running earlier minor version", func(t *testing.T) {
+			saveSchemaVersion(sqlStore, "6.1.0")
+			err := upgradeDatabase(sqlStore, "6.2.0")
+			require.NoError(t, err)
+			// The migrations will move past 6.1.0 regardless of the input parameter.
+			require.Equal(t, CURRENT_SCHEMA_VERSION, sqlStore.GetCurrentSchemaVersion())
+		})
 
 		t.Run("upgrade schema running later minor version", func(t *testing.T) {
-			saveSchemaVersion(sqlStore, "6.0.0")
+			saveSchemaVersion(sqlStore, "6.2.0")
 			err := upgradeDatabase(sqlStore, "6.1.0")
 			require.NoError(t, err)
-			require.Equal(t, "6.1.0", sqlStore.GetCurrentSchemaVersion())
+			require.Equal(t, "6.2.0", sqlStore.GetCurrentSchemaVersion())
 		})
 
 		// TODO: This test is irrelevant to Worldr. Add it back when we have a new major version.

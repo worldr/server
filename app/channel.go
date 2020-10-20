@@ -2542,17 +2542,19 @@ func (a *App) ClearChannelMembersCache(channelID string) {
 	}
 }
 
-func (a *App) AssignCategory(channelId string, userId string, category string) (*model.ChannelCategory, *model.AppError) {
-	if _, err := a.GetChannel(channelId); err != nil {
-		return nil, model.NewAppError("AssignCategory", "api.channel.assign_category.cant_assign_category.app_error", nil, err.Message, http.StatusBadRequest)
+// Assigns a category to a given channel of a given user.
+func (a *App) RemoveCategory(userId string, channelId string) *model.AppError {
+	return a.Srv().Store.ChannelCategory().Delete(userId, channelId)
+}
+
+// Assigns a category to a given channel of a given user.
+func (a *App) AssignCategory(cat *model.ChannelCategory) (*model.ChannelCategory, *model.AppError) {
+	if _, err := a.GetChannel(cat.ChannelId); err != nil {
+		return nil, model.NewAppError("AssignCategory", "api.channel.assign_category.cant_assign_category.app_error", nil, err.Error(), http.StatusBadRequest)
 	}
-	cat, err := a.Srv().Store.ChannelCategory().SaveOrUpdate(&model.ChannelCategory{
-		UserId:    userId,
-		ChannelId: channelId,
-		Name:      category,
-	})
+	cat, err := a.Srv().Store.ChannelCategory().SaveOrUpdate(cat)
 	if err != nil {
-		return nil, model.NewAppError("AssignCategory", "api.channel.assign_category.cant_assign_category.app_error", nil, err.Message, http.StatusBadRequest)
+		return nil, model.NewAppError("AssignCategory", "api.channel.assign_category.cant_assign_category.app_error", nil, err.Error(), http.StatusBadRequest)
 	}
 	return cat, nil
 }

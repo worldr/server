@@ -63,6 +63,26 @@ func (c *WClient) GetReactionsForPostsUrl() string {
 	return fmt.Sprintf("%v/posts/ids/reactions", c.ApiUrl)
 }
 
+// Get absolute api url of the channel category assigning handle.
+func (c *WClient) GetAssignCategoryUrl() string {
+	return fmt.Sprintf("%v/channels/categories/assign", c.ApiUrl)
+}
+
+// Get absolute api url of the channel category getting handle.
+func (c *WClient) GetChannelCategoriesUrl() string {
+	return fmt.Sprintf("%v/channels/categories", c.ApiUrl)
+}
+
+// Get absolute api url of the channel category deleting handle.
+func (c *WClient) GetRemoveCategoryFromChannelUrl() string {
+	return fmt.Sprintf("%v/channels/categories/remove", c.ApiUrl)
+}
+
+// Get absolute api url of the channel category reordering handle.
+func (c *WClient) GetCategoryReorderUrl() string {
+	return fmt.Sprintf("%v/channels/categories/order", c.ApiUrl)
+}
+
 //
 // METHODS
 //
@@ -148,4 +168,40 @@ func (c *WClient) GetReactionsForPosts(request []string) (*PostsReactionsRespons
 	}
 	defer closeBody(r)
 	return PostsReactionsResponseWrapperFromJson(r.Body), BuildResponse(r)
+}
+
+func (c *WClient) AssignChannelCategory(request *ChannelCategory) (*ChannelCategory, *Response) {
+	r, err := c.MMClient.DoApiPostWithUrl(c.GetAssignCategoryUrl(), request.ToJson(), false)
+	if err != nil {
+		return nil, BuildErrorResponse(r, err)
+	}
+	defer closeBody(r)
+	return ChannelCategoryFromJson(r.Body), BuildResponse(r)
+}
+
+func (c *WClient) GetChannelCategories() ([]*ChannelCategoryAggregated, *Response) {
+	r, err := c.MMClient.DoApiGetWithUrl(c.GetChannelCategoriesUrl(), "", false)
+	if err != nil {
+		return nil, BuildErrorResponse(r, err)
+	}
+	defer closeBody(r)
+	return ChannelCategoriesAggregatedListFromJson(r.Body), BuildResponse(r)
+}
+
+func (c *WClient) RemoveCategoryFromChannel(request map[string]string) *Response {
+	r, err := c.MMClient.DoApiPostWithUrl(c.GetRemoveCategoryFromChannelUrl(), MapToJson(request), false)
+	if err != nil {
+		return BuildErrorResponse(r, err)
+	}
+	defer closeBody(r)
+	return BuildResponse(r)
+}
+
+func (c *WClient) ReorderChannelCategory(request map[string]string) *Response {
+	r, err := c.MMClient.DoApiPostWithUrl(c.GetCategoryReorderUrl(), MapToJson(request), false)
+	if err != nil {
+		return BuildErrorResponse(r, err)
+	}
+	defer closeBody(r)
+	return BuildResponse(r)
 }

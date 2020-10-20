@@ -16,6 +16,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/url"
+	"os"
 	"time"
 
 	"github.com/dyatlov/go-opengraph/opengraph"
@@ -54,6 +55,10 @@ type AppIface interface {
 	AddCursorIdsForPostList(originalList *model.PostList, afterPost, beforePost string, since int64, page, perPage int)
 	// AddPublicKey will add plugin public key to the config. Overwrites the previous file
 	AddPublicKey(name string, key io.Reader) *model.AppError
+	// Assigns a category to a given channel of a given user.
+	AssignCategory(cat *model.ChannelCategory) (*model.ChannelCategory, *model.AppError)
+	// Assigns a category to a given channel of a given user.
+	RemoveCategory(userId string, channelId string) *model.AppError
 	// Basic test team and user so you always know one
 	CreateBasicUser(client *model.Client4) *model.AppError
 	// Caller must close the first return value
@@ -358,7 +363,6 @@ type AppIface interface {
 	AddUserToTeamByTeamId(teamId string, user *model.User) *model.AppError
 	AddUserToTeamByToken(userId string, tokenId string) (*model.Team, *model.AppError)
 	AllowOAuthAppAccessToUser(userId string, authRequest *model.AuthorizeRequest) (string, *model.AppError)
-	AssignCategory(channelId string, userId string, category string) (*model.ChannelCategory, *model.AppError)
 	AsymmetricSigningKey() *ecdsa.PrivateKey
 	AttachDeviceId(sessionId string, deviceId string, expiresAt int64) *model.AppError
 	AttachSessionCookies(w http.ResponseWriter, r *http.Request)
@@ -624,6 +628,7 @@ type AppIface interface {
 	GetProfileImage(user *model.User) ([]byte, bool, *model.AppError)
 	GetPublicChannelsByIdsForTeam(teamId string, channelIds []string) (*model.ChannelList, *model.AppError)
 	GetPublicChannelsForTeam(teamId string, offset int, limit int) (*model.ChannelList, *model.AppError)
+	GetRandomImageForChannel(imagesFolder string) (*os.File, error)
 	GetReactionsForPost(postId string) ([]*model.Reaction, *model.AppError)
 	GetRecentlyActiveUsersForTeam(teamId string) (map[string]*model.User, *model.AppError)
 	GetRecentlyActiveUsersForTeamPage(teamId string, page, perPage int, asAdmin bool, viewRestrictions *model.ViewUsersRestrictions) ([]*model.User, *model.AppError)

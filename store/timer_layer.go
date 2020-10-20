@@ -1931,6 +1931,22 @@ func (s *TimerLayerChannelCategoryStore) SaveOrUpdate(cat *model.ChannelCategory
 	return resultVar0, resultVar1
 }
 
+func (s *TimerLayerChannelCategoryStore) SetOrder(userId string, name string, order int32) *model.AppError {
+	start := timemodule.Now()
+
+	resultVar0 := s.ChannelCategoryStore.SetOrder(userId, name, order)
+
+	elapsed := float64(timemodule.Since(start)) / float64(timemodule.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if resultVar0 == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("ChannelCategoryStore.SetOrder", success, elapsed)
+	}
+	return resultVar0
+}
+
 func (s *TimerLayerChannelMemberHistoryStore) GetUsersInChannelDuring(startTime int64, endTime int64, channelId string) ([]*model.ChannelMemberHistoryResult, *model.AppError) {
 	start := timemodule.Now()
 

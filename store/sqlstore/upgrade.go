@@ -4,6 +4,7 @@
 package sqlstore
 
 import (
+	"fmt"
 	"os"
 	"time"
 
@@ -15,7 +16,8 @@ import (
 )
 
 const (
-	CURRENT_SCHEMA_VERSION   = VERSION_6_1_0
+	CURRENT_SCHEMA_VERSION   = VERSION_6_2_0
+	VERSION_6_2_0            = "6.2.0"
 	VERSION_6_1_0            = "6.1.0"
 	VERSION_6_0_0            = "6.0.0"
 	OLDEST_SUPPORTED_VERSION = VERSION_6_0_0
@@ -78,6 +80,7 @@ func upgradeDatabase(sqlStore SqlStore, currentModelVersionString string) error 
 	}
 
 	upgradeDatabaseToVersion610(sqlStore)
+	upgradeDatabaseToVersion620(sqlStore)
 
 	return nil
 }
@@ -96,6 +99,8 @@ func shouldPerformUpgrade(sqlStore SqlStore, currentSchemaVersion string, expect
 	if sqlStore.GetCurrentSchemaVersion() == currentSchemaVersion {
 		mlog.Warn("Attempting to upgrade the database schema version", mlog.String("current_version", currentSchemaVersion), mlog.String("new_version", expectedSchemaVersion))
 		return true
+	} else {
+		mlog.Info("Skipping schema upgrade", mlog.String("current_version", currentSchemaVersion), mlog.String("new_version", expectedSchemaVersion))
 	}
 	return false
 }
@@ -104,5 +109,49 @@ func upgradeDatabaseToVersion610(sqlStore SqlStore) {
 	if shouldPerformUpgrade(sqlStore, VERSION_6_0_0, VERSION_6_1_0) {
 		sqlStore.CreateColumnIfNotExists("Posts", "ReplyToId", "varchar(26)", "varchar(26)", "")
 		saveSchemaVersion(sqlStore, VERSION_6_1_0)
+	}
+}
+
+func upgradeDatabaseToVersion620(sqlStore SqlStore) {
+	if shouldPerformUpgrade(sqlStore, VERSION_6_1_0, VERSION_6_2_0) {
+		sqlStore.CreateColumnIfNotExists("ChannelCategories", "Id", "varchar(100)", "varchar(100)", "")
+
+		// Update categories previously stored
+
+		// 1. Get all users that have categories
+		var uids []string
+		_, err := sqlStore.GetReplica().Select(&uids, "SELECT UserId FROM ChannelCategories GROUP BY UserId")
+		if err != nil {
+			mlog.Error("Error fetching user ids from ChannelCategories", mlog.Err(err))
+			panic(fmt.Sprintf("Migration to %v failed", VERSION_6_2_0))
+		}
+
+		// 2. For each user update categories, setting Id and removing Id collisions
+		for _, v := range uids {
+			cats := make([]*model.ChannelCategory, 0)
+			names := make(map[string]string)
+			sorts := make(map[string]int32)
+			_, err := sqlStore.GetReplica().Select(
+				&cats,
+				"SELECT * FROM ChannelCategories WHERE UserId = :UserId ORDER BY ChannelId",
+				map[string]interface{}{"UserId": v},
+			)
+			if err != nil {
+				mlog.Error("Error categories for user", mlog.Err(err))
+				panic(fmt.Sprintf("Migration to %v failed", VERSION_6_2_0))
+			}
+			for _, c := range cats {
+				c.Id = c.GetId()
+				if _, exists := names[c.Id]; !exists {
+					names[c.Id] = c.Name
+					sorts[c.Id] = c.Sort
+				}
+				c.Name = names[c.Id]
+				c.Sort = sorts[c.Id]
+				sqlStore.ChannelCategory().SaveOrUpdate(c)
+			}
+		}
+
+		saveSchemaVersion(sqlStore, VERSION_6_2_0)
 	}
 }

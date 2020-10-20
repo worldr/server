@@ -16,6 +16,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/url"
+	"os"
 	"time"
 
 	"github.com/dyatlov/go-opengraph/opengraph"
@@ -561,7 +562,7 @@ func (a *OpenTracingAppLayer) AllowOAuthAppAccessToUser(userId string, authReque
 	return resultVar0, resultVar1
 }
 
-func (a *OpenTracingAppLayer) AssignCategory(channelId string, userId string, category string) (*model.ChannelCategory, *model.AppError) {
+func (a *OpenTracingAppLayer) AssignCategory(cat *model.ChannelCategory) (*model.ChannelCategory, *model.AppError) {
 	origCtx := a.ctx
 	span, newCtx := tracing.StartSpanWithParentByContext(a.ctx, "app.AssignCategory")
 
@@ -573,7 +574,7 @@ func (a *OpenTracingAppLayer) AssignCategory(channelId string, userId string, ca
 	}()
 
 	defer span.Finish()
-	resultVar0, resultVar1 := a.app.AssignCategory(channelId, userId, category)
+	resultVar0, resultVar1 := a.app.AssignCategory(cat)
 
 	if resultVar1 != nil {
 		span.LogFields(spanlog.Error(resultVar1))
@@ -7159,6 +7160,23 @@ func (a *OpenTracingAppLayer) GetPublicKey(name string) ([]byte, *model.AppError
 	return resultVar0, resultVar1
 }
 
+func (a *OpenTracingAppLayer) GetRandomImageForChannel(imagesFolder string) (*os.File, error) {
+	origCtx := a.ctx
+	span, newCtx := tracing.StartSpanWithParentByContext(a.ctx, "app.GetRandomImageForChannel")
+
+	a.ctx = newCtx
+	a.app.Srv().Store.SetContext(newCtx)
+	defer func() {
+		a.app.Srv().Store.SetContext(origCtx)
+		a.ctx = origCtx
+	}()
+
+	defer span.Finish()
+	resultVar0, resultVar1 := a.app.GetRandomImageForChannel(imagesFolder)
+
+	return resultVar0, resultVar1
+}
+
 func (a *OpenTracingAppLayer) GetReactionsForPost(postId string) ([]*model.Reaction, *model.AppError) {
 	origCtx := a.ctx
 	span, newCtx := tracing.StartSpanWithParentByContext(a.ctx, "app.GetReactionsForPost")
@@ -11196,6 +11214,28 @@ func (a *OpenTracingAppLayer) ReloadConfig() error {
 
 	defer span.Finish()
 	resultVar0 := a.app.ReloadConfig()
+
+	return resultVar0
+}
+
+func (a *OpenTracingAppLayer) RemoveCategory(userId string, channelId string) *model.AppError {
+	origCtx := a.ctx
+	span, newCtx := tracing.StartSpanWithParentByContext(a.ctx, "app.RemoveCategory")
+
+	a.ctx = newCtx
+	a.app.Srv().Store.SetContext(newCtx)
+	defer func() {
+		a.app.Srv().Store.SetContext(origCtx)
+		a.ctx = origCtx
+	}()
+
+	defer span.Finish()
+	resultVar0 := a.app.RemoveCategory(userId, channelId)
+
+	if resultVar0 != nil {
+		span.LogFields(spanlog.Error(resultVar0))
+		ext.Error.Set(span, true)
+	}
 
 	return resultVar0
 }

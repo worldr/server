@@ -104,3 +104,19 @@ func (_m *ChannelCategoryStore) SaveOrUpdate(cat *model.ChannelCategory) (*model
 
 	return r0, r1
 }
+
+// SetOrder provides a mock function with given fields: userId, name, order
+func (_m *ChannelCategoryStore) SetOrder(userId string, name string, order int32) *model.AppError {
+	ret := _m.Called(userId, name, order)
+
+	var r0 *model.AppError
+	if rf, ok := ret.Get(0).(func(string, string, int32) *model.AppError); ok {
+		r0 = rf(userId, name, order)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*model.AppError)
+		}
+	}
+
+	return r0
+}

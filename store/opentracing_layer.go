@@ -2084,6 +2084,24 @@ func (s *OpenTracingLayerChannelCategoryStore) SaveOrUpdate(cat *model.ChannelCa
 	return resultVar0, resultVar1
 }
 
+func (s *OpenTracingLayerChannelCategoryStore) SetOrder(userId string, name string, order int32) *model.AppError {
+	origCtx := s.Root.Store.Context()
+	span, newCtx := tracing.StartSpanWithParentByContext(s.Root.Store.Context(), "ChannelCategoryStore.SetOrder")
+	s.Root.Store.SetContext(newCtx)
+	defer func() {
+		s.Root.Store.SetContext(origCtx)
+	}()
+
+	defer span.Finish()
+	resultVar0 := s.ChannelCategoryStore.SetOrder(userId, name, order)
+	if resultVar0 != nil {
+		span.LogFields(spanlog.Error(resultVar0))
+		ext.Error.Set(span, true)
+	}
+
+	return resultVar0
+}
+
 func (s *OpenTracingLayerChannelMemberHistoryStore) GetUsersInChannelDuring(startTime int64, endTime int64, channelId string) ([]*model.ChannelMemberHistoryResult, *model.AppError) {
 	origCtx := s.Root.Store.Context()
 	span, newCtx := tracing.StartSpanWithParentByContext(s.Root.Store.Context(), "ChannelMemberHistoryStore.GetUsersInChannelDuring")

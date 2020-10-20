@@ -6,8 +6,8 @@ cp config/config.json $TMPDIR
 echo "Creating databases"
 docker exec worldr-postgres sh -c 'exec echo "CREATE DATABASE migrated; CREATE DATABASE latest;" | exec psql -U mmuser mattermost_test'
 
-echo "Importing postgres dump from version 6.0.0"
-docker exec -i worldr-postgres psql -U mmuser -d migrated < $(pwd)/scripts/worldr-postgresql-1.1.sql
+echo "Importing postgres dump from version 6.2.0"
+docker exec -i worldr-postgres psql -U mmuser -d migrated < $(pwd)/scripts/worldr-postgresql-1.2.sql
 
 echo "Setting up config for db migration"
 make ARGS="config set SqlSettings.DataSource 'postgres://mmuser:mostest@localhost:5432/migrated?sslmode=disable&connect_timeout=10' --config $TMPDIR/config.json" run-cli
