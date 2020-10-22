@@ -18,7 +18,7 @@ const (
 	VAULT_K8S_SERVICE_ACCOUNT_TOKEN_FILE = "/var/run/secrets/kubernetes.io/serviceaccount/token"
 	VAULT_WAIT_UNSEAL_ATTEMPTS           = 30
 	VAULT_WAIT_UNSEAL_TIMEOUT_SECS       = 10
-	VAULT_SERVER_DOMAIN                  = "http://vault.worldr:8200/"
+	VAULT_SERVER_DOMAIN                  = "http://vault.worldr:8200"
 	VAULT_SERVER_SEAL_STATUS_URL         = VAULT_SERVER_DOMAIN + "/v1/sys/seal-status"
 	VAULT_SERVER_LOGIN_URL               = VAULT_SERVER_DOMAIN + "/v1/auth/kubernetes/login"
 	VAULT_KV_SECRET_URL                  = VAULT_SERVER_DOMAIN + "/v1/kv/pg-tde"
@@ -184,6 +184,7 @@ func (*Vault) Login(url string, token string) (string, error) {
 		return "", errors.Wrap(err, "Cannot read body")
 	}
 
+	mlog.Info("Vault login was successful")
 	return message.Auth.ClientToken, nil
 }
 
@@ -197,7 +198,7 @@ func (*Vault) GetSecret(url string, secret string, token string) (string, error)
 	//	mlog.Warn(fmt.Sprintf("New request is invalid because %s", err))
 	//	return "", errors.Wrap(err, "Bad new request")
 	//}
-	req.Header.Set("X-Vault-Token", os.ExpandEnv("$CLIENT_TOKEN"))
+	req.Header.Set("X-Vault-Token", token)
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
@@ -208,7 +209,7 @@ func (*Vault) GetSecret(url string, secret string, token string) (string, error)
 	// Got a reply, check if vault is unsealed.
 	defer resp.Body.Close()
 	if resp.StatusCode != 200 {
-		msg := fmt.Sprintf("got return code %d, trying again", resp.StatusCode)
+		msg := fmt.Sprintf("%s returned code %d, trying again", url, resp.StatusCode)
 		mlog.Warn(msg)
 		return "", errors.New(msg)
 	}
@@ -275,6 +276,11 @@ func KeyTalker(service string, vault IVault) error {
 		return nil
 	}
 
+	// Debugging info.
+	mlog.Info(fmt.Sprintf("Vault seal URL is      %s", VAULT_SERVER_SEAL_STATUS_URL))
+	mlog.Info(fmt.Sprintf("Vault login URL is     %s", VAULT_SERVER_LOGIN_URL))
+	mlog.Info(fmt.Sprintf("Vault KV secret URL is %s", VAULT_KV_SECRET_URL))
+
 	// 3. Wait for the vault server to be unsealed.
 	err = vault.WaitForVaultToUnseal(VAULT_SERVER_SEAL_STATUS_URL, VAULT_WAIT_UNSEAL_TIMEOUT_SECS, VAULT_WAIT_UNSEAL_TIMEOUT_SECS)
 	if err != nil {
@@ -295,7 +301,6 @@ func KeyTalker(service string, vault IVault) error {
 		mlog.Critical("Cannot get PG TDE secret!")
 		return errors.Wrap(err, "Cannot get PG TDE secret!")
 	}
-	mlog.Info(topSecretKey)
 
 	// 6. Send the password to the database so it can either unseal or initialise.
 	err = vault.SendKeyToListener(service, topSecretKey)
