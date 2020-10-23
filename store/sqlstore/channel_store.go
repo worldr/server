@@ -2908,22 +2908,9 @@ func (s SqlChannelStore) getRelevantChannelIds(teamId string, userId string) (*[
 	return &channelIds, nil
 }
 
-func (s SqlChannelStore) getChannelInfos(teamId string, userId string, channelId string) (*[]string, *map[string]*model.ChannelInfo, *model.AppError) {
-	// 1. Get ids of channels userId is a member of.
-	channelIds := &([]string{channelId})
-	if channelId == "" {
-		var err1 *model.AppError
-		channelIds, err1 = s.getRelevantChannelIds(teamId, userId)
-		if err1 != nil {
-			return nil, nil, model.NewAppError("SqlChannelStore.getChannelInfos", "store.sql_channel.get_infos.get_relevant_channels_ids.app_error", nil, "userId="+userId+", err="+err1.Error(), http.StatusInternalServerError)
-		}
-	}
-
-	// 2. Get members counts for channels of userId found above.
-	// Note that we need to subtract messages counts, see `GetChannelUnread`
-	// above for details.
+func (s SqlChannelStore) getChannelInfosSimple(userId string, channelIds *[]string) (*map[string]*model.ChannelInfo, *model.AppError) {
 	infos := &model.ChannelInfoList{}
-	_, err2 := s.GetReplica().Select(
+	_, err := s.GetReplica().Select(
 		infos,
 		`
 		SELECT DISTINCT ON (c1.ChannelId)
@@ -2940,32 +2927,61 @@ func (s SqlChannelStore) getChannelInfos(teamId string, userId string, channelId
 		JOIN (
 			SELECT Id, TotalMsgCount
 			FROM Channels
-			GROUP BY Id
-			HAVING Id in ('`+strings.Join(*channelIds, "','")+`')
+			WHERE Id in ('`+strings.Join(*channelIds, "','")+`')
 		) as c3
 		ON c2.ChannelId=c3.Id
 		`,
 		map[string]interface{}{"UserId": userId},
 	)
-	if err2 != nil {
-		return nil, nil, model.NewAppError("SqlChannelStore.getChannelInfos", "store.sql_channel.get_personal_channels.get_my_channels_members.app_error", nil, "userId="+userId+", err="+err2.Error(), http.StatusInternalServerError)
+	if err != nil {
+		return nil, model.NewAppError(
+			"SqlChannelStore.getChannelInfosSimple",
+			"store.sql_channel.get_channels_infos_simple.app_error",
+			nil,
+			"userId="+userId+", err="+err.Error(),
+			http.StatusInternalServerError,
+		)
 	}
 	infosMap := make(map[string]*model.ChannelInfo, len(*infos))
 	for _, v := range *infos {
 		infosMap[v.Id] = v
 	}
 
-	return channelIds, &infosMap, nil
+	return &infosMap, nil
+}
+
+func (s SqlChannelStore) getChannelInfos(teamId string, userId string, channelId string) (*[]string, *map[string]*model.ChannelInfo, *model.AppError) {
+	// 1. Get ids of channels userId is a member of.
+	channelIds := &([]string{channelId})
+	if channelId == "" {
+		var err1 *model.AppError
+		channelIds, err1 = s.getRelevantChannelIds(teamId, userId)
+		if err1 != nil {
+			return nil, nil, model.NewAppError("SqlChannelStore.getChannelInfos", "store.sql_channel.get_infos.get_relevant_channels_ids.app_error", nil, "userId="+userId+", err="+err1.Error(), http.StatusInternalServerError)
+		}
+	}
+
+	// 2. Get members counts for channels of userId found above.
+	// Note that we need to subtract messages counts, see `GetChannelUnread`
+	// above for details.
+	infosMap, err2 := s.getChannelInfosSimple(userId, channelIds)
+	if err2 != nil {
+		return nil, nil, model.NewAppError("SqlChannelStore.getChannelInfos", "store.sql_channel.get_personal_channels.get_my_channels_members.app_error", nil, "userId="+userId+", err="+err2.Error(), http.StatusInternalServerError)
+	}
+	return channelIds, infosMap, nil
 }
 
 type lastMessages []*model.Post
 
-func (s SqlChannelStore) getLastMessages(channels *model.ChannelList) (*map[string]*model.Post, *model.AppError) {
+func (s SqlChannelStore) getLastMessagesForChannels(channels *model.ChannelList) (*map[string]*model.Post, *model.AppError) {
 	channelIds := make([]string, len(*channels))
 	for i, v := range *channels {
 		channelIds[i] = v.Id
 	}
+	return s.getLastMessages(channelIds)
+}
 
+func (s SqlChannelStore) getLastMessages(channelIds []string) (*map[string]*model.Post, *model.AppError) {
 	posts := &lastMessages{}
 	_, err := s.GetReplica().Select(posts, `
 		SELECT
@@ -2986,6 +3002,40 @@ func (s SqlChannelStore) getLastMessages(channels *model.ChannelList) (*map[stri
 		result[(*v).ChannelId] = v
 	}
 	return &result, nil
+}
+
+func (s SqlChannelStore) GetChannelsSnapshots(userId string, channelIds *[]string) (*model.ChannelSnapshotList, *model.AppError) {
+	channels := &model.ChannelList{}
+	_, err1 := s.GetReplica().Select(channels, `
+		SELECT * FROM Channels
+		WHERE Id IN ('`+strings.Join(*channelIds, "','")+`')
+		`,
+	)
+	if err1 != nil {
+		return nil, model.NewAppError("SqlChannelStore.GetChannelsSnapshots", "store.sql_channel.get_channel_snapshots.get_channels.app_error", nil, "userId="+userId+", err="+err1.Error(), http.StatusInternalServerError)
+	}
+
+	channelInfos, err2 := s.getChannelInfosSimple(userId, channelIds)
+	if err2 != nil {
+		return nil, model.NewAppError("SqlChannelStore.GetChannelsSnapshots", "store.sql_channel.get_channel_snapshots.get_channel_infos.app_error", nil, "userId="+userId+", err="+err2.Error(), http.StatusInternalServerError)
+	}
+
+	lastMessages, err3 := s.getLastMessagesForChannels(channels)
+	if err3 != nil {
+		return nil, model.NewAppError("SqlChannelStore.GetChannelsSnapshots", "store.sql_channel.get_channel_snapshots.get_last_messages.app_error", nil, "userId="+userId+", err="+err3.Error(), http.StatusInternalServerError)
+	}
+
+	result := make([]*model.ChannelSnapshot, len(*channels))
+	for i, v := range *channels {
+		result[i] = &model.ChannelSnapshot{
+			Channel:     v,
+			Info:        (*channelInfos)[(*v).Id],
+			LastMessage: (*lastMessages)[(*v).Id],
+		}
+	}
+
+	list := model.ChannelSnapshotList(result)
+	return &list, nil
 }
 
 func (s SqlChannelStore) getSpecificChannels(teamId string, userId string, clause string) (*model.ChannelSnapshotList, *model.AppError) {
@@ -3010,7 +3060,7 @@ func (s SqlChannelStore) getSpecificChannels(teamId string, userId string, claus
 		return nil, model.NewAppError("SqlChannelStore.getSpecificChannels", "store.sql_channel.get_specific_channels.get_channels.app_error", nil, "userId="+userId+", err="+err2.Error(), http.StatusInternalServerError)
 	}
 
-	lastMessages, err3 := s.getLastMessages(channels)
+	lastMessages, err3 := s.getLastMessagesForChannels(channels)
 	if err3 != nil {
 		return nil, model.NewAppError("SqlChannelStore.getSpecificChannels", "store.sql_channel.get_specific_channels.get_last_messages.app_error", nil, "userId="+userId+", err="+err3.Error(), http.StatusInternalServerError)
 	}
@@ -3046,6 +3096,44 @@ func (s SqlChannelStore) GetGlobalChannels(teamId string, userId string) (*model
 	return s.getSpecificChannels(teamId, userId, "Kind = '' AND Type = 'O'")
 }
 
+func (s SqlChannelStore) GetChannelMembersShort(channelIds *[]string, infos *map[string]*model.ChannelInfo) (*map[string]*model.ChannelMembersShort, *[]string, *model.AppError) {
+	members := &model.ChannelMembersShort{}
+	_, err := s.GetReplica().Select(members, `
+		SELECT
+			ChannelId,UserId,SchemeGuest,SchemeUser,SchemeAdmin
+		FROM
+			ChannelMembers
+		WHERE ChannelId IN ('`+strings.Join(*channelIds, "','")+`')
+		`,
+	)
+	if err != nil {
+		return nil, nil, model.NewAppError("SqlChannelStore.GetOverview", "store.sql_channel.get_overview.get_members.app_error", nil, err.Error(), http.StatusInternalServerError)
+	}
+	membersMap := make(map[string]*model.ChannelMembersShort, len(*channelIds))
+	distinctUsers := make(map[string]bool)
+	for _, v := range *members {
+		if _, exists := membersMap[v.ChannelId]; !exists {
+			var empty model.ChannelMembersShort
+			if infos == nil {
+				empty = []model.ChannelMemberShort{}
+			} else {
+				empty = make([]model.ChannelMemberShort, 0, (*infos)[v.ChannelId].Members)
+			}
+			membersMap[v.ChannelId] = &empty
+		}
+		updated := append(*membersMap[v.ChannelId], v)
+		membersMap[v.ChannelId] = &updated
+		distinctUsers[v.UserId] = true
+	}
+	uids := make([]string, len(distinctUsers))
+	count := 0
+	for k := range distinctUsers {
+		uids[count] = k
+		count = count + 1
+	}
+	return &membersMap, &uids, nil
+}
+
 // GetOverview returns channels for global screen.
 // These are all of channels visible to userId along with their members.
 func (s SqlChannelStore) GetOverview(teamId string, userId string, channelId string) (*model.ChannelList, *map[string]*model.ChannelMembersShort, *[]string, *model.AppError) {
@@ -3072,37 +3160,11 @@ func (s SqlChannelStore) GetOverview(teamId string, userId string, channelId str
 	}
 
 	// Get member ids for all channels
-	members := &model.ChannelMembersShort{}
-	_, err3 := s.GetReplica().Select(members, `
-		SELECT
-			ChannelId,UserId,SchemeGuest,SchemeUser,SchemeAdmin
-		FROM
-			ChannelMembers
-		WHERE ChannelId IN ('`+strings.Join(*channelIds, "','")+`')
-		`,
-	)
+	membersMap, uids, err3 := s.GetChannelMembersShort(channelIds, infos)
 	if err3 != nil {
 		return nil, nil, nil, model.NewAppError("SqlChannelStore.GetOverview", "store.sql_channel.get_overview.get_members.app_error", nil, "userId="+userId+", err="+err3.Error(), http.StatusInternalServerError)
 	}
-	membersMap := make(map[string]*model.ChannelMembersShort, len(*channels))
-	distinctUsers := make(map[string]bool)
-	for _, v := range *members {
-		if _, exists := membersMap[v.ChannelId]; !exists {
-			info := (*infos)[v.ChannelId]
-			var empty model.ChannelMembersShort = make([]model.ChannelMemberShort, info.Members)[:0]
-			membersMap[v.ChannelId] = &empty
-		}
-		updated := append(*membersMap[v.ChannelId], v)
-		membersMap[v.ChannelId] = &updated
-		distinctUsers[v.UserId] = true
-	}
-	uids := make([]string, len(distinctUsers))
-	count := 0
-	for k := range distinctUsers {
-		uids[count] = k
-		count = count + 1
-	}
-	return channels, &membersMap, &uids, nil
+	return channels, membersMap, uids, nil
 }
 
 func (s SqlChannelStore) UpdateLastPictureUpdate(channelId string) *model.AppError {

@@ -222,6 +222,11 @@ type ChannelStore interface {
 	GetGlobalChannels(teamId string, userId string) (*model.ChannelSnapshotList, *model.AppError)
 	GetOverview(teamId string, userId string, channelId string) (*model.ChannelList, *map[string]*model.ChannelMembersShort, *[]string, *model.AppError)
 	UpdateLastPictureUpdate(channelId string) *model.AppError
+
+	// GetChannelMembersShort returns brief info of members in the given channels.
+	// infos parameter serves for better allocation of slices and can be nil.
+	GetChannelMembersShort(channelIds *[]string, infos *map[string]*model.ChannelInfo) (*map[string]*model.ChannelMembersShort, *[]string, *model.AppError)
+	GetChannelsSnapshots(userId string, channelIds *[]string) (*model.ChannelSnapshotList, *model.AppError)
 }
 
 type ChannelMemberHistoryStore interface {
@@ -279,6 +284,8 @@ type PostStore interface {
 	GetTotalPosts(channelIds *[]string) (int64, *model.AppError)
 	GetTotalPostsForChannels(channelIds *[]string) (*map[string]int, *model.AppError)
 	GetOldestPostsForChannels(channelIds *[]string) (*map[string]string, *model.AppError)
+
+	CheckForUpdates(userId string, list *[]model.ChannelWithPost) (*model.ChannelUpdates, *model.AppError)
 }
 
 type UserStore interface {

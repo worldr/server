@@ -12,6 +12,7 @@ func (api *API) InitWPosts() {
 	api.BaseRoutes.WPosts.Handle("/increment/check", api.ApiSessionRequired(checkIncrementPossible)).Methods("POST")
 	api.BaseRoutes.WPosts.Handle("/increment", api.ApiSessionRequired(getIncrementalUpdate)).Methods("POST")
 	api.BaseRoutes.WPosts.Handle("/ids/reactions", api.ApiSessionRequired(getReactionsForPosts)).Methods("POST")
+	api.BaseRoutes.WPosts.Handle("/updates", api.ApiSessionRequired(checkForUpdates)).Methods("POST")
 }
 
 // getRecentPosts() returns most recent posts for given channels and respects total and per channel limits.
@@ -164,4 +165,73 @@ func getReactionsForPosts(c *Context, w http.ResponseWriter, r *http.Request) {
 		Content: reactions,
 	}
 	w.Write([]byte(response.ToJson()))
+}
+
+func checkForUpdates(c *Context, w http.ResponseWriter, r *http.Request) {
+	requestData, errJson := model.ChannelWithPostListFromJson(r.Body)
+	if errJson != nil {
+		c.Err = model.NewAppError(
+			"checkForUpdates",
+			"api.w_post.check_for_updates.bad_params.app_error",
+			nil,
+			"Request parameters are missing or invalid",
+			http.StatusBadRequest,
+		)
+		return
+	}
+
+	uid := c.App.Session().UserId
+
+	result, err := c.App.Srv().Store.Post().CheckForUpdates(
+		uid,
+		requestData,
+	)
+	if err != nil {
+		c.Err = err
+		return
+	}
+	channelIds := append(*result.Added, *result.Updated...)
+
+	snaps, err := c.App.Srv().Store.Channel().GetChannelsSnapshots(uid, &channelIds)
+	if err != nil {
+		c.Err = err
+		return
+	}
+	members, _, err := c.App.Srv().Store.Channel().GetChannelMembersShort(&channelIds, nil)
+	if err != nil {
+		c.Err = err
+		return
+	}
+
+	if len(*snaps) != len(*members) || len(*snaps) != len(channelIds) {
+		c.Err = model.NewAppError(
+			"checkForUpdates",
+			"api.w_post.check_for_updates.failed.app_error",
+			nil,
+			"Collected info is mismatched",
+			http.StatusInternalServerError,
+		)
+		return
+	}
+	sync := make(map[string]*model.ChannelSync, len(channelIds))
+	result.ChannelById = sync
+	for _, v := range *snaps {
+		if m, exists := (*members)[v.Channel.Id]; exists {
+			sync[v.Channel.Id] = &model.ChannelSync{
+				Channel: v,
+				Members: m,
+			}
+		} else {
+			c.Err = model.NewAppError(
+				"checkForUpdates",
+				"api.w_post.check_for_updates.members.app_error",
+				nil,
+				"Members not collected for channel",
+				http.StatusInternalServerError,
+			)
+			return
+		}
+	}
+
+	w.Write([]byte(result.ToJson()))
 }

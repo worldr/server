@@ -294,16 +294,18 @@ func (a *App) CreateChannel(channel *model.Channel, addMember bool) (*model.Chan
 		return nil, err
 	}
 
-	image, imgErr := a.GetRandomImageForChannel("images/channels")
-	if imgErr != nil {
-		mlog.Error("Unable to find a suitable channel image.", mlog.Err(imgErr))
-	} else {
-		if err := a.SetChannelImageFromMultiPartFile(sc.Id, image); err != nil {
-			mlog.Error("Unable to set the channel image from a file.", mlog.Err(err))
-		} else {
-			sc.LastPictureUpdate = time.Now().Unix()
-		}
-	}
+	// No longer required and causes massive error messages in tests
+	//
+	// image, imgErr := a.GetRandomImageForChannel("images/channels")
+	// if imgErr != nil {
+	// 	mlog.Error("Unable to find a suitable channel image.", mlog.Err(imgErr))
+	// } else {
+	// 	if err := a.SetChannelImageFromMultiPartFile(sc.Id, image); err != nil {
+	// 		mlog.Error("Unable to set the channel image from a file.", mlog.Err(err))
+	// 	} else {
+	// 		sc.LastPictureUpdate = time.Now().Unix()
+	// 	}
+	// }
 
 	if addMember {
 		user, err := a.Srv().Store.User().Get(channel.CreatorId)

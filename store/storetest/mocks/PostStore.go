@@ -87,6 +87,31 @@ func (_m *PostStore) AnalyticsUserCountsWithPostsByDay(teamId string) (model.Ana
 	return r0, r1
 }
 
+// CheckForUpdates provides a mock function with given fields: userId, list
+func (_m *PostStore) CheckForUpdates(userId string, list *[]model.ChannelWithPost) (*model.ChannelUpdates, *model.AppError) {
+	ret := _m.Called(userId, list)
+
+	var r0 *model.ChannelUpdates
+	if rf, ok := ret.Get(0).(func(string, *[]model.ChannelWithPost) *model.ChannelUpdates); ok {
+		r0 = rf(userId, list)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*model.ChannelUpdates)
+		}
+	}
+
+	var r1 *model.AppError
+	if rf, ok := ret.Get(1).(func(string, *[]model.ChannelWithPost) *model.AppError); ok {
+		r1 = rf(userId, list)
+	} else {
+		if ret.Get(1) != nil {
+			r1 = ret.Get(1).(*model.AppError)
+		}
+	}
+
+	return r0, r1
+}
+
 // ClearCaches provides a mock function with given fields:
 func (_m *PostStore) ClearCaches() {
 	_m.Called()

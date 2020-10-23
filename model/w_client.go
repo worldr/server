@@ -2,6 +2,7 @@ package model
 
 import (
 	"fmt"
+	"net/http"
 )
 
 const (
@@ -81,6 +82,11 @@ func (c *WClient) GetRemoveCategoryFromChannelUrl() string {
 // Get absolute api url of the channel category reordering handle.
 func (c *WClient) GetCategoryReorderUrl() string {
 	return fmt.Sprintf("%v/channels/categories/order", c.ApiUrl)
+}
+
+// Get absolute api url of the check for updates handle.
+func (c *WClient) GetCheckUpdatesUrl() string {
+	return fmt.Sprintf("%v/posts/updates", c.ApiUrl)
 }
 
 //
@@ -204,4 +210,17 @@ func (c *WClient) ReorderChannelCategory(request map[string]string) *Response {
 	}
 	defer closeBody(r)
 	return BuildResponse(r)
+}
+
+func (c *WClient) CheckUpdates(request []*ChannelWithPost) (*ChannelUpdates, *Response) {
+	r, err := c.MMClient.DoApiPostWithUrl(c.GetCheckUpdatesUrl(), ChannelWithPostListToJson(request), false)
+	if err != nil {
+		return nil, BuildErrorResponse(r, err)
+	}
+	defer closeBody(r)
+	if result, err := ChannelUpdatesFromJson(r.Body); err == nil {
+		return result, BuildResponse(r)
+	} else {
+		return nil, BuildErrorResponse(r, NewAppError("CheckUpdates", "WClient.CheckUpdates", nil, "Failed to unmarshall response JSON", http.StatusInternalServerError))
+	}
 }
