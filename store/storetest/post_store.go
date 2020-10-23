@@ -3017,6 +3017,10 @@ func populateChannels(
 
 func testGetRecentPosts(t *testing.T, ss store.Store, s SqlSupplier) {
 	channels, _, _ := populateChannels(t, ss, 5, 5, 4)
+	channelIndexById := make(map[string]int, len(*channels))
+	for i, v := range *channels {
+		channelIndexById[v.Id] = i
+	}
 
 	t.Run("expected amount of posts returned for 1 channel", func(t *testing.T) {
 		posts, err := ss.Post().GetRecentPosts(&[]string{(*channels)[0].Id}, 10)
@@ -3049,13 +3053,13 @@ func testGetRecentPosts(t *testing.T, ss store.Store, s SqlSupplier) {
 		require.Equal(t, 8, len(*posts), "wrong number of posts")
 		for i, p := range *posts {
 			if i < 2 {
-				require.True(t, p.ChannelId == (*channels)[0].Id, "expecting channel 1")
+				require.True(t, p.ChannelId == (*channels)[0].Id, fmt.Sprintf("expecting channel 0, got %v", channelIndexById[p.ChannelId]))
 			} else if i < 4 {
-				require.True(t, p.ChannelId == (*channels)[1].Id, "expecting channel 2")
+				require.True(t, p.ChannelId == (*channels)[1].Id, fmt.Sprintf("expecting channel 1, got %v", channelIndexById[p.ChannelId]))
 			} else if i < 6 {
-				require.True(t, p.ChannelId == (*channels)[2].Id, "expecting channel 3")
+				require.True(t, p.ChannelId == (*channels)[2].Id, fmt.Sprintf("expecting channel 2, got %v", channelIndexById[p.ChannelId]))
 			} else {
-				require.True(t, p.ChannelId == (*channels)[3].Id, "expecting channel 4")
+				require.True(t, p.ChannelId == (*channels)[3].Id, fmt.Sprintf("expecting channel 3, got %v", channelIndexById[p.ChannelId]))
 			}
 		}
 	})

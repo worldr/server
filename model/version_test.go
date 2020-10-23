@@ -38,12 +38,9 @@ func TestSplitVersion(t *testing.T) {
 }
 
 func TestGetPreviousVersion(t *testing.T) {
-	require.Equal(t, "1.2.0", GetPreviousVersion("1.3.0"))
-	require.Equal(t, "1.1.0", GetPreviousVersion("1.2.1"))
-	require.Equal(t, "1.0.0", GetPreviousVersion("1.1.0"))
-	require.Equal(t, "0.7.0", GetPreviousVersion("1.0.0"))
-	require.Equal(t, "0.6.0", GetPreviousVersion("0.7.1"))
-	require.Equal(t, "", GetPreviousVersion("0.5.0"))
+	require.Equal(t, "6.1.0", GetPreviousVersion("6.2.0"))
+	require.Equal(t, "6.0.0", GetPreviousVersion("6.1.0"))
+	require.Equal(t, "", GetPreviousVersion("6.0.0"))
 }
 
 func TestIsCurrentVersion(t *testing.T) {
@@ -58,7 +55,5 @@ func TestIsCurrentVersion(t *testing.T) {
 func TestIsPreviousVersionsSupported(t *testing.T) {
 	require.True(t, IsPreviousVersionsSupported(versionsWithoutHotFixes[0]))
 	require.True(t, IsPreviousVersionsSupported(versionsWithoutHotFixes[1]))
-	require.True(t, IsPreviousVersionsSupported(versionsWithoutHotFixes[2]))
-	require.False(t, IsPreviousVersionsSupported(versionsWithoutHotFixes[4]))
-	require.False(t, IsPreviousVersionsSupported(versionsWithoutHotFixes[5]))
+	require.False(t, IsPreviousVersionsSupported(versionsWithoutHotFixes[2]))
 }

@@ -4,6 +4,7 @@
 package sqlstore
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/mattermost/mattermost-server/v5/model"
@@ -30,6 +31,7 @@ func newSqlChannelCategoryStore(sqlStore SqlStore) store.ChannelCategoryStore {
 		table.ColMap("UserId").SetMaxSize(26).SetNotNull(true)
 		table.ColMap("ChannelId").SetMaxSize(26).SetNotNull(true)
 		table.ColMap("Name").SetMaxSize(100).SetNotNull(true)
+		table.ColMap("Id").SetMaxSize(100).SetNotNull(true)
 		table.SetUniqueTogether("UserId", "ChannelId")
 	}
 
@@ -41,12 +43,33 @@ func (s SqlChannelCategoryStore) createIndexesIfNotExists() {
 }
 
 func (s SqlChannelCategoryStore) SaveOrUpdate(cat *model.ChannelCategory) (*model.ChannelCategory, *model.AppError) {
-	err := s.GetReplica().SelectOne(
+	cat.Id = cat.GetId()
+	if !cat.IsValidCategory() {
+		return nil, model.NewAppError("SqlChannelCategoryStore.SaveOrUpdate", SAVE_ERROR, nil, fmt.Sprintf("Category is invalid %+v", cat), http.StatusBadRequest)
+	}
+
+	// Does the channel have category assigned?
+	channelLabeledErr := s.GetReplica().SelectOne(
 		&model.ChannelCategory{},
 		"SELECT * FROM ChannelCategories WHERE ChannelId = :ChannelId AND UserId = :UserId",
 		map[string]interface{}{"UserId": cat.UserId, "ChannelId": cat.ChannelId},
 	)
-	if err == nil {
+
+	// Does the category with this Id exist for user?
+	existing := &model.ChannelCategory{}
+	categoryExistsErr := s.GetReplica().SelectOne(
+		existing,
+		"SELECT * FROM ChannelCategories WHERE UserId = :UserId AND Id = :Id",
+		map[string]interface{}{"UserId": cat.UserId, "Id": cat.Id},
+	)
+
+	if categoryExistsErr == nil {
+		// Don't change sorting if the category exists
+		cat.Sort = existing.Sort
+	}
+
+	// Insert or update the record for the channel
+	if channelLabeledErr == nil {
 		if _, err := s.GetMaster().Update(cat); err != nil {
 			return nil, model.NewAppError("SqlChannelCategoryStore.SaveOrUpdate", UPDATE_ERROR, nil, err.Error(), http.StatusInternalServerError)
 		}
@@ -55,6 +78,16 @@ func (s SqlChannelCategoryStore) SaveOrUpdate(cat *model.ChannelCategory) (*mode
 			return nil, model.NewAppError("SqlChannelCategoryStore.SaveOrUpdate", SAVE_ERROR, nil, err.Error(), http.StatusInternalServerError)
 		}
 	}
+
+	// Update the name of the category for all records of the user
+	_, err := s.GetReplica().Exec(
+		`UPDATE ChannelCategories SET Name = :Name WHERE UserId = :UserId AND Id = :Id`,
+		map[string]interface{}{"Name": cat.Name, "Id": cat.Id, "UserId": cat.UserId},
+	)
+	if err != nil {
+		return nil, model.NewAppError("SqlChannelCategoryStore.SaveOrUpdate", UPDATE_ERROR, nil, err.Error(), http.StatusInternalServerError)
+	}
+
 	return s.Get(cat.UserId, cat.ChannelId)
 }
 
@@ -67,7 +100,8 @@ func (s SqlChannelCategoryStore) GetForUser(userId string) (*model.ChannelCatego
 		FROM
 			ChannelCategories
 		WHERE
-			UserId = :UserId`, map[string]interface{}{"UserId": userId}); err != nil {
+			UserId = :UserId
+		ORDER BY Sort, Id`, map[string]interface{}{"UserId": userId}); err != nil {
 		return nil, model.NewAppError("SqlChannelCategoryStore.GetForUser", GET_ERROR, nil, err.Error(), http.StatusInternalServerError)
 	}
 	return cats, nil
@@ -98,6 +132,27 @@ func (s SqlChannelCategoryStore) Delete(userId string, channelId string) *model.
 	)
 	if err != nil {
 		return model.NewAppError("SqlChannelCategoryStore.Delete", DELETE_ERROR, nil, "", http.StatusInternalServerError)
+	}
+	return nil
+}
+
+func (s SqlChannelCategoryStore) SetOrder(userId string, name string, order int32) *model.AppError {
+	id := model.GetChannelCategoryId(name)
+	existing := &model.ChannelCategory{}
+	categoryExistsErr := s.GetReplica().SelectOne(
+		existing,
+		"SELECT * FROM ChannelCategories WHERE UserId = :UserId AND Id = :Id",
+		map[string]interface{}{"UserId": userId, "Id": id},
+	)
+	if categoryExistsErr != nil {
+		return model.NewAppError("SqlChannelCategoryStore.SetOrder", UPDATE_ERROR, nil, categoryExistsErr.Error(), http.StatusNotFound)
+	}
+	_, err := s.GetMaster().Exec(
+		`UPDATE ChannelCategories SET Sort = :Sort WHERE UserId = :UserId AND Id = :Id`,
+		map[string]interface{}{"Id": id, "UserId": userId, "Sort": order},
+	)
+	if err != nil {
+		return model.NewAppError("SqlChannelCategoryStore.SetOrder", UPDATE_ERROR, nil, err.Error(), http.StatusInternalServerError)
 	}
 	return nil
 }

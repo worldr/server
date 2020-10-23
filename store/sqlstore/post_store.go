@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -31,7 +32,27 @@ func (s *SqlPostStore) ClearCaches() {
 }
 
 func postSliceColumns() []string {
-	return []string{"Id", "CreateAt", "UpdateAt", "EditAt", "DeleteAt", "IsPinned", "UserId", "ChannelId", "RootId", "ParentId", "OriginalId", "Message", "Type", "Props", "Hashtags", "Filenames", "FileIds", "HasReactions"}
+	return []string{
+		"Id",
+		"CreateAt",
+		"UpdateAt",
+		"EditAt",
+		"DeleteAt",
+		"IsPinned",
+		"UserId",
+		"ChannelId",
+		"RootId",
+		"ParentId",
+		"ReplyToId",
+		"OriginalId",
+		"Message",
+		"Type",
+		"Props",
+		"Hashtags",
+		"Filenames",
+		"FileIds",
+		"HasReactions",
+	}
 }
 
 func postToSlice(post *model.Post) []interface{} {
@@ -46,6 +67,7 @@ func postToSlice(post *model.Post) []interface{} {
 		post.ChannelId,
 		post.RootId,
 		post.ParentId,
+		post.ReplyToId,
 		post.OriginalId,
 		post.Message,
 		post.Type,
@@ -71,6 +93,7 @@ func newSqlPostStore(sqlStore SqlStore, metrics einterfaces.MetricsInterface) st
 		table.ColMap("ChannelId").SetMaxSize(26)
 		table.ColMap("RootId").SetMaxSize(26)
 		table.ColMap("ParentId").SetMaxSize(26)
+		table.ColMap("ReplyToId").SetMaxSize(26)
 		table.ColMap("OriginalId").SetMaxSize(26)
 		table.ColMap("Message").SetMaxSize(model.POST_MESSAGE_MAX_BYTES_V2)
 		table.ColMap("Type").SetMaxSize(26)
@@ -1877,7 +1900,7 @@ func (s *SqlPostStore) getValidPostIdsForChannels(
 		channelByPost[v.PostId] = v.ChannelId
 	}
 
-	// Get channel ids and create time for all given posts, distinct on channel id
+	// Get channel ids and creation time for all given posts, distinct on channel id
 	var requestData []struct {
 		ChannelId string
 		PostId    string
@@ -1911,7 +1934,7 @@ func (s *SqlPostStore) getValidPostIdsForChannels(
 		)
 	}
 
-	// Check that given posts reqlly belong to given channels
+	// Check that given posts really belong to given channels
 	for _, v := range requestData {
 		if cid, exists := channelByPost[v.PostId]; exists {
 			if cid != v.ChannelId {
@@ -2013,6 +2036,142 @@ func (s *SqlPostStore) GetAllPostsAfter(
 		p := v
 		list := result[v.ChannelId]
 		*list = append(*list, &p)
+	}
+	return &result, nil
+}
+
+type PostBrief struct {
+	Id        string
+	ChannelId string
+}
+
+func (s *SqlPostStore) CheckForUpdates(userId string, list *[]model.ChannelWithPost) (*model.ChannelUpdates, *model.AppError) {
+	channelIds := make([]string, len(*list))
+	channelById := make(map[string]*model.ChannelWithPost, len(*list))
+	for i, v := range *list {
+		channelIds[i] = v.ChannelId
+		channelById[v.ChannelId] = &((*list)[i])
+	}
+	sort.Strings(channelIds)
+	idsParam := "'" + strings.Join(channelIds, "','") + "'"
+
+	// Which channels the user is a member of?
+	var existingIds []string
+	_, err := s.GetMaster().Select(
+		&existingIds,
+		`
+		SELECT cm.ChannelId FROM channelmembers as cm,channels as c
+		WHERE 
+			cm.UserId = :UserId AND cm.channelid = c.id AND c.DeleteAt = 0
+		ORDER BY ChannelId
+		`,
+		map[string]interface{}{"UserId": userId},
+	)
+	if err != nil {
+		return nil, model.NewAppError(
+			"CheckForUpdates",
+			"post_store.check_for_update",
+			nil,
+			fmt.Sprintf("Failed to select existing channel memberships: %s", err.Error()),
+			http.StatusInternalServerError,
+		)
+	}
+
+	// Which channels among the requested are deleted?
+	var deleted []string
+	_, err = s.GetReplica().Select(
+		&deleted,
+		`
+		SELECT Id FROM channels 
+		WHERE 
+			DeleteAt != 0 
+			AND Id IN (`+idsParam+`)
+		ORDER BY Id
+		`,
+	)
+	if err != nil {
+		return nil, model.NewAppError(
+			"CheckForUpdates",
+			"post_store.check_for_update",
+			nil,
+			fmt.Sprintf("Failed to select deleted channels: %s", err.Error()),
+			http.StatusInternalServerError,
+		)
+	}
+
+	// Remove deleted from current membership
+	memberCheck := make(map[string]bool, len(existingIds))
+	lastIndex := 0
+	for _, v := range existingIds {
+		found := false
+		for j := lastIndex; j < len(deleted); j++ {
+			if deleted[j] == v {
+				found = true
+				lastIndex = j
+				break
+			}
+		}
+		if !found {
+			memberCheck[v] = true
+		}
+	}
+
+	// Which channels among the requested the user is no longer a member of?
+	removed := []string{}
+	for _, v := range channelIds {
+		if _, ok := memberCheck[v]; !ok {
+			removed = append(removed, v)
+		}
+	}
+
+	// Which channels NOT among the requested the user is a member of?
+	added := []string{}
+	toRequestUpdates := make([]string, 0, len(channelIds))
+	for id := range memberCheck {
+		if _, ok := channelById[id]; !ok {
+			added = append(added, id)
+		} else {
+			toRequestUpdates = append(toRequestUpdates, id)
+		}
+	}
+
+	// Which of the existing memberships have more messages?
+	// Get last messages for channels
+	var posts []PostBrief
+	_, err = s.GetReplica().Select(&posts,
+		`
+		SELECT
+			p.Id, p.ChannelId
+		FROM
+			Posts as p
+		JOIN (
+			SELECT Id, LastPostAt FROM Channels
+			WHERE Id IN ('`+strings.Join(toRequestUpdates, "','")+`')
+		) as c
+		ON p.ChannelId=c.Id and c.LastPostAt=p.CreateAt
+		`,
+	)
+	if err != nil {
+		return nil, model.NewAppError(
+			"CheckForUpdates",
+			"post_store.check_for_update",
+			nil,
+			fmt.Sprintf("Failed to select last posts: %s", err.Error()),
+			http.StatusInternalServerError,
+		)
+	}
+	updated := make([]string, 0, len(toRequestUpdates))
+	for _, v := range posts {
+		r := channelById[v.ChannelId]
+		if r.PostId != v.Id {
+			updated = append(updated, r.ChannelId)
+		}
+	}
+
+	result := model.ChannelUpdates{
+		Added:   &added,
+		Removed: &removed,
+		Updated: &updated,
 	}
 	return &result, nil
 }

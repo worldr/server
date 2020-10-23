@@ -519,6 +519,40 @@ func (_m *ChannelStore) GetChannelMembersForExport(userId string, teamId string)
 	return r0, r1
 }
 
+// GetChannelMembersShort provides a mock function with given fields: channelIds, infos
+func (_m *ChannelStore) GetChannelMembersShort(channelIds *[]string, infos *map[string]*model.ChannelInfo) (*map[string]*model.ChannelMembersShort, *[]string, *model.AppError) {
+	ret := _m.Called(channelIds, infos)
+
+	var r0 *map[string]*model.ChannelMembersShort
+	if rf, ok := ret.Get(0).(func(*[]string, *map[string]*model.ChannelInfo) *map[string]*model.ChannelMembersShort); ok {
+		r0 = rf(channelIds, infos)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*map[string]*model.ChannelMembersShort)
+		}
+	}
+
+	var r1 *[]string
+	if rf, ok := ret.Get(1).(func(*[]string, *map[string]*model.ChannelInfo) *[]string); ok {
+		r1 = rf(channelIds, infos)
+	} else {
+		if ret.Get(1) != nil {
+			r1 = ret.Get(1).(*[]string)
+		}
+	}
+
+	var r2 *model.AppError
+	if rf, ok := ret.Get(2).(func(*[]string, *map[string]*model.ChannelInfo) *model.AppError); ok {
+		r2 = rf(channelIds, infos)
+	} else {
+		if ret.Get(2) != nil {
+			r2 = ret.Get(2).(*model.AppError)
+		}
+	}
+
+	return r0, r1, r2
+}
+
 // GetChannelMembersTimezones provides a mock function with given fields: channelId
 func (_m *ChannelStore) GetChannelMembersTimezones(channelId string) ([]model.StringMap, *model.AppError) {
 	ret := _m.Called(channelId)
@@ -660,6 +694,31 @@ func (_m *ChannelStore) GetChannelsByScheme(schemeId string, offset int, limit i
 	var r1 *model.AppError
 	if rf, ok := ret.Get(1).(func(string, int, int) *model.AppError); ok {
 		r1 = rf(schemeId, offset, limit)
+	} else {
+		if ret.Get(1) != nil {
+			r1 = ret.Get(1).(*model.AppError)
+		}
+	}
+
+	return r0, r1
+}
+
+// GetChannelsSnapshots provides a mock function with given fields: userId, channelIds
+func (_m *ChannelStore) GetChannelsSnapshots(userId string, channelIds *[]string) (*model.ChannelSnapshotList, *model.AppError) {
+	ret := _m.Called(userId, channelIds)
+
+	var r0 *model.ChannelSnapshotList
+	if rf, ok := ret.Get(0).(func(string, *[]string) *model.ChannelSnapshotList); ok {
+		r0 = rf(userId, channelIds)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*model.ChannelSnapshotList)
+		}
+	}
+
+	var r1 *model.AppError
+	if rf, ok := ret.Get(1).(func(string, *[]string) *model.AppError); ok {
+		r1 = rf(userId, channelIds)
 	} else {
 		if ret.Get(1) != nil {
 			r1 = ret.Get(1).(*model.AppError)

@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func populateChannels(th *TestHelper, msgCount int) ([]string, map[string][]string) {
+func populateChannels(th *TestHelper, msgCount int) (channelIds []string, postsByChannel map[string][]string) {
 	team := th.CreateMainTeam()
 
 	ch1 := th.CreateChannelWithClientAndTeam(th.Client, "O", team.Id)
@@ -195,5 +195,86 @@ func TestGetReactionsForPosts(t *testing.T) {
 
 		_, resp := WClient.GetReactionsForPosts(postIds)
 		CheckUnauthorizedStatus(t, resp)
+	})
+}
+
+func TestCheckUpdates(t *testing.T) {
+	th := Setup(t).InitBasic()
+	defer th.TearDown()
+
+	perChannel := 5
+	// NB: some channels are created by InitBasic(), so these are not the only ones
+	// present for the user. This test relies on the number of channels,
+	// because that's the functionality underneath: checking updates for all
+	// channels available for the user.
+	channels, posts := populateChannels(th, perChannel)
+
+	t.Run("all channels have updates", func(t *testing.T) {
+		request := make([]*model.ChannelWithPost, 0, len(channels))
+		for _, v := range channels {
+			request = append(request, &model.ChannelWithPost{
+				ChannelId: v,
+				PostId:    posts[v][0],
+			})
+		}
+		result, err := th.WClient.CheckUpdates(request)
+		CheckNoError(t, err)
+		assert.Equal(t, len(channels), len(*result.Updated))
+		assert.Equal(t, 7, len(*result.Added))
+		assert.Equal(t, 0, len(*result.Removed))
+	})
+
+	t.Run("no channels have updates", func(t *testing.T) {
+		request := make([]*model.ChannelWithPost, 0, len(channels))
+		for _, v := range channels {
+			request = append(request, &model.ChannelWithPost{
+				ChannelId: v,
+				PostId:    posts[v][len(posts[v])-1],
+			})
+		}
+		result, err := th.WClient.CheckUpdates(request)
+		CheckNoError(t, err)
+		assert.Equal(t, 0, len(*result.Updated))
+		assert.Equal(t, 7, len(*result.Added))
+		assert.Equal(t, 0, len(*result.Removed))
+	})
+
+	t.Run("some channels have updates", func(t *testing.T) {
+		request := make([]*model.ChannelWithPost, 0, len(channels))
+
+		request = append(request, &model.ChannelWithPost{
+			ChannelId: channels[0],
+			PostId:    posts[channels[0]][len(posts[channels[0]])-1],
+		})
+
+		request = append(request, &model.ChannelWithPost{
+			ChannelId: channels[1],
+			PostId:    posts[channels[1]][0],
+		})
+
+		result, err := th.WClient.CheckUpdates(request)
+		CheckNoError(t, err)
+		assert.Equal(t, 1, len(*result.Updated))
+		assert.Equal(t, 8, len(*result.Added))
+		assert.Equal(t, 0, len(*result.Removed))
+	})
+
+	t.Run("one deleted", func(t *testing.T) {
+		request := make([]*model.ChannelWithPost, 0, len(channels))
+		for _, v := range channels {
+			request = append(request, &model.ChannelWithPost{
+				ChannelId: v,
+				PostId:    posts[v][len(posts[v])-1],
+			})
+		}
+		request = append(request, &model.ChannelWithPost{
+			ChannelId: th.BasicDeletedChannel.Id,
+			PostId:    "",
+		})
+		result, err := th.WClient.CheckUpdates(request)
+		CheckNoError(t, err)
+		assert.Equal(t, 0, len(*result.Updated))
+		assert.Equal(t, 7, len(*result.Added))
+		assert.Equal(t, 1, len(*result.Removed))
 	})
 }

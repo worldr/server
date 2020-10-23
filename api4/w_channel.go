@@ -16,6 +16,9 @@ func (api *API) InitWChannel() {
 
 	// all channels
 	api.BaseRoutes.WChannels.Handle("/categories", api.ApiSessionRequired(getChannelsCategories)).Methods("GET")
+	api.BaseRoutes.WChannels.Handle("/categories/assign", api.ApiSessionRequired(assignChannelCategory)).Methods("POST")
+	api.BaseRoutes.WChannels.Handle("/categories/order", api.ApiSessionRequired(orderChannelCategory)).Methods("POST")
+	api.BaseRoutes.WChannels.Handle("/categories/remove", api.ApiSessionRequired(removeCategoryFromChannel)).Methods("POST")
 	api.BaseRoutes.WChannels.Handle("/personal", api.ApiSessionRequired(getPersonalChannels)).Methods("GET")
 	api.BaseRoutes.WChannels.Handle("/work", api.ApiSessionRequired(getWorkChannels)).Methods("GET")
 	api.BaseRoutes.WChannels.Handle("/global", api.ApiSessionRequired(getGlobalChannels)).Methods("GET")
@@ -71,7 +74,99 @@ func getChannelsCategories(c *Context, w http.ResponseWriter, r *http.Request) {
 		c.Err = err
 		return
 	}
-	w.Write([]byte(cats.ChannelCategoriesListToJson()))
+	result := []*model.ChannelCategoryAggregated{}
+	unique := map[string]*model.ChannelCategoryAggregated{}
+	for _, v := range *cats {
+		ca, exists := unique[v.Id]
+		if !exists {
+			ca = &model.ChannelCategoryAggregated{
+				Name:     v.Name,
+				Sort:     v.Sort,
+				Channels: []string{},
+			}
+			unique[v.Id] = ca
+			result = append(result, ca)
+		}
+		ca.Channels = append(ca.Channels, v.ChannelId)
+	}
+	w.Write([]byte(model.ChannelCategoriesAggregatedListToJson(result)))
+}
+
+func assignChannelCategory(c *Context, w http.ResponseWriter, r *http.Request) {
+	uid := c.App.Session().UserId
+	cat := model.ChannelCategoryFromJson(r.Body)
+	cat.UserId = uid
+	if !c.App.SessionHasPermissionToChannel(*c.App.Session(), cat.ChannelId, model.PERMISSION_READ_CHANNEL) {
+		c.Err = model.NewAppError("assignChannelCategory", "api.channel.assign_category.app_error",
+			nil,
+			"Channel is not accessible for user",
+			http.StatusForbidden,
+		)
+		return
+	}
+	cat, err := c.App.AssignCategory(cat)
+	if err != nil {
+		c.Err = err
+		return
+	}
+	// Remove the props that are irrelevant to the client
+	cat.Id = ""
+	cat.UserId = ""
+	w.Write([]byte(cat.ToJson()))
+}
+
+func orderChannelCategory(c *Context, w http.ResponseWriter, r *http.Request) {
+	uid := c.App.Session().UserId
+	props := model.MapFromJson(r.Body)
+	name, hasName := props["name"]
+	if len(model.GetChannelCategoryId(name)) == 0 {
+		hasName = false
+	}
+	sortStr, hasSort := props["sort"]
+	var sort int32
+	if hasSort {
+		s, err := strconv.ParseInt(sortStr, 10, 32)
+		hasSort = err == nil
+		sort = int32(s)
+	}
+	if !hasName || !hasSort {
+		c.Err = model.NewAppError(
+			"orderChannelCategory",
+			"api.channel.order_category.app_error",
+			nil,
+			"Parameters are missing or invalid",
+			http.StatusBadRequest,
+		)
+		return
+	}
+	err := c.App.Srv().Store.ChannelCategory().SetOrder(uid, name, sort)
+	if err != nil {
+		c.Err = err
+		return
+	}
+	ReturnStatusOK(w)
+}
+
+func removeCategoryFromChannel(c *Context, w http.ResponseWriter, r *http.Request) {
+	uid := c.App.Session().UserId
+	props := model.MapFromJson(r.Body)
+	channelId, hasChannelId := props["channel_id"]
+	if !hasChannelId || len(channelId) == 0 {
+		c.Err = model.NewAppError(
+			"removeCategoryFromChannel",
+			"api.channel.remove_category.app_error",
+			nil,
+			"Parameters are missing or invalid",
+			http.StatusBadRequest,
+		)
+		return
+	}
+	err := c.App.Srv().Store.ChannelCategory().Delete(uid, channelId)
+	if err != nil {
+		c.Err = err
+		return
+	}
+	ReturnStatusOK(w)
 }
 
 func fillLastUsers(c *Context, list *model.ChannelSnapshotList) *model.AppError {

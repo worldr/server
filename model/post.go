@@ -64,16 +64,31 @@ const (
 )
 
 type Post struct {
-	Id         string `json:"id"`
-	CreateAt   int64  `json:"create_at"`
-	UpdateAt   int64  `json:"update_at"`
-	EditAt     int64  `json:"edit_at"`
-	DeleteAt   int64  `json:"delete_at"`
-	IsPinned   bool   `json:"is_pinned"`
-	UserId     string `json:"user_id"`
-	ChannelId  string `json:"channel_id"`
-	RootId     string `json:"root_id"`
-	ParentId   string `json:"parent_id"`
+	Id        string `json:"id"`
+	CreateAt  int64  `json:"create_at"`
+	UpdateAt  int64  `json:"update_at"`
+	EditAt    int64  `json:"edit_at"`
+	DeleteAt  int64  `json:"delete_at"`
+	IsPinned  bool   `json:"is_pinned"`
+	UserId    string `json:"user_id"`
+	ChannelId string `json:"channel_id"`
+
+	// Id of the root post of the thread
+	RootId string `json:"root_id"`
+
+	// Id of the replied-to post in the thread. Currently is not used by any logic,
+	// but enforced by tests and validation checks.
+	// If ParentId is set, then RootId must be set.
+	// If ParentId is set, then it must be one of the ids of the posts in this thread,
+	// i.e. the posts with the same RootId
+	// If ParentId is not set, but RootId is, ParentId is set to equal RootId by the
+	// post creation function.
+	ParentId string `json:"parent_id"`
+
+	// Id of the replied-to post  without a thread. This field is used for
+	// simple non-threaded reponses. If ReplyToId is set, RootId and ParentId must be empty.
+	ReplyToId string `json:"reply_to_id"`
+
 	OriginalId string `json:"original_id"`
 
 	Message string `json:"message"`
@@ -230,6 +245,15 @@ func (o *Post) IsValid(maxPostSize int) *AppError {
 
 	if len(o.ParentId) == 26 && len(o.RootId) == 0 {
 		return NewAppError("Post.IsValid", "model.post.is_valid.root_parent.app_error", nil, "", http.StatusBadRequest)
+	}
+
+	if !(len(o.ReplyToId) == 26 || len(o.ReplyToId) == 0) {
+		return NewAppError("Post.IsValid", "model.post.is_valid.reply_to_id.app_error", nil, "", http.StatusBadRequest)
+	}
+
+	// Either ReplyToId or RootId and ParentId can be set, not both
+	if len(o.ReplyToId) == 26 && (len(o.RootId) > 0 || len(o.ParentId) > 0) {
+		return NewAppError("Post.IsValid", "model.post.is_valid.reply_to_id.app_error", nil, "", http.StatusBadRequest)
 	}
 
 	if !(len(o.OriginalId) == 26 || len(o.OriginalId) == 0) {

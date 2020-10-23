@@ -223,8 +223,8 @@ jobs:
             docker login -p ${DOCKER_REGISTRY_PASSWORD} -u ${DOCKER_REGISTRY_USERNAME} ${DOCKER_REGISTRY_HOSTNAME}
             echo "Creating databases"
             docker-compose --no-ansi exec -T postgres sh -c 'exec echo "CREATE DATABASE migrated; CREATE DATABASE latest;" | exec psql -U mmuser mattermost_test'
-            echo "Importing postgres dump from version 5.0"
-            docker-compose --no-ansi exec -T postgres psql -U mmuser -d migrated < ../scripts/worldr-postgresql-1.0.sql
+            echo "Importing postgres dump from version 6.2.0"
+            docker-compose --no-ansi exec -T postgres psql -U mmuser -d migrated < ../scripts/worldr-postgresql-1.2.sql
             docker run -it --net circleci_mm-test \
               --env CI_INBUCKET_HOST=inbucket \
               --env CI_MINIO_HOST=minio \

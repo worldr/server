@@ -818,6 +818,22 @@ func (s *TimerLayerChannelStore) GetChannelMembersForExport(userId string, teamI
 	return resultVar0, resultVar1
 }
 
+func (s *TimerLayerChannelStore) GetChannelMembersShort(channelIds *[]string, infos *map[string]*model.ChannelInfo) (*map[string]*model.ChannelMembersShort, *[]string, *model.AppError) {
+	start := timemodule.Now()
+
+	resultVar0, resultVar1, resultVar2 := s.ChannelStore.GetChannelMembersShort(channelIds, infos)
+
+	elapsed := float64(timemodule.Since(start)) / float64(timemodule.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if resultVar2 == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("ChannelStore.GetChannelMembersShort", success, elapsed)
+	}
+	return resultVar0, resultVar1, resultVar2
+}
+
 func (s *TimerLayerChannelStore) GetChannelMembersTimezones(channelId string) ([]model.StringMap, *model.AppError) {
 	start := timemodule.Now()
 
@@ -910,6 +926,22 @@ func (s *TimerLayerChannelStore) GetChannelsByScheme(schemeId string, offset int
 			success = "true"
 		}
 		s.Root.Metrics.ObserveStoreMethodDuration("ChannelStore.GetChannelsByScheme", success, elapsed)
+	}
+	return resultVar0, resultVar1
+}
+
+func (s *TimerLayerChannelStore) GetChannelsSnapshots(userId string, channelIds *[]string) (*model.ChannelSnapshotList, *model.AppError) {
+	start := timemodule.Now()
+
+	resultVar0, resultVar1 := s.ChannelStore.GetChannelsSnapshots(userId, channelIds)
+
+	elapsed := float64(timemodule.Since(start)) / float64(timemodule.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if resultVar1 == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("ChannelStore.GetChannelsSnapshots", success, elapsed)
 	}
 	return resultVar0, resultVar1
 }
@@ -1929,6 +1961,22 @@ func (s *TimerLayerChannelCategoryStore) SaveOrUpdate(cat *model.ChannelCategory
 		s.Root.Metrics.ObserveStoreMethodDuration("ChannelCategoryStore.SaveOrUpdate", success, elapsed)
 	}
 	return resultVar0, resultVar1
+}
+
+func (s *TimerLayerChannelCategoryStore) SetOrder(userId string, name string, order int32) *model.AppError {
+	start := timemodule.Now()
+
+	resultVar0 := s.ChannelCategoryStore.SetOrder(userId, name, order)
+
+	elapsed := float64(timemodule.Since(start)) / float64(timemodule.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if resultVar0 == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("ChannelCategoryStore.SetOrder", success, elapsed)
+	}
+	return resultVar0
 }
 
 func (s *TimerLayerChannelMemberHistoryStore) GetUsersInChannelDuring(startTime int64, endTime int64, channelId string) ([]*model.ChannelMemberHistoryResult, *model.AppError) {
@@ -4100,6 +4148,22 @@ func (s *TimerLayerPostStore) AnalyticsUserCountsWithPostsByDay(teamId string) (
 			success = "true"
 		}
 		s.Root.Metrics.ObserveStoreMethodDuration("PostStore.AnalyticsUserCountsWithPostsByDay", success, elapsed)
+	}
+	return resultVar0, resultVar1
+}
+
+func (s *TimerLayerPostStore) CheckForUpdates(userId string, list *[]model.ChannelWithPost) (*model.ChannelUpdates, *model.AppError) {
+	start := timemodule.Now()
+
+	resultVar0, resultVar1 := s.PostStore.CheckForUpdates(userId, list)
+
+	elapsed := float64(timemodule.Since(start)) / float64(timemodule.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if resultVar1 == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("PostStore.CheckForUpdates", success, elapsed)
 	}
 	return resultVar0, resultVar1
 }
