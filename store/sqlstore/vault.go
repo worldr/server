@@ -148,7 +148,7 @@ func (*Vault) WaitForVaultToUnseal(url string, wait time.Duration, retry int) er
 	for i := 0; i < retry; i++ {
 		err := getVaultUnsealStatus(url)
 		if err != nil {
-			mlog.Info(fmt.Sprintf("Waiting for Vault to unseal for another %d seconds because %s", wait, err.Error()))
+			mlog.Info("Waiting for Vault to unseal for another ", mlog.Err(err))
 			time.Sleep(wait * time.Second)
 		} else {
 			return nil
@@ -166,7 +166,7 @@ func (*Vault) Login(url string, token string) (string, error) {
 
 	resp, err := http.Post(url, "application/json", bytes.NewBuffer(requestBody))
 	if err != nil {
-		mlog.Warn(fmt.Sprintf("Cannot POST because %s", err))
+		mlog.Warn("Cannot POST", mlog.Err(err))
 		return "", errors.Wrap(err, "Cannot POST")
 	}
 	defer resp.Body.Close()
@@ -180,7 +180,7 @@ func (*Vault) Login(url string, token string) (string, error) {
 	message := new(VaultLogin)
 	err = json.NewDecoder(resp.Body).Decode(message)
 	if err != nil {
-		mlog.Warn(fmt.Sprintf("Cannot unmarshal JSON because %s", err))
+		mlog.Warn("Cannot unmarshal JSON", mlog.Err(err))
 		return "", errors.Wrap(err, "Cannot read body")
 	}
 
@@ -195,14 +195,14 @@ func (*Vault) GetSecret(url string, secret string, token string) (string, error)
 	req, _ := http.NewRequest("GET", url, nil)
 	// I cannot fathom how to make this fail. Is it even possible?
 	//if err != nil {
-	//	mlog.Warn(fmt.Sprintf("New request is invalid because %s", err))
+	//	mlog.Warn("New request is invalid", mlog.Error(err))
 	//	return "", errors.Wrap(err, "Bad new request")
 	//}
 	req.Header.Set("X-Vault-Token", token)
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		mlog.Warn(fmt.Sprintf("Cannot get response because %s", err))
+		mlog.Warn("Cannot get response", mlog.Err(err))
 		return "", errors.Wrap(err, "Cannot get KV secrets")
 	}
 
@@ -216,7 +216,7 @@ func (*Vault) GetSecret(url string, secret string, token string) (string, error)
 	message := new(VaultKVSecret)
 	err = json.NewDecoder(resp.Body).Decode(message)
 	if err != nil {
-		mlog.Warn(fmt.Sprintf("Cannot masrshal JSON because %s", err))
+		mlog.Warn("Cannot masrshal JSON", mlog.Err(err))
 		return "", errors.Wrap(err, "cannot unmarshal JSON, trying again")
 	}
 	return message.Data.TopSecretKey, nil // This is the only success possible.
@@ -275,11 +275,6 @@ func KeyTalker(service string, vault IVault) error {
 		mlog.Warn("This does not need Vault, using unencrypted database.")
 		return nil
 	}
-
-	// Debugging info.
-	mlog.Info(fmt.Sprintf("Vault seal URL is      %s", VAULT_SERVER_SEAL_STATUS_URL))
-	mlog.Info(fmt.Sprintf("Vault login URL is     %s", VAULT_SERVER_LOGIN_URL))
-	mlog.Info(fmt.Sprintf("Vault KV secret URL is %s", VAULT_KV_SECRET_URL))
 
 	// 3. Wait for the vault server to be unsealed.
 	err = vault.WaitForVaultToUnseal(VAULT_SERVER_SEAL_STATUS_URL, VAULT_WAIT_UNSEAL_TIMEOUT_SECS, VAULT_WAIT_UNSEAL_TIMEOUT_SECS)

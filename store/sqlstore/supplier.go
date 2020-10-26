@@ -244,7 +244,8 @@ func setupConnection(con_type string, dataSource string, settings *model.SqlSett
 
 			if len(dbHostName) > 0 {
 				// Call key talker in case we need it.
-				mlog.Info(fmt.Sprintf("If needed, call Vault and key talker (%s:%s) for database key transactions", dbHostName, KEY_LISTENER_PORT))
+				msg := fmt.Sprintf("If needed, call Vault and key talker (%s:%s) for database key transactions", dbHostName, KEY_LISTENER_PORT)
+				mlog.Info(msg)
 				err = KeyTalker(dbHostName+":"+KEY_LISTENER_PORT, &Vault{})
 				if err != nil {
 					mlog.Warn("Key talker failed: see above messages for reason")
