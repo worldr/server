@@ -133,7 +133,7 @@ func getVaultUnsealStatus(url string) error {
 	if err != nil {
 		return errors.Wrap(err, "cannot unmarshal JSON, trying again")
 	}
-	if status_message.Sealed == true {
+	if status_message.Sealed {
 		// Dammit, we have to wait.
 		return errors.New("Vault is still sealed, we cannot use it")
 	}

@@ -5,7 +5,6 @@ package sqlstore
 
 import (
 	"context"
-	"crypto/tls"
 	dbsql "database/sql"
 	"encoding/json"
 	"errors"
@@ -219,31 +218,6 @@ func NewSqlSupplier(settings model.SqlSettings, metrics einterfaces.MetricsInter
 	supplier.stores.channelCategory.(*SqlChannelCategoryStore).createIndexesIfNotExists()
 
 	return supplier
-}
-
-// A key talker provider.
-// The service should be a "host:port" string.
-func keyTalkerOriginal(service string) int {
-	TLSClientConfig := &tls.Config{InsecureSkipVerify: true} // FIXME!
-
-	conn, err := tls.Dial("tcp", service, TLSClientConfig)
-	if err != nil {
-		mlog.Warn("Key talker ", mlog.Err(err))
-		return 1
-	}
-
-	topSecretKey := "882fb7c12e80280fd664c69d2d636913" // FIXME!!!!
-	conn.Write([]byte(topSecretKey))
-
-	var buf [1024]byte
-	count, err := conn.Read(buf[0:])
-	if err != nil {
-		mlog.Warn("Key talker ", mlog.Err(err))
-		return 1
-	}
-
-	mlog.Info("Key listener quoth '" + string(buf[0:count]) + "'")
-	return 0
 }
 
 func setupConnection(con_type string, dataSource string, settings *model.SqlSettings) *gorp.DbMap {

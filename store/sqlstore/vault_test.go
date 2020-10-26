@@ -4,13 +4,14 @@ package sqlstore
 
 import (
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/mattermost/mattermost-server/v5/plugin/plugintest/mock"
 	"github.com/mattermost/mattermost-server/v5/store/sqlstore/mocks"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
-	"gopkg.in/h2non/gock.v1"
 )
 
 const (
@@ -251,63 +252,47 @@ func TestGetk8sServiceAccountTokenSuccess(t *testing.T) {
 
 // Wait for vault to unseal: happy path.
 func TestWaitForVaultToUnseal(t *testing.T) {
-	defer gock.Off() // Flush pending mocks after test execution
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintln(w, VAULT_SEAL_STATUS_UNSEALED)
+	}))
+	defer ts.Close()
 
-	gock.New(VAULT_TEST_URL).
-		Get("v1/sys/seal-status").
-		Reply(200).
-		JSON(VAULT_SEAL_STATUS_UNSEALED)
-
-	// Your test code starts here...
 	vault := Vault{}
-	err := vault.WaitForVaultToUnseal(VAULT_TEST_URL+"/"+VAULT_UNSEAL_PATH, 0, 1)
+	err := vault.WaitForVaultToUnseal(ts.URL, 0, 1)
 	assert.Nil(t, err)
-
-	// Verify that we don't have pending mocks
-	assert.Equal(t, true, gock.IsDone())
 }
 
 // Wait for vault to unseal: Got 404, we have to wait for a little while.
 func TestWaitForVaultToUnseal404(t *testing.T) {
-	defer gock.Off() // Flush pending mocks after test execution
+	count := 0
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if count == 0 {
+			count = 1
+			w.WriteHeader(404)
+		} else {
+			fmt.Fprintln(w, VAULT_SEAL_STATUS_UNSEALED)
+		}
+	}))
+	defer ts.Close()
 
-	gock.New(VAULT_TEST_URL).
-		Get("v1/sys/seal-status").
-		Reply(404)
-	gock.New(VAULT_TEST_URL).
-		Get("v1/sys/seal-status").
-		Reply(200).
-		JSON(VAULT_SEAL_STATUS_UNSEALED)
-
-	// Your test code starts here...
 	vault := Vault{}
-	err := vault.WaitForVaultToUnseal(VAULT_TEST_URL+"/"+VAULT_UNSEAL_PATH, 0, 2)
+	err := vault.WaitForVaultToUnseal(ts.URL, 0, 2) // VAULT_TEST_URL+"/"+VAULT_UNSEAL_PATH, 0, 1)
 	assert.Nil(t, err)
 }
 
 // Wait for vault to unseal: No body, we have to wait for a little while.
 func TestWaitForVaultToUnsealNoBodyFailure(t *testing.T) {
-	defer gock.Off() // Flush pending mocks after test execution
-
-	gock.New(VAULT_TEST_URL).
-		Get("v1/sys/seal-status").
-		Reply(200)
-
-	// Your test code starts here...
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(200)
+	}))
+	defer ts.Close()
 	vault := &Vault{}
-	err := vault.WaitForVaultToUnseal(VAULT_TEST_URL+"/"+VAULT_UNSEAL_PATH, 0, 1)
+	err := vault.WaitForVaultToUnseal(ts.URL, 0, 1)
 	assert.NotNil(t, err) // This HAS to fail.
 }
 
 // Wait for vault to unseal: reply error.
 func TestWaitForVaultToUnsealReplyError(t *testing.T) {
-	defer gock.Off() // Flush pending mocks after test execution
-
-	gock.New(VAULT_TEST_URL).
-		Get("v1/sys/seal-status").
-		ReplyError(errors.New("Computer says NON!"))
-
-	// Your test code starts here...
 	vault := &Vault{}
 	err := vault.WaitForVaultToUnseal(VAULT_TEST_URL+"/bar", 0, 1)
 	assert.NotNil(t, err) // This HAS to fail.
@@ -315,68 +300,57 @@ func TestWaitForVaultToUnsealReplyError(t *testing.T) {
 
 // Wait for vault to unseal: we have to wait for a little while.
 func TestWaitForVaultToUnsealVaultIsSealed(t *testing.T) {
-	defer gock.Off() // Flush pending mocks after test execution
+	count := 0
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if count == 0 {
+			count = 1
+			fmt.Fprintln(w, VAULT_SEAL_STATUS_SEALED)
+		} else {
+			fmt.Fprintln(w, VAULT_SEAL_STATUS_UNSEALED)
+		}
+	}))
+	defer ts.Close()
 
-	gock.New(VAULT_TEST_URL).
-		Get("v1/sys/seal-status").
-		Reply(200).
-		JSON(VAULT_SEAL_STATUS_SEALED)
-	gock.New(VAULT_TEST_URL).
-		Get("v1/sys/seal-status").
-		Reply(200).
-		JSON(VAULT_SEAL_STATUS_UNSEALED)
-
-	// Your test code starts here...
 	vault := &Vault{}
-	err := vault.WaitForVaultToUnseal(VAULT_TEST_URL+"/"+VAULT_UNSEAL_PATH, 0, 2)
+	err := vault.WaitForVaultToUnseal(ts.URL, 0, 2)
 	assert.Nil(t, err)
 }
 
 // Vault login: happy path.
 func TestLoginHappyPath(t *testing.T) {
-	defer gock.Off() // Flush pending mocks after test execution
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintln(w, VAULT_LOGIN_RESPONSE)
+	}))
+	defer ts.Close()
 
-	gock.New(VAULT_TEST_URL).
-		Post(VAULT_LOGIN_PATH).
-		MatchType("json").
-		Reply(200).
-		JSON(VAULT_LOGIN_RESPONSE)
-
-	// Your test code starts here…
 	vault := &Vault{}
-	token, err := vault.Login(VAULT_TEST_URL+VAULT_LOGIN_PATH, "Fear the old blood")
+	token, err := vault.Login(ts.URL, "Fear the old blood")
 	assert.Nil(t, err)
 	assert.Equal(t, FAKE_VAULT_TOKEN, token)
 }
 
 // Vault login: not a 2XX status code.
 func TestLoginStatusCode(t *testing.T) {
-	defer gock.Off() // Flush pending mocks after test execution
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(500)
+	}))
+	defer ts.Close()
 
-	gock.New(VAULT_TEST_URL).
-		Post(VAULT_LOGIN_PATH).
-		MatchType("json").
-		Reply(500)
-
-	// Your test code starts here…
 	vault := &Vault{}
-	token, err := vault.Login(VAULT_TEST_URL+VAULT_LOGIN_PATH, "Fear the old blood")
+	token, err := vault.Login(ts.URL, "Fear the old blood")
 	assert.NotNil(t, err)
 	assert.Equal(t, "", token)
 }
 
 // Vault login: Bad body.
 func TestLoginBadBody(t *testing.T) {
-	defer gock.Off() // Flush pending mocks after test execution
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintln(w, "{{{")
+	}))
+	defer ts.Close()
 
-	gock.New(VAULT_TEST_URL).
-		Post(VAULT_LOGIN_PATH).
-		MatchType("json").
-		Reply(200)
-
-	// Your test code starts here…
 	vault := &Vault{}
-	token, err := vault.Login(VAULT_TEST_URL+VAULT_LOGIN_PATH, "Fear the old blood")
+	token, err := vault.Login(ts.URL, "Fear the old blood")
 	assert.NotNil(t, err)
 	assert.Equal(t, "", token)
 }
@@ -391,72 +365,58 @@ func TestLoginBadPOST(t *testing.T) {
 
 // Vault get KV secret: Happy path
 func TestGetVaultSecretHappyPath(t *testing.T) {
-	defer gock.Off() // Flush pending mocks after test execution
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintln(w, VAULT_KV_SECRET_RESPONSE)
+	}))
+	defer ts.Close()
 
-	gock.New(VAULT_TEST_URL).
-		Get(VAULT_KV_SECRET_PATH).
-		Reply(200).
-		JSON(VAULT_KV_SECRET_RESPONSE)
-
-	// Your test code starts here…
 	vault := &Vault{}
-	topSecretKey, err := vault.GetSecret(VAULT_TEST_URL+VAULT_KV_SECRET_PATH, "TopSecretKey", "Fear the old blood")
+	topSecretKey, err := vault.GetSecret(ts.URL, "TopSecretKey", "Fear the old blood")
 	assert.Nil(t, err)
 	assert.Equal(t, FAKE_VAULT_PG_TDE_KEY, topSecretKey)
-
-	// Verify that we don't have pending mocks
-	assert.Equal(t, true, gock.IsDone())
 }
 
 // Vault get KV secret: request failed.
 func TestGetSecretRequestFailed(t *testing.T) {
-	defer gock.Off() // Flush pending mocks after test execution
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintln(w, "{{{")
+	}))
+	defer ts.Close()
 
-	gock.New(VAULT_TEST_URL).
-		Get(VAULT_KV_SECRET_PATH).
-		MatchType("json")
-
-	// Your test code starts here…
 	vault := &Vault{}
-	token, err := vault.GetSecret(VAULT_TEST_URL+VAULT_KV_SECRET_PATH, "TopSecretKey", "Fear the old blood")
+	token, err := vault.GetSecret(ts.URL, "TopSecretKey", "Fear the old blood")
 	assert.NotNil(t, err)
 	assert.Equal(t, "", token)
 }
 
 // Vault get KV secret: status code is not 2XX.
 func TestGetSecretStatusCode(t *testing.T) {
-	defer gock.Off() // Flush pending mocks after test execution
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(500)
+	}))
+	defer ts.Close()
 
-	gock.New(VAULT_TEST_URL).
-		Get(VAULT_KV_SECRET_PATH).
-		Reply(500)
-
-	// Your test code starts here…
 	vault := &Vault{}
-	token, err := vault.GetSecret(VAULT_TEST_URL+VAULT_KV_SECRET_PATH, "TopSecretKey", "Fear the old blood")
+	token, err := vault.GetSecret(ts.URL, "TopSecretKey", "Fear the old blood")
 	assert.NotNil(t, err)
 	assert.Equal(t, "", token)
 }
 
 // Vault get KV secret: JSON is garbage.
 func TestGetSecretJSONFailed(t *testing.T) {
-	defer gock.Off() // Flush pending mocks after test execution
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintln(w, "{{{")
+	}))
+	defer ts.Close()
 
-	gock.New(VAULT_TEST_URL).
-		Get(VAULT_KV_SECRET_PATH).
-		Reply(200).
-		JSON("computer says NON")
-
-	// Your test code starts here…
 	vault := &Vault{}
-	token, err := vault.GetSecret(VAULT_TEST_URL+VAULT_KV_SECRET_PATH, "TopSecretKey", "Fear the old blood")
+	token, err := vault.GetSecret(ts.URL, "TopSecretKey", "Fear the old blood")
 	assert.NotNil(t, err)
 	assert.Equal(t, "", token)
 }
 
 // Vault get KV secret: NewRequest is garbage.
 func TestGetSecretNewRequestFailed(t *testing.T) {
-	// Your test code starts here…
 	vault := &Vault{}
 	token, err := vault.GetSecret("https://[::1]:22", "TopSecretKey", "Fear the old blood")
 	assert.NotNil(t, err)
