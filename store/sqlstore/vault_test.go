@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 
 	"github.com/mattermost/mattermost-server/v5/plugin/plugintest/mock"
@@ -235,10 +236,11 @@ func TestGetk8sServiceAccountTokenNoTokenFile(t *testing.T) {
 
 // K8s service account: cannot open the k8s token file.
 func TestGetk8sServiceAccountTokenCannotOpen(t *testing.T) {
+	_, _ = os.OpenFile("/tmp/test_file_server_vault_permission.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0000)
+	defer os.Remove("/tmp/test_file_server_vault_permission.txt")
 	vault := Vault{}
-	token, err := vault.Getk8sServiceAccountToken("/etc/shadow-")
+	token, err := vault.Getk8sServiceAccountToken("/tmp/test_file_server_vault_permission.txt")
 	assert.NotNil(t, err)
-	fmt.Printf("ERROR: %s\n", err)
 	assert.Equal(t, "", token)
 }
 
