@@ -236,7 +236,7 @@ func TestGetk8sServiceAccountTokenNoTokenFile(t *testing.T) {
 // K8s service account: cannot open the k8s token file.
 func TestGetk8sServiceAccountTokenCannotOpen(t *testing.T) {
 	vault := Vault{}
-	token, err := vault.Getk8sServiceAccountToken("/etc/shadow")
+	token, err := vault.Getk8sServiceAccountToken("/etc/shadow-")
 	assert.NotNil(t, err)
 	fmt.Printf("ERROR: %s\n", err)
 	assert.Equal(t, "", token)
