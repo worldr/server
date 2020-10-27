@@ -108,9 +108,9 @@ func (*Vault) Getk8sServiceAccountToken(name string) (string, error) {
 	}
 
 	file, err := os.Open(name)
-	if err != nil {
-		return "", errors.Wrap(err, "Cannot open token file")
-	}
+	//if err != nil {
+	//	return "", errors.Wrap(err, "Cannot open token file")
+	//}
 	defer file.Close()
 
 	token, _ := ioutil.ReadAll(file)
