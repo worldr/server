@@ -1,0 +1,16 @@
+name: Versioning
+
+on:
+  push:
+    branches: [master]
+
+jobs:
+  tag:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@master
+
+      - name: Run the tagging script
+        run: ./tag_main_branch.sh master
