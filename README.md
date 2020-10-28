@@ -49,17 +49,17 @@ The `populate` command creates users and data on the server. This is necessary f
 
 The `--configuration-file` parameter tells the command where to get a data file with users and channels.
 
-The format is as follows:
+The format is as follows. Fill-in the users details, at least one administrator must be listed. Other lists 
 ```json
 {
     "open channels names": [
-		"General"
+			"Announcements"
     ],
     "team channels names": [
-        "Worldr Technologies Ltd"
+      "Worldr Technologies Ltd"
     ],
     "work channels names": [
-        "FFF testing"
+      "FFF testing"
     ],
     "personal channels names": [
     ],

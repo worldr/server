@@ -18,7 +18,9 @@ fi
 
 V=$(cat ./VERSION.txt)
 EXISTING=$(git tag|grep "$V")
-echo Current version is "$V", existing version is "$EXISTING".
+echo Current version is "$V", existing version is \""$EXISTING"\".
+echo Existing tags:
+git tag
 if [[ -z "$EXISTING" ]]; then
 	git tag "v$V"
 	git push origin "v$V"
