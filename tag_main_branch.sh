@@ -16,11 +16,13 @@ if [ "$BRANCH" != "$MAIN_BRANCH" ]; then
 	exit 2
 fi
 
+echo Existing tags:
+git fetch --all --tags
+git tag
+
 V=$(cat ./VERSION.txt)
 EXISTING=$(git tag|grep "$V")
-echo Current version is "$V", existing version is \""$EXISTING"\".
-echo Existing tags:
-git tag
+echo Current version is \""$V"\", existing matching version is \""$EXISTING"\".
 if [[ -z "$EXISTING" ]]; then
 	git tag "v$V"
 	git push origin "v$V"
