@@ -25,15 +25,97 @@ You can view the images currently in the registry via:
 docker image ls ${DOCKER_REGISTRY_HOSTNAME}/worldr-postgres-tde
 ```
 
+## Versioning
+
+bump2version is used to update the version of the project:
+
+```bash
+bumpversion patch
+# OR
+bumpversion minor
+# OR
+bumpversion major
+```
+
+This changes two files in the project root: `VERSION.txt` and `.bumpversion.cfg`.
+
+When the version is bumped and the PR with these changes gets merged into the main branch, the `tag_main_branch.sh` gets executed automatically to create a matching git tag. This results in the CI procedures getting executed for the new tagged release.
+
+The Github action being triggered is `.github/workflows/auto-version-tag.yml`.
+
 ## Populating server with sample data
 
-There is an extra command `populate` that will populate the server with either
-random data or data taken from a configuration file.
+The `populate` command creates users and data on the server. This is necessary for testing on the dev server. 
 
-Useful commands:
+The `--configuration-file` parameter tells the command where to get a data file with users and channels.
+
+The format is as follows:
+```json
+{
+    "open channels names": [
+		"General"
+    ],
+    "team channels names": [
+        "Worldr Technologies Ltd"
+    ],
+    "work channels names": [
+        "FFF testing"
+    ],
+    "personal channels names": [
+    ],
+    "administrators": [
+        {
+		    "biography": "",
+	        "channel display mode": "",
+	        "collapse previews": "",
+	        "email": "",
+	        "first name": "",
+	        "last name": "",
+	        "location": "",
+	        "message display": "",
+	        "nickname": "",
+	        "phone number": "",
+	        "position": "",
+	        "system roles": "",
+		    "social media": "",
+	        "tutorial step": "",
+	        "use military time": "",
+	        "username": ""
+        }
+    ],
+	"users": [
+        {
+            "biography": "",
+	        "channel display mode": "",
+	        "collapse previews": "",
+	        "email": "",
+	        "first name": "",
+	        "last name": "",
+	        "location": "",
+	        "message display": "",
+	        "nickname": "",
+	        "phone number": "",
+	        "position": "",
+	        "system roles": "",
+		    "social media": "",
+	        "tutorial step": "",
+	        "use military time": "",
+	        "username": ""
+        }		
+	]
+}
+```
+
+The `--users 10` parameter tells the command how many random users to create. This can be zero if only the data file must be used for population.
+
+The command creates users and conversation between them.
 
 ```[[bash]]
-$ ./bin/mattermost populate --help
-$ ./bin/mattermost populate --configuration-file /path/to/file.json
-$ ./bin/mattermost populatesample --admins "nox,max,hans,yann,sean,dz,tanel"
+./bin/mattermost populate \
+--seed 1 \
+--users 10 \
+--posts-per-channel 100 \
+--configuration-file /Users/nox/Documents/workspace/worldr/population/population-testing.json \
+--profile-images /Users/nox/Documents/workspace/worldr/population/avatars \
+--channel-images /Users/nox/Documents/workspace/worldr/population/channels
 ```
