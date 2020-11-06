@@ -24,6 +24,10 @@ func (api *API) InitWAdmin() {
 	api.BaseRoutes.WAdmin.Handle("/user/{user_id:[A-Za-z0-9]+}/roles", api.ApiSessionRequired(changeUserRolesByAdmin)).Methods("PUT")
 	api.BaseRoutes.WAdmin.Handle("/user/{user_id:[A-Za-z0-9]+}/password", api.ApiSessionRequired(changeUserPasswordByAdmin)).Methods("PUT")
 	api.BaseRoutes.WAdmin.Handle("/user/create", api.ApiSessionRequired(createUserByAdmin)).Methods("POST")
+	api.BaseRoutes.WAdmin.Handle("/user/{user_id:[A-Za-z0-9]+}/active", api.ApiSessionRequired(updateUserActiveByAdmin)).Methods("POST")
+	api.BaseRoutes.WAdmin.Handle("/user/{user_id:[A-Za-z0-9]+}/sessions", api.ApiSessionRequired(getUserSessionsByAdmin)).Methods("GET")
+	api.BaseRoutes.WAdmin.Handle("/user/{user_id:[A-Za-z0-9]+}/sessions/revoke", api.ApiSessionRequired(revokeAllUserSessionsByAdmin)).Methods("POST")
+	api.BaseRoutes.WAdmin.Handle("/user/{user_id:[A-Za-z0-9]+}/session/revoke", api.ApiSessionRequired(revokeSessionByAdmin)).Methods("POST")
 }
 
 // Checks and side-effects context with appropriate error if the check is negative.
@@ -352,5 +356,35 @@ func changeUserPasswordByAdmin(c *Context, w http.ResponseWriter, r *http.Reques
 	if !isSystemAdmin(c, "changeUserPassword", "admin_change_user_password") {
 		return
 	}
-	updatePassword(c, w, r)
+	if executeUpdatePassword(c, r) {
+		revokeAllSessionsForUser(c, w, r)
+	}
+}
+
+func updateUserActiveByAdmin(c *Context, w http.ResponseWriter, r *http.Request) {
+	if !isSystemAdmin(c, "updateUserActive", "admin_change_user_active") {
+		return
+	}
+	updateUserActive(c, w, r)
+}
+
+func revokeAllUserSessionsByAdmin(c *Context, w http.ResponseWriter, r *http.Request) {
+	if !isSystemAdmin(c, "revokeAllUserSessions", "admin_revoke_all_user_sessions") {
+		return
+	}
+	revokeAllSessionsForUser(c, w, r)
+}
+
+func revokeSessionByAdmin(c *Context, w http.ResponseWriter, r *http.Request) {
+	if !isSystemAdmin(c, "revokeSession", "admin_revoke_session") {
+		return
+	}
+	revokeSession(c, w, r)
+}
+
+func getUserSessionsByAdmin(c *Context, w http.ResponseWriter, r *http.Request) {
+	if !isSystemAdmin(c, "getUserSessions", "admin_get_sessions") {
+		return
+	}
+	getSessions(c, w, r)
 }

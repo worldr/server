@@ -89,6 +89,26 @@ func (c *WClient) GetCheckUpdatesUrl() string {
 	return fmt.Sprintf("%v/posts/updates", c.ApiUrl)
 }
 
+// Get absolute api url of the admin user active update handle.
+func (c *WClient) GetUserActiveUrl(userId string) string {
+	return fmt.Sprintf("%v/admin/user/%v/active", c.ApiUrl, userId)
+}
+
+// Get absolute api url of the admin revoke all sessions handle.
+func (c *WClient) RevokeAllUserSessionsUrl(userId string) string {
+	return fmt.Sprintf("%v/admin/user/%v/sessions/revoke", c.ApiUrl, userId)
+}
+
+// Get absolute api url of the admin get sessions handle.
+func (c *WClient) GetSessionsUrl(userId string) string {
+	return fmt.Sprintf("%v/admin/user/%v/sessions", c.ApiUrl, userId)
+}
+
+// Get absolute api url of the admin revoke all sessions handle.
+func (c *WClient) RevokeSessionUrl(userId string) string {
+	return fmt.Sprintf("%v/admin/user/%v/session/revoke", c.ApiUrl, userId)
+}
+
 //
 // METHODS
 //
@@ -223,4 +243,46 @@ func (c *WClient) CheckUpdates(request []*ChannelWithPost) (*ChannelUpdates, *Re
 	} else {
 		return nil, BuildErrorResponse(r, NewAppError("CheckUpdates", "WClient.CheckUpdates", nil, "Failed to unmarshall response JSON", http.StatusInternalServerError))
 	}
+}
+
+func (c *WClient) UpdateUserActive(userId string, status bool) *Response {
+	request := map[string]bool{
+		"active": status,
+	}
+	r, err := c.MMClient.DoApiPostWithUrl(c.GetUserActiveUrl(userId), MapBoolToJson(request), false)
+	if err != nil {
+		return BuildErrorResponse(r, err)
+	}
+	defer closeBody(r)
+	return BuildResponse(r)
+}
+
+func (c *WClient) RevokeAllUserSessions(userId string) *Response {
+	r, err := c.MMClient.DoApiPostWithUrl(c.RevokeAllUserSessionsUrl(userId), "", false)
+	if err != nil {
+		return BuildErrorResponse(r, err)
+	}
+	defer closeBody(r)
+	return BuildResponse(r)
+}
+
+func (c *WClient) GetSessions(userId string) ([]*Session, *Response) {
+	r, err := c.MMClient.DoApiGetWithUrl(c.GetSessionsUrl(userId), "", false)
+	if err != nil {
+		return nil, BuildErrorResponse(r, err)
+	}
+	defer closeBody(r)
+	return SessionsFromJson(r.Body), BuildResponse(r)
+}
+
+func (c *WClient) RevokeSession(userId string, sessionId string) *Response {
+	request := map[string]string{
+		"session_id": sessionId,
+	}
+	r, err := c.MMClient.DoApiPostWithUrl(c.RevokeSessionUrl(userId), MapToJson(request), false)
+	if err != nil {
+		return BuildErrorResponse(r, err)
+	}
+	defer closeBody(r)
+	return BuildResponse(r)
 }

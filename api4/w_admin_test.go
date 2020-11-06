@@ -119,3 +119,97 @@ func TestCreateInitialAdmin2(t *testing.T) {
 		assert.Equal(t, "initial_admin.already_present", r.Error.Id)
 	})
 }
+
+func TestActivateUser(t *testing.T) {
+	th := Setup(t).InitBasic()
+	th.waitForConnectivity()
+	defer th.TearDown()
+
+	t.Run("activate", func(t *testing.T) {
+		// Try for non-admin
+		r := th.WClient.UpdateUserActive(th.BasicUser.Id, false)
+		CheckForbiddenStatus(t, r)
+		// Deactivate
+		r = th.WSystemAdminClient.UpdateUserActive(th.BasicUser.Id, false)
+		CheckNoError(t, r)
+		// Activate back
+		r = th.WSystemAdminClient.UpdateUserActive(th.BasicUser.Id, true)
+		CheckNoError(t, r)
+	})
+}
+
+func TestAdminPermissions(t *testing.T) {
+	th := Setup(t).InitBasic()
+	th.waitForConnectivity()
+	defer th.TearDown()
+
+	t.Run("permissions", func(t *testing.T) {
+		r := th.WClient.RevokeAllUserSessions(th.BasicUser.Id)
+		CheckForbiddenStatus(t, r)
+		_, r = th.WClient.GetSessions(th.BasicUser.Id)
+		CheckForbiddenStatus(t, r)
+	})
+}
+
+func TestGetSessionsByAdmin(t *testing.T) {
+	th := Setup(t).InitBasic()
+	th.waitForConnectivity()
+	defer th.TearDown()
+
+	t.Run("get sessions", func(t *testing.T) {
+		list, r := th.WSystemAdminClient.GetSessions(th.SystemAdminUser.Id)
+		CheckNoError(t, r)
+		assert.NotNil(t, list, "list is nil")
+		assert.True(t, len(list) > 0, "list is empty")
+	})
+}
+
+func TestRevokeSession(t *testing.T) {
+	th := Setup(t).InitBasic()
+	th.waitForConnectivity()
+	defer th.TearDown()
+
+	t.Run("get and revoke session", func(t *testing.T) {
+		list, r := th.WSystemAdminClient.GetSessions(th.BasicUser.Id)
+		CheckNoError(t, r)
+		assert.NotNil(t, list, "list is nil before revoke")
+		assert.True(t, len(list) > 0, "list is empty before revoke")
+
+		sessionId := list[0].Id
+
+		r = th.WClient.RevokeSession(th.BasicUser.Id, sessionId)
+		CheckForbiddenStatus(t, r)
+		r = th.WSystemAdminClient.RevokeSession(th.BasicUser.Id, sessionId)
+		CheckNoError(t, r)
+
+		list, r = th.WSystemAdminClient.GetSessions(th.BasicUser.Id)
+		CheckNoError(t, r)
+		assert.NotNil(t, list, "list is nil after revoke")
+		for _, v := range list {
+			assert.NotEqual(t, sessionId, v.Id)
+		}
+	})
+}
+
+func TestRevokeAllSessionsByAdmin(t *testing.T) {
+	th := Setup(t).InitBasic()
+	th.waitForConnectivity()
+	defer th.TearDown()
+
+	t.Run("get and revoke all sessions", func(t *testing.T) {
+		list, r := th.WSystemAdminClient.GetSessions(th.BasicUser.Id)
+		CheckNoError(t, r)
+		assert.NotNil(t, list, "list is nil before revoke")
+		assert.True(t, len(list) > 0, "list is empty before revoke")
+
+		r = th.WClient.RevokeAllUserSessions(th.BasicUser.Id)
+		CheckForbiddenStatus(t, r)
+		r = th.WSystemAdminClient.RevokeAllUserSessions(th.BasicUser.Id)
+		CheckNoError(t, r)
+
+		list, r = th.WSystemAdminClient.GetSessions(th.BasicUser.Id)
+		CheckNoError(t, r)
+		assert.NotNil(t, list, "list is nil after revoke")
+		assert.Equal(t, 0, len(list), "list is expected to be empty")
+	})
+}

@@ -1078,6 +1078,7 @@ func updateUserRoles(c *Context, w http.ResponseWriter, r *http.Request) {
 	ReturnStatusOK(w)
 }
 
+// updateUserActive() requires user_id and active parameters
 func updateUserActive(c *Context, w http.ResponseWriter, r *http.Request) {
 	c.RequireUserId()
 	if c.Err != nil {
@@ -1287,10 +1288,10 @@ func generateMfaSecret(c *Context, w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(secret.ToJson()))
 }
 
-func updatePassword(c *Context, w http.ResponseWriter, r *http.Request) {
+func executeUpdatePassword(c *Context, r *http.Request) bool {
 	c.RequireUserId()
 	if c.Err != nil {
-		return
+		return false
 	}
 
 	props := model.MapFromJson(r.Body)
@@ -1306,7 +1307,7 @@ func updatePassword(c *Context, w http.ResponseWriter, r *http.Request) {
 		currentPassword := props["current_password"]
 		if len(currentPassword) <= 0 {
 			c.SetInvalidParam("current_password")
-			return
+			return false
 		}
 
 		err = c.App.UpdatePasswordAsUser(c.Params.UserId, currentPassword, newPassword)
@@ -1319,13 +1320,19 @@ func updatePassword(c *Context, w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		c.LogAudit("failed")
 		c.Err = err
-		return
+		return false
 	}
 
 	auditRec.Success()
 	c.LogAudit("completed")
 
-	ReturnStatusOK(w)
+	return true
+}
+
+func updatePassword(c *Context, w http.ResponseWriter, r *http.Request) {
+	if executeUpdatePassword(c, r) {
+		ReturnStatusOK(w)
+	}
 }
 
 func resetPassword(c *Context, w http.ResponseWriter, r *http.Request) {
@@ -1572,6 +1579,7 @@ func Logout(c *Context, w http.ResponseWriter, r *http.Request) {
 	ReturnStatusOK(w)
 }
 
+// getSessions() requires user_id in parameters, returns []*model.Session
 func getSessions(c *Context, w http.ResponseWriter, r *http.Request) {
 	c.RequireUserId()
 	if c.Err != nil {
@@ -1596,6 +1604,7 @@ func getSessions(c *Context, w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(model.SessionsToJson(sessions)))
 }
 
+// revokeSession() requires session_id and user_id in parameters
 func revokeSession(c *Context, w http.ResponseWriter, r *http.Request) {
 	c.RequireUserId()
 	if c.Err != nil {
@@ -1641,6 +1650,7 @@ func revokeSession(c *Context, w http.ResponseWriter, r *http.Request) {
 	ReturnStatusOK(w)
 }
 
+// revokeAllSessions() requires user_id in parameters
 func revokeAllSessionsForUser(c *Context, w http.ResponseWriter, r *http.Request) {
 	c.RequireUserId()
 	if c.Err != nil {
