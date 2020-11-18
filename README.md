@@ -30,12 +30,14 @@ docker image ls ${DOCKER_REGISTRY_HOSTNAME}/worldr-postgres-tde
 bump2version is used to update the version of the project:
 
 ```bash
-bumpversion patch
+bumpversion --verbose --dry-run patch
 # OR
-bumpversion minor
+bumpversion --verbose --dry-run minor
 # OR
-bumpversion major
+bumpversion --verbose --dry-run major
 ```
+
+Remove `--dry-run` for the actual update.
 
 This changes two files in the project root: `VERSION.txt` and `.bumpversion.cfg`.
 
@@ -45,11 +47,11 @@ The Github action being triggered is `.github/workflows/auto-version-tag.yml`.
 
 ## Populating server with sample data
 
-The `populate` command creates users and data on the server. This is necessary for testing on the dev server. 
+The `populate` command creates users and data on the server. This is necessary for testing on the dev server.
 
 The `--configuration-file` parameter tells the command where to get a data file with users and channels.
 
-The format is as follows. Fill-in the users details, at least one administrator must be listed. Other lists 
+The format is as follows. Fill-in the users details, at least one administrator must be listed. Other lists
 ```json
 {
     "open channels names": [
@@ -101,7 +103,7 @@ The format is as follows. Fill-in the users details, at least one administrator 
 	        "tutorial step": "",
 	        "use military time": "",
 	        "username": ""
-        }		
+        }
 	]
 }
 ```

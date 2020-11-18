@@ -1,3 +1,7 @@
-# Mattermost Changelog
+# Change log
 
-Please see [Mattermost Changelog](http://docs.mattermost.com/administration/changelog.html) in product documentation.
+## 2.0.0
+
++ [breaking change] Vault access (via k8s authentication) to get database key.
+
+## Version 1.7.0
