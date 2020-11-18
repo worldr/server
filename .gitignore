@@ -96,6 +96,7 @@ cprofile.out
 *.test
 webapp/coverage
 /report.xml
+coverage.html
 
 .agignore
 .ctags

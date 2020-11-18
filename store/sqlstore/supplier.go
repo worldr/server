@@ -5,7 +5,6 @@ package sqlstore
 
 import (
 	"context"
-	"crypto/tls"
 	dbsql "database/sql"
 	"encoding/json"
 	"errors"
@@ -221,31 +220,6 @@ func NewSqlSupplier(settings model.SqlSettings, metrics einterfaces.MetricsInter
 	return supplier
 }
 
-// A key talker provider.
-// The service should be a "host:port" string.
-func keyTalker(service string) int {
-	TLSClientConfig := &tls.Config{InsecureSkipVerify: true} // FIXME!
-
-	conn, err := tls.Dial("tcp", service, TLSClientConfig)
-	if err != nil {
-		mlog.Warn("Key talker ", mlog.Err(err))
-		return 1
-	}
-
-	topSecretKey := "882fb7c12e80280fd664c69d2d636913" // FIXME!!!!
-	conn.Write([]byte(topSecretKey))
-
-	var buf [1024]byte
-	count, err := conn.Read(buf[0:])
-	if err != nil {
-		mlog.Warn("Key talker ", mlog.Err(err))
-		return 1
-	}
-
-	mlog.Info("Key listener quoth '" + string(buf[0:count]) + "'")
-	return 0
-}
-
 func setupConnection(con_type string, dataSource string, settings *model.SqlSettings) *gorp.DbMap {
 	db, err := dbsql.Open(*settings.DriverName, dataSource)
 	if err != nil {
@@ -270,9 +244,11 @@ func setupConnection(con_type string, dataSource string, settings *model.SqlSett
 
 			if len(dbHostName) > 0 {
 				// Call key talker in case we need it.
-				mlog.Info("Sending key to the database on " + dbHostName + ":" + KEY_LISTENER_PORT)
-				if keyTalker(dbHostName+":"+KEY_LISTENER_PORT) != 0 {
-					mlog.Warn("Key talker failed.")
+				msg := fmt.Sprintf("If needed, call Vault and key talker (%s:%s) for database key transactions", dbHostName, KEY_LISTENER_PORT)
+				mlog.Info(msg)
+				err = KeyTalker(dbHostName+":"+KEY_LISTENER_PORT, &Vault{})
+				if err != nil {
+					mlog.Warn("Key talker failed: see above messages for reason")
 				}
 			}
 
@@ -282,7 +258,7 @@ func setupConnection(con_type string, dataSource string, settings *model.SqlSett
 				time.Sleep(time.Second)
 				os.Exit(EXIT_PING)
 			} else {
-				mlog.Error("Failed to ping DB", mlog.Err(err), mlog.Int("retrying in seconds", DB_PING_TIMEOUT_SECS))
+				mlog.Error("Failed to ping DB", mlog.Int("retrying in seconds", DB_PING_TIMEOUT_SECS), mlog.Err(err))
 				time.Sleep(DB_PING_TIMEOUT_SECS * time.Second)
 			}
 		}

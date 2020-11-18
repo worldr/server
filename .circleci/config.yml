@@ -432,37 +432,37 @@ workflows:
           filters:
             branches:
               only: /^pull\/.*$/
-  tagged-build:
-    # Please use dump2version to change versions so the tag is always right.
-    jobs:
-      - setup:
-          filters:
-            tags:
-              only: /^v.*/
-            branches:
-              ignore: /.*/
-      - check-app-layers:
-          requires:
-            - setup
-          filters:
-            tags:
-              only: /^v.*/
-            branches:
-              ignore: /.*/
-      - build:
-          requires:
-            - check-app-layers
-          filters:
-            tags:
-              only: /^v.*/
-            branches:
-              ignore: /.*/
-      - publish-github-release:
-          context: worldr-build-github-token
-          requires:
-            - build
-          filters:
-            tags:
-              only: /^v.*/
-            branches:
-              ignore: /.*/
+#  tagged-build:
+#    # Please use dump2version to change versions so the tag is always right.
+#    jobs:
+#      - setup:
+#          filters:
+#            tags:
+#              only: /^v.*/
+#            branches:
+#              ignore: /.*/
+#      - check-app-layers:
+#          requires:
+#            - setup
+#          filters:
+#            tags:
+#              only: /^v.*/
+#            branches:
+#              ignore: /.*/
+#      - build:
+#          requires:
+#            - check-app-layers
+#          filters:
+#            tags:
+#              only: /^v.*/
+#            branches:
+#              ignore: /.*/
+#      - publish-github-release:
+#          context: worldr-build-github-token
+#          requires:
+#            - build
+#          filters:
+#            tags:
+#              only: /^v.*/
+#            branches:
+#              ignore: /.*/

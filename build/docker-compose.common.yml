@@ -1,3 +1,7 @@
+# run:  docker-compose stop
+# run:  docker-compose rm
+# run:  docker-compose down -v
+# run:  docker-compose down -v && docker-compose -f docker-compose.yaml up
 version: '2.4'
 services:
 
@@ -17,6 +21,7 @@ services:
 
 #   ________________
 #__/ PostgreSQL TDE \___________________________________________________________
+# run: pgcli -h localhost -p 5432 -U mmuser -d mattermost_test
   postgres:
     image: "postgres:9.4"
     #image: "postgres:12.3"
@@ -31,10 +36,10 @@ services:
       POSTGRES_DB: mattermost_test
     command: postgres -c 'config_file=/etc/postgresql/postgresql.conf'
     volumes:
-     - ./docker/postgres.conf:/etc/postgresql/postgresql.conf
-     #- ./docker/postgres-tde.conf:/etc/postgresql/postgresql.conf # PG-TDE
-     #- ./docker/certs:/usr/local/certs  # PG-TDE
-     - /etc/localtime:/etc/localtime:ro
+      - ./docker/postgres.conf:/etc/postgresql/postgresql.conf:Z
+      #- ./docker/postgres-tde.conf:/etc/postgresql/postgresql.conf # PG-TDE
+      #- ./docker/certs:/usr/local/certs  # PG-TDE
+      - /etc/localtime:/etc/localtime:ro
 
 #   _______
 #__/ MinIO \____________________________________________________________________
