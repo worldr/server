@@ -19,7 +19,7 @@ jobs:
       - name: Checkout code.
         uses: actions/checkout@master
       - name: Define tag.
-        run: echo "RELEASE_TAG::$(git describe --tags)" >> $GITHUB_ENV
+        run: echo "RELEASE_TAG=$(git describe --tags)" >> $GITHUB_ENV
       - name: Docker registry login.
         run: docker login $REGISTRY_HOST --username $DOCKER_REGISTRY_USERNAME --password ${{secrets.GCR_PASSWORD}}
       - name: Configuration reset.
