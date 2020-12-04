@@ -308,13 +308,19 @@ func TestWebSocketStatuses(t *testing.T) {
 
 	allowedValues := [4]string{model.STATUS_OFFLINE, model.STATUS_AWAY, model.STATUS_ONLINE, model.STATUS_DND}
 	for _, status := range resp.Data {
-		require.Containsf(t, allowedValues, status, "one of the statuses had an invalid value status=%v", status)
+		data, cast := status.(map[string]interface{})
+		require.True(t, cast, "status data should be a map")
+		s1, exists := data["status"]
+		require.True(t, exists, "status data is missing the status field")
+		s2, cast := s1.(string)
+		require.True(t, cast, "status data is not a string")
+		require.Containsf(t, allowedValues, s2, "one of the statuses had an invalid value status=%v", s2)
 	}
 
-	status, ok := resp.Data[th.BasicUser2.Id]
-	require.True(t, ok, "should have had user status")
+	status, ok := resp.Data[th.BasicUser2.Id].(map[string]interface{})
+	require.True(t, ok, "should have had user status as a map")
 
-	require.Equal(t, status, model.STATUS_ONLINE, "status should have been online status=%v", status)
+	require.Equal(t, status["status"], model.STATUS_ONLINE, "status should have been online status=%v", status["status"])
 
 	WebSocketClient.GetStatusesByIds([]string{th.BasicUser2.Id})
 	resp = <-WebSocketClient.ResponseChannel
@@ -324,13 +330,19 @@ func TestWebSocketStatuses(t *testing.T) {
 
 	allowedValues = [4]string{model.STATUS_OFFLINE, model.STATUS_AWAY, model.STATUS_ONLINE}
 	for _, status := range resp.Data {
-		require.Containsf(t, allowedValues, status, "one of the statuses had an invalid value status")
+		data, cast := status.(map[string]interface{})
+		require.True(t, cast, "status data should be a map")
+		s1, exists := data["status"]
+		require.True(t, exists, "status data is missing the status field")
+		s2, cast := s1.(string)
+		require.True(t, cast, "status data is not a string")
+		require.Containsf(t, allowedValues, s2, "one of the statuses had an invalid value status")
 	}
 
-	status, ok = resp.Data[th.BasicUser2.Id]
-	require.True(t, ok, "should have had user status")
+	status, ok = resp.Data[th.BasicUser2.Id].(map[string]interface{})
+	require.True(t, ok, "should have had user status as a map")
 
-	require.Equal(t, status, model.STATUS_ONLINE, "status should have been online status=%v", status)
+	require.Equal(t, status["status"], model.STATUS_ONLINE, "status should have been online status=%v", status["status"])
 	require.Equal(t, len(resp.Data), 1, "only 1 status should be returned")
 
 	WebSocketClient.GetStatusesByIds([]string{ruser2.Id, "junk"})

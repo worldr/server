@@ -1,8 +1,7 @@
 name: release-workflow
 on:
-  push:
-    tags:
-      - '*'
+  release:
+    types: [published]
 env:
   COMPOSE_PROJECT_NAME: "circleci"
 jobs:

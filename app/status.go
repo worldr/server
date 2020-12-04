@@ -48,13 +48,13 @@ func (a *App) GetStatusesByIds(userIds []string) (map[string]interface{}, *model
 		return map[string]interface{}{}, nil
 	}
 
-	statusMap := map[string]interface{}{}
+	statusMap := make(map[string]*model.Status)
 	metrics := a.Metrics()
 
 	missingUserIds := []string{}
 	for _, userId := range userIds {
 		if result, ok := a.Srv().statusCache.Get(userId); ok {
-			statusMap[userId] = result.(*model.Status).Status
+			statusMap[userId] = result.(*model.Status)
 			if metrics != nil {
 				metrics.IncrementMemCacheHitCounter("Status")
 			}
@@ -74,7 +74,7 @@ func (a *App) GetStatusesByIds(userIds []string) (map[string]interface{}, *model
 
 		for _, s := range statuses {
 			a.AddStatusCacheSkipClusterSend(s)
-			statusMap[s.UserId] = s.Status
+			statusMap[s.UserId] = s
 		}
 
 	}
@@ -82,11 +82,22 @@ func (a *App) GetStatusesByIds(userIds []string) (map[string]interface{}, *model
 	// For the case where the user does not have a row in the Status table and cache
 	for _, userId := range missingUserIds {
 		if _, ok := statusMap[userId]; !ok {
-			statusMap[userId] = model.STATUS_OFFLINE
+			statusMap[userId] = &model.Status{
+				Status:         model.STATUS_OFFLINE,
+				LastActivityAt: 0,
+			}
 		}
 	}
 
-	return statusMap, nil
+	result := make(map[string]interface{}, len(statusMap))
+	for uid, s := range statusMap {
+		result[uid] = map[string]interface{}{
+			"status":           s.Status,
+			"last_activity_at": s.LastActivityAt,
+		}
+	}
+
+	return result, nil
 }
 
 //GetUserStatusesByIds used by apiV4
@@ -224,6 +235,7 @@ func (a *App) BroadcastStatus(status *model.Status) {
 		return
 	}
 	event := model.NewWebSocketEvent(model.WEBSOCKET_EVENT_STATUS_CHANGE, "", "", status.UserId, nil)
+	event.Add("last_activity_at", status.LastActivityAt)
 	event.Add("status", status.Status)
 	event.Add("user_id", status.UserId)
 	a.Publish(event)
