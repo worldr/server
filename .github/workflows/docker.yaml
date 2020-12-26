@@ -1,0 +1,31 @@
+name: release-docker-image
+on:
+  release:
+    types: [published]
+env:
+  COMPOSE_PROJECT_NAME: "circleci"
+jobs:
+  release-docker:
+    name: release-docker
+    runs-on: ubuntu-latest
+    env:
+      DOCKER_BUILDKIT: 1
+      COMPOSE_DOCKER_CLI_BUILD: 1
+      REGISTRY_PATH: ${{secrets.GCR_PATH}}
+      REGISTRY_HOST: ${{secrets.GCR_HOST}}
+      DOCKER_REGISTRY_USERNAME: ${{secrets.GCR_USERNAME}}
+      GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@master
+      - name: Define tag
+        run: echo "RELEASE_TAG=$(git describe --tags)" >> $GITHUB_ENV
+      - name: Get latest release
+        run: ./.github/workflows/get_latest_release.sh $GITHUB_TOKEN server ./dist
+      - name: Docker registry login
+        run: docker login $REGISTRY_HOST --username $DOCKER_REGISTRY_USERNAME --password ${{secrets.GCR_PASSWORD}}
+      - name: release docker image
+        run: |
+          echo Building docker image $RELEASE_TAG        
+          docker build -t ${REGISTRY_HOST}/${REGISTRY_PATH}/app:${RELEASE_TAG} -f docker/Dockerfile .
+          docker push ${REGISTRY_HOST}/${REGISTRY_PATH}/app:${RELEASE_TAG}

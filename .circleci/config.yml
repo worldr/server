@@ -16,29 +16,29 @@ executors:
 jobs:
   setup:
     working_directory: ~/mattermost/mattermost-server
-    docker:
-      - image: mattermost/mattermost-build-webapp:oct-2-2018
+    # docker:
+    #   - image: mattermost/mattermost-build-webapp:oct-2-2018
     resource_class: "xlarge"
     steps:
       - checkout
-      - run: |
-          cd ../
-          GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=no" git clone git@github.com:mattermost/mattermost-webapp.git
-          cd mattermost-webapp
-          git checkout $CIRCLE_BRANCH || git checkout master
-          export WEBAPP_GIT_COMMIT=$(git rev-parse HEAD)
-          echo "$WEBAPP_GIT_COMMIT"
-          export CURL_FAILED=0
-          curl -f -o ./dist.tar.gz https://pr-builds.mattermost.com/mattermost-webapp/commit/${WEBAPP_GIT_COMMIT}/mattermost-webapp.tar.gz && mkdir ./dist && tar -xvf ./dist.tar.gz -C ./dist --strip-components=1 || export CURL_FAILED=1
+      # - run: |
+      #     cd ../
+      #     GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=no" git clone git@github.com:mattermost/mattermost-webapp.git
+      #     cd mattermost-webapp
+      #     git checkout $CIRCLE_BRANCH || git checkout master
+      #     export WEBAPP_GIT_COMMIT=$(git rev-parse HEAD)
+      #     echo "$WEBAPP_GIT_COMMIT"
+      #     export CURL_FAILED=0
+      #     curl -f -o ./dist.tar.gz https://pr-builds.mattermost.com/mattermost-webapp/commit/${WEBAPP_GIT_COMMIT}/mattermost-webapp.tar.gz && mkdir ./dist && tar -xvf ./dist.tar.gz -C ./dist --strip-components=1 || export CURL_FAILED=1
 
-          if [ $CURL_FAILED -eq 1 ]
-          then
-            npm ci && cd node_modules/mattermost-redux && npm install && npm run build && cd ../.. && make build
-          fi
+      #     if [ $CURL_FAILED -eq 1 ]
+      #     then
+      #       npm ci && cd node_modules/mattermost-redux && npm install && npm run build && cd ../.. && make build
+      #     fi
       - persist_to_workspace:
           root: ~/mattermost
           paths:
-            - mattermost-webapp
+            # - mattermost-webapp
             - mattermost-server
 
   # TODO: enable this step when the i18n-extract works with mattermost-server only
@@ -107,7 +107,7 @@ jobs:
           root: ~/mattermost
           paths:
             - mattermost-server
-            - mattermost-webapp
+            # - mattermost-webapp
 
   test:
     executor:
@@ -251,45 +251,6 @@ jobs:
             echo "Generating diff"
             diff migrated.sql latest.sql > diff.txt && echo "Both schemas are same" || (echo "Schema mismatch" && cat diff.txt && exit 1)
           no_output_timeout: 1h
-      # We have no need for MySQL!
-      # - run:
-      #     name: MySQL schema migration validation
-      #     command: |
-      #       ulimit -n 8096
-      #       mkdir -p mattermost-server/client/plugins
-      #       cd mattermost-server/build
-      #       echo "Creating databases"
-      #       docker-compose --no-ansi exec -T mysql mysql -uroot -pmostest -e "CREATE DATABASE migrated; CREATE DATABASE latest; GRANT ALL PRIVILEGES ON migrated.* TO mmuser; GRANT ALL PRIVILEGES ON latest.* TO mmuser"
-      #       echo "Importing mysql dump from version 5.0"
-      #       docker-compose --no-ansi exec -T mysql mysql -D migrated -uroot -pmostest < ../scripts/mattermost-mysql-5.0.sql
-      #       docker run -it --net circleci_mm-test \
-      #         --env CI_INBUCKET_HOST=inbucket \
-      #         --env CI_MINIO_HOST=minio \
-      #         --env CI_INBUCKET_PORT=10080 \
-      #         --env CI_MINIO_PORT=9000 \
-      #         --env CI_INBUCKET_SMTP_PORT=10025 \
-      #         --env CI_LDAP_HOST=openldap \
-      #         --env IS_CI="true" \
-      #         --env MM_SQLSETTINGS_DATASOURCE="mmuser:mostest@tcp(mysql:3306)/migrated?charset=utf8mb4,utf8&readTimeout=30s&writeTimeout=30s" \
-      #         --env MM_EMAILSETTINGS_SMTPSERVER=inbucket \
-      #         --env MM_SQLSETTINGS_DRIVERNAME=mysql \
-      #         --env MM_EMAILSETTINGS_SMTPPORT=10025 \
-      #         --env MM_ELASTICSEARCHSETTINGS_CONNECTIONURL=http://elasticsearch:9200 \
-      #         -v ~/mattermost:/mattermost \
-      #         -w /mattermost/mattermost-server \
-      #         mattermost/mattermost-build-server:oct-18-2019 \
-      #         bash -c 'ulimit -n 8096; make ARGS="version" run-cli && make MM_SQLSETTINGS_DATASOURCE="mmuser:mostest@tcp(mysql:3306)/latest?charset=utf8mb4,utf8&readTimeout=30s&writeTimeout=30s" ARGS="version" run-cli'
-      #       echo "Ignoring known MySQL mismatch: ChannelMembers.SchemeGuest"
-      #       docker-compose --no-ansi exec -T mysql mysql -D migrated -uroot -pmostest -e "ALTER TABLE ChannelMembers DROP COLUMN SchemeGuest;"
-      #       docker-compose --no-ansi exec -T mysql mysql -D latest -uroot -pmostest -e "ALTER TABLE ChannelMembers DROP COLUMN SchemeGuest;"
-      #       echo "Generating dump"
-      #       docker-compose --no-ansi exec -T mysql mysqldump --skip-opt --no-data --compact -u root -pmostest migrated > migrated.sql
-      #       docker-compose --no-ansi exec -T mysql mysqldump --skip-opt --no-data --compact -u root -pmostest latest > latest.sql
-      #       echo "Removing databases created for db comparison"
-      #       docker-compose --no-ansi exec -T mysql mysql -uroot -pmostest -e 'DROP DATABASE migrated; DROP DATABASE latest'
-      #       echo "Generating diff"
-      #       diff migrated.sql latest.sql > diff.txt && echo "Both schemas are same" || (echo "Schema mismatch" && cat diff.txt && exit 1)
-      #     no_output_timeout: 1h
 
   # These are not needed as of now but might be in the future.
   #  upload-s3-sha:
@@ -342,18 +303,18 @@ jobs:
   #            echo $DOCKER_PASSWORD | docker login --username $DOCKER_USERNAME --password-stdin
   #            docker push mattermost/mattermost-team-edition:${TAG}
 
-  trigger-ee-tests:
-    machine: true
-    steps:
-      - run:
-          name: Trigger enterprise
-          command: |
-            curl \
-              --request POST \
-              --url https://circleci.com/api/v2/project/gh/mattermost/enterprise/pipeline \
-              --user ${CIRCLECI_TOKEN} \
-              --data parameters[external_branch]=$CIRCLE_BRANCH \
-              --data parameters[external_sha]=$CIRCLE_SHA1
+  # trigger-ee-tests:
+  #   machine: true
+  #   steps:
+  #     - run:
+  #         name: Trigger enterprise
+  #         command: |
+  #           curl \
+  #             --request POST \
+  #             --url https://circleci.com/api/v2/project/gh/mattermost/enterprise/pipeline \
+  #             --user ${CIRCLECI_TOKEN} \
+  #             --data parameters[external_branch]=$CIRCLE_BRANCH \
+  #             --data parameters[external_sha]=$CIRCLE_SHA1
 
   publish-github-release:
     docker:
@@ -374,13 +335,15 @@ jobs:
 workflows:
   version: 2
   untagged-build:
+    # Executed on any branch but master.
+    # This workflow is only triggered for PRs as per the setting in CircleCI.
+    # If the setting is not in place, this workflow would be triggered on every commit.
     jobs:
       - setup:
+          # We only set filters here and the rest of the jobs require this one.
           filters:
             branches:
-              ignore:
-                #- master  # We want to build master so we can install it!
-                - /^v.*/
+              ignore: /master/
       # - check-i18n:
       #     requires:
       #       - setup
@@ -404,13 +367,6 @@ workflows:
       #     context: matterbuild-docker
       #     requires:
       #       - upload-s3-sha
-      # No need for MySQL.
-      #- test:
-      #    name: test-mysql
-      #    dbdriver: mysql
-      #    dbsource: "mmuser:mostest@tcp(mysql:3306)/mattermost_test?charset=utf8mb4,utf8"
-      #    requires:
-      #      - check-app-layers
       - test:
           name: test-postgres
           dbdriver: postgres
@@ -420,49 +376,35 @@ workflows:
       - test-schema:
           requires:
             - check-app-layers
-      - trigger-ee-tests:
-          context: matterbuild-circleci-token
-          requires:
-            #- test-mysql
-            #- test-postgres
-            - test-schema
-            # - upload-s3
-            # - upload-s3-sha
-            # - build-docker
+      # - trigger-ee-tests:
+      #     context: matterbuild-circleci-token
+      #     requires:
+      #       #- test-mysql
+      #       #- test-postgres
+      #       - test-schema
+      #       # - upload-s3
+      #       # - upload-s3-sha
+      #       # - build-docker
+      #     filters:
+      #       branches:
+      #         only: /^pull\/.*$/
+  tagged-build:
+    # Only executed on tags, doesn't matter what branch it is.
+    jobs:
+      - setup:
+          # We only set filters here and the rest of the jobs require this one.
           filters:
+            tags:
+              only: /^v.*/
             branches:
-              only: /^pull\/.*$/
-#  tagged-build:
-#    # Please use dump2version to change versions so the tag is always right.
-#    jobs:
-#      - setup:
-#          filters:
-#            tags:
-#              only: /^v.*/
-#            branches:
-#              ignore: /.*/
-#      - check-app-layers:
-#          requires:
-#            - setup
-#          filters:
-#            tags:
-#              only: /^v.*/
-#            branches:
-#              ignore: /.*/
-#      - build:
-#          requires:
-#            - check-app-layers
-#          filters:
-#            tags:
-#              only: /^v.*/
-#            branches:
-#              ignore: /.*/
-#      - publish-github-release:
-#          context: worldr-build-github-token
-#          requires:
-#            - build
-#          filters:
-#            tags:
-#              only: /^v.*/
-#            branches:
-#              ignore: /.*/
+              ignore: /.*/
+      - check-app-layers:
+          requires:
+            - setup
+      - build:
+          requires:
+            - check-app-layers
+      - publish-github-release:
+          context: worldr-build-github-token
+          requires:
+            - build

@@ -2,8 +2,9 @@
 
 MAIN_BRANCH=$1
 if [ -z "$MAIN_BRANCH" ]; then
-	echo Usage: tag_main_branch MAIN_BRANCH_NAME
 	echo Error: main branch name parameter is missing!
+	echo Usage: 
+	echo tag_main_branch.sh MAIN_BRANCH_NAME
 	exit 1
 fi
 
