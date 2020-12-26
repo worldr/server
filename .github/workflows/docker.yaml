@@ -27,5 +27,5 @@ jobs:
       - name: release docker image
         run: |
           echo Building docker image $RELEASE_TAG        
-          docker build -t ${REGISTRY_HOST}/${REGISTRY_PATH}/app:${RELEASE_TAG} -f docker/Dockerfile .
+          docker build -t ${REGISTRY_HOST}/${REGISTRY_PATH}/app:${RELEASE_TAG} -f docker/DockerfileRelease .
           docker push ${REGISTRY_HOST}/${REGISTRY_PATH}/app:${RELEASE_TAG}
