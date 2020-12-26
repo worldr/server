@@ -8,6 +8,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@ci/new-release
+        uses: actions/checkout@master
       - name: Run the tagging script
         run: ./.github/workflows/tag_main_branch.sh ci/new-release
