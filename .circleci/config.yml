@@ -376,18 +376,6 @@ workflows:
       - test-schema:
           requires:
             - check-app-layers
-      # - trigger-ee-tests:
-      #     context: matterbuild-circleci-token
-      #     requires:
-      #       #- test-mysql
-      #       #- test-postgres
-      #       - test-schema
-      #       # - upload-s3
-      #       # - upload-s3-sha
-      #       # - build-docker
-      #     filters:
-      #       branches:
-      #         only: /^pull\/.*$/
   tagged-build:
     # Only executed on tags, doesn't matter what branch it is.
     jobs:
@@ -401,10 +389,44 @@ workflows:
       - check-app-layers:
           requires:
             - setup
+          filters:
+            tags:
+              only: /^v.*/
+            branches:
+              ignore: /.*/
       - build:
           requires:
             - check-app-layers
+          filters:
+            tags:
+              only: /^v.*/
+            branches:
+              ignore: /.*/
+      - test:
+          name: test-postgres
+          dbdriver: postgres
+          dbsource: "postgres://mmuser:mostest@postgres:5432/mattermost_test?sslmode=disable&connect_timeout=10"
+          requires:
+            - check-app-layers
+          filters:
+            tags:
+              only: /^v.*/
+            branches:
+              ignore: /.*/
+      - test-schema:
+          requires:
+            - check-app-layers
+          filters:
+            tags:
+              only: /^v.*/
+            branches:
+              ignore: /.*/
       - publish-github-release:
           context: worldr-build-github-token
           requires:
             - build
+          filters:
+            tags:
+              only: /^v.*/
+            branches:
+              ignore: /.*/
