@@ -16,8 +16,8 @@ executors:
 jobs:
   setup:
     working_directory: ~/mattermost/mattermost-server
-    # docker:
-    #   - image: mattermost/mattermost-build-webapp:oct-2-2018
+    docker:
+      - image: mattermost/mattermost-build-webapp:oct-2-2018
     resource_class: "xlarge"
     steps:
       - checkout
