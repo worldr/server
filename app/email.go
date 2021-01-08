@@ -169,12 +169,12 @@ func (a *App) SendSignInChangeEmail(email, method, locale, siteURL string) *mode
 	return nil
 }
 
-func (a *App) sendWelcomeEmail(userId string, email string, verified bool, locale, siteURL string) *model.AppError {
+func (a *App) sendWelcomeEmail(user *model.User, password string, siteURL string) *model.AppError {
 	if !*a.Config().EmailSettings.SendEmailNotifications && !*a.Config().EmailSettings.RequireEmailVerification {
 		return model.NewAppError("SendWelcomeEmail", "api.user.send_welcome_email_and_forget.failed.error", nil, "Send Email Notifications and Require Email Verification is disabled in the system console", http.StatusInternalServerError)
 	}
 
-	T := utils.GetUserTranslations(locale)
+	T := utils.GetUserTranslations(user.Locale)
 
 	serverURL := condenseSiteURL(siteURL)
 
@@ -182,7 +182,7 @@ func (a *App) sendWelcomeEmail(userId string, email string, verified bool, local
 		map[string]interface{}{"SiteName": a.ClientConfig()["SiteName"],
 			"ServerURL": serverURL})
 
-	bodyPage := a.newEmailTemplate("welcome_body", locale)
+	bodyPage := a.newEmailTemplate("welcome_body", user.Locale)
 	bodyPage.Props["SiteURL"] = siteURL
 	bodyPage.Props["Title"] = T("api.templates.welcome_body.title", map[string]interface{}{"ServerURL": serverURL})
 	bodyPage.Props["Info"] = T("api.templates.welcome_body.info")
@@ -190,22 +190,30 @@ func (a *App) sendWelcomeEmail(userId string, email string, verified bool, local
 	bodyPage.Props["Info2"] = T("api.templates.welcome_body.info2")
 	bodyPage.Props["Info3"] = T("api.templates.welcome_body.info3")
 	bodyPage.Props["SiteURL"] = siteURL
+	bodyPage.Props["UsernameLabel"] = T("api.templates.welcome_username")
+	bodyPage.Props["Username"] = user.Username
+	bodyPage.Props["PasswordLabel"] = T("api.templates.welcome_password")
+	bodyPage.Props["Password"] = password
+	bodyPage.Props["CompanyLabel"] = T("api.templates.welcome_company")
+	bodyPage.Props["Company"] = "Company Name" // TODO add company info config
 
-	if *a.Config().NativeAppSettings.AppDownloadLink != "" {
-		bodyPage.Props["AppDownloadInfo"] = T("api.templates.welcome_body.app_download_info")
-		bodyPage.Props["AppDownloadLink"] = *a.Config().NativeAppSettings.AppDownloadLink
-	}
+	bodyPage.Props["AppDownloadInfo"] = T("api.templates.welcome_body.app_download_info")
+	bodyPage.Props["AndroidAppDownloadLink"] = *a.Config().NativeAppSettings.AndroidAppDownloadLink
+	bodyPage.Props["IosAppDownloadLink"] = *a.Config().NativeAppSettings.IosAppDownloadLink
+	bodyPage.Props["MacOsAppDownloadLink"] = *a.Config().NativeAppSettings.MacOsAppDownloadLink
+	bodyPage.Props["WindowsAppDownloadLink"] = *a.Config().NativeAppSettings.WindowsAppDownloadLink
+	bodyPage.Props["LinuxAppDownloadLink"] = *a.Config().NativeAppSettings.LinuxAppDownloadLink
 
-	if !verified && *a.Config().EmailSettings.RequireEmailVerification {
-		token, err := a.CreateVerifyEmailToken(userId, email)
+	if !user.EmailVerified && *a.Config().EmailSettings.RequireEmailVerification {
+		token, err := a.CreateVerifyEmailToken(user.Id, user.Email)
 		if err != nil {
 			return err
 		}
-		link := fmt.Sprintf("%s/do_verify_email?token=%s&email=%s", siteURL, token.Token, url.QueryEscape(email))
+		link := fmt.Sprintf("%s/do_verify_email?token=%s&email=%s", siteURL, token.Token, url.QueryEscape(user.Email))
 		bodyPage.Props["VerifyUrl"] = link
 	}
 
-	if err := a.sendMail(email, subject, bodyPage.Render()); err != nil {
+	if err := a.sendMail(user.Email, subject, bodyPage.Render()); err != nil {
 		return model.NewAppError("sendWelcomeEmail", "api.user.send_welcome_email_and_forget.failed.error", nil, err.Error(), http.StatusInternalServerError)
 	}
 

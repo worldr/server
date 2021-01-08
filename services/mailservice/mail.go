@@ -120,7 +120,6 @@ func ConnectToSMTPServerAdvanced(connectionInfo *SmtpConnectionInfo) (net.Conn, 
 	dialer := &net.Dialer{
 		Timeout: time.Duration(connectionInfo.SmtpServerTimeout) * time.Second,
 	}
-
 	if connectionInfo.ConnectionSecurity == model.CONN_SECURITY_TLS {
 		tlsconfig := &tls.Config{
 			InsecureSkipVerify: connectionInfo.SkipCertVerification,

@@ -1,9 +1,13 @@
 package api4
 
 import (
+	"fmt"
 	"net/http"
+	"regexp"
 	"strconv"
+	"strings"
 
+	"github.com/icrowley/fake"
 	"github.com/mattermost/mattermost-server/v5/audit"
 	"github.com/mattermost/mattermost-server/v5/model"
 	"github.com/mattermost/mattermost-server/v5/store/sqlstore"
@@ -19,6 +23,7 @@ func (api *API) InitWAdmin() {
 	// Valid session is required
 	api.BaseRoutes.WAdmin.Handle("/logout", api.ApiSessionRequired(logout)).Methods("POST")
 	api.BaseRoutes.WAdmin.Handle("/users", api.ApiSessionRequired(getAllUsersByAdmin)).Methods("GET")
+	api.BaseRoutes.WAdmin.Handle("/users/onboard/emails", api.ApiSessionRequired(registerUsersWithEmails)).Methods("POST")
 	api.BaseRoutes.WAdmin.Handle("/admins", api.ApiSessionRequired(getAllAdmins)).Methods("GET")
 	api.BaseRoutes.WAdmin.Handle("/user/{user_id:[A-Za-z0-9]+}", api.ApiSessionRequired(getUser)).Methods("GET")
 	api.BaseRoutes.WAdmin.Handle("/user/{user_id:[A-Za-z0-9]+}/roles", api.ApiSessionRequired(changeUserRolesByAdmin)).Methods("PUT")
@@ -115,6 +120,7 @@ func createInitialAdmin(c *Context, w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		user.SanitizeInput(c.IsSystemAdmin())
+		user.EmailVerified = true
 
 		user.Roles = model.SYSTEM_USER_ROLE_ID + " " + model.SYSTEM_ADMIN_ROLE_ID
 
@@ -321,6 +327,7 @@ func createUserByAdmin(c *Context, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	user.SanitizeInput(c.IsSystemAdmin())
+	user.EmailVerified = true
 
 	// Create user, but do not write a response
 	ruser, err := executeCreateUser(c, user, "", "")
@@ -387,4 +394,70 @@ func getUserSessionsByAdmin(c *Context, w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	getSessions(c, w, r)
+}
+
+func registerUsersWithEmails(c *Context, w http.ResponseWriter, r *http.Request) {
+	if !isSystemAdmin(c, "registerUsersWithEmails", "admin_register_emails") {
+		return
+	}
+
+	emails := model.ArrayFromJson(r.Body)
+	if len(emails) == 0 {
+		c.Err = model.NewAppError("registerUsersWithEmails", "admin_register_emails", nil, "no emails to register", http.StatusBadRequest)
+		return
+	}
+
+	successes := make([]*model.User, 0, len(emails))
+	failures := make(map[string]string, len(emails))
+
+	regName := regexp.MustCompile(`[._-]`)
+
+	for _, email := range emails {
+		email = strings.ToLower(strings.Trim(email, ", \n\t\r"))
+		if !model.IsValidEmailAddress(email) {
+			failures[email] = "Email is invalid"
+			continue
+		}
+
+		username := strings.Split(email, "@")[0]
+		if !model.IsValidUsername(username) {
+			failures[email] = "Unable to use email part before @ as a username"
+			continue
+		}
+		firstLast := regName.Split(username, -1)
+		first, last := firstLast[0], ""
+		first = fmt.Sprintf("%v%v", strings.ToUpper(first[0:1]), first[1:])
+		if len(firstLast) > 1 {
+			for i := 1; i < len(firstLast); i++ {
+				firstLast[i] = fmt.Sprintf("%v%v", strings.ToUpper(firstLast[i][0:1]), firstLast[i][1:])
+			}
+			last = strings.Join(firstLast[1:], " ")
+		}
+
+		password := fmt.Sprintf("Worldr-%v", fake.CharactersN(5))
+		user := model.User{
+			Username:      username,
+			FirstName:     first,
+			LastName:      last,
+			Email:         email,
+			Password:      password,
+			EmailVerified: true,
+		}
+
+		ruser, err := executeCreateUser(c, &user, "", "")
+		if err != nil {
+			failures[email] = fmt.Sprintf("%v:%v", err.Id, err.Message)
+		} else {
+			successes = append(successes, ruser)
+			// This method of registration returns the password to the caller.
+			// This may change in the future.
+			ruser.Password = password
+		}
+	}
+
+	response := model.RegisterEmailsResponse{
+		Successes: successes,
+		Failures:  failures,
+	}
+	w.Write([]byte(response.ToJson()))
 }

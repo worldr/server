@@ -213,3 +213,81 @@ func TestRevokeAllSessionsByAdmin(t *testing.T) {
 		assert.Equal(t, 0, len(list), "list is expected to be empty")
 	})
 }
+
+func TestRegisterUsersWithEmails(t *testing.T) {
+	th := Setup(t).InitBasic()
+	defer th.TearDown()
+
+	type userChecker func(i int, user *model.User)
+
+	checkSuccess := func(emails []string, checkUser userChecker) {
+		result, r := th.WSystemAdminClient.RegisterUsersWithEmails(emails)
+		CheckNoError(t, r)
+		assert.NotNil(t, result, "response says ok, but result data is nil")
+		assert.Equal(t, 0, len(result.Failures), "no failures are expected")
+		assert.Equal(t, len(emails), len(result.Successes), "not all emails were successfully registered")
+		for i, v := range result.Successes {
+			assert.Equal(t, emails[i], v.Email, "registered email doesn't match")
+			assert.True(t, len(v.Password) > 0, "this form of registration is expected to return passwords")
+			checkUser(i, v)
+		}
+	}
+
+	checkFailure := func(emails []string, failures int, successes int) {
+		result, r := th.WSystemAdminClient.RegisterUsersWithEmails(emails)
+		CheckNoError(t, r)
+		assert.NotNil(t, result, "response says ok, but result data is nil")
+		assert.Equal(t, failures, len(result.Failures), "unexpected number of failures")
+		assert.Equal(t, successes, len(result.Successes), "unexpected number of successes")
+	}
+
+	t.Run("register users with emails – successes", func(t *testing.T) {
+		checkSuccess(
+			[]string{"a1@example.com"},
+			func(i int, user *model.User) {
+				assert.Equal(t, "A1", user.FirstName, "unexpected first name")
+				assert.Equal(t, "", user.LastName, "unexpected last name")
+			},
+		)
+		checkSuccess(
+			[]string{"a2@example.com", "a.b@example.com", "c_d@example.com", "e-f@example.com", "a.b_c@example.com", "c_d.e@example.com", "e-f-g@example.com", "ccc_ddd.eee@example.com", "eee-fff_ggg@example.com"},
+			func(i int, user *model.User) {
+				switch i {
+				case 0:
+					assert.Equal(t, "A2", user.FirstName, "unexpected first name")
+					assert.Equal(t, "", user.LastName, "unexpected last name")
+				case 1:
+					assert.Equal(t, "A", user.FirstName, "unexpected first name")
+					assert.Equal(t, "B", user.LastName, "unexpected last name")
+				case 2:
+					assert.Equal(t, "C", user.FirstName, "unexpected first name")
+					assert.Equal(t, "D", user.LastName, "unexpected last name")
+				case 3:
+					assert.Equal(t, "E", user.FirstName, "unexpected first name")
+					assert.Equal(t, "F", user.LastName, "unexpected last name")
+				case 4:
+					assert.Equal(t, "A", user.FirstName, "unexpected first name")
+					assert.Equal(t, "B C", user.LastName, "unexpected last name")
+				case 5:
+					assert.Equal(t, "C", user.FirstName, "unexpected first name")
+					assert.Equal(t, "D E", user.LastName, "unexpected last name")
+				case 6:
+					assert.Equal(t, "E", user.FirstName, "unexpected first name")
+					assert.Equal(t, "F G", user.LastName, "unexpected last name")
+				case 7:
+					assert.Equal(t, "Ccc", user.FirstName, "unexpected first name")
+					assert.Equal(t, "Ddd Eee", user.LastName, "unexpected last name")
+				case 8:
+					assert.Equal(t, "Eee", user.FirstName, "unexpected first name")
+					assert.Equal(t, "Fff Ggg", user.LastName, "unexpected last name")
+				}
+			},
+		)
+	})
+	t.Run("register users with emails – failures", func(t *testing.T) {
+		checkFailure([]string{"x@example"}, 1, 0)
+		checkFailure([]string{"y_example.com"}, 1, 0)
+		checkFailure([]string{"x@example.com", "y@example.com", "y@example"}, 1, 2)
+		checkFailure([]string{"x@example.com", "y@example.com"}, 2, 0)
+	})
+}

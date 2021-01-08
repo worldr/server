@@ -249,6 +249,9 @@ func GenerateLimitedClientConfig(c *model.Config, diagnosticID string, license *
 	props["AppDownloadLink"] = *c.NativeAppSettings.AppDownloadLink
 	props["AndroidAppDownloadLink"] = *c.NativeAppSettings.AndroidAppDownloadLink
 	props["IosAppDownloadLink"] = *c.NativeAppSettings.IosAppDownloadLink
+	props["MacOsAppDownloadLink"] = *c.NativeAppSettings.MacOsAppDownloadLink
+	props["WindowsAppDownloadLink"] = *c.NativeAppSettings.WindowsAppDownloadLink
+	props["LinuxAppDownloadLink"] = *c.NativeAppSettings.LinuxAppDownloadLink
 
 	props["DiagnosticId"] = diagnosticID
 	props["DiagnosticsEnabled"] = strconv.FormatBool(*c.LogSettings.EnableDiagnostics)

@@ -367,6 +367,20 @@ func IsValidEmail(email string) bool {
 	return true
 }
 
+// The original W3C email regular expression taken from:
+// https://www.w3.org/TR/2016/REC-html51-20161101/sec-forms.html#email-state-typeemail
+// It is modified to include a domain zone at the end.
+// This expression doesn't support addresses with UTF characters.
+var emailRegex = regexp.MustCompile("^[a-zA-Z0-9.!#$%&'*+\\/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*\\.[a-zA-Z]{2,}$")
+
+// IsValidEmailAddress uses the W3C recommended regular expression to validate emails.
+func IsValidEmailAddress(e string) bool {
+	if len(e) < 3 && len(e) > 254 {
+		return false
+	}
+	return emailRegex.MatchString(e)
+}
+
 var reservedName = []string{
 	"signup",
 	"login",

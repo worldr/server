@@ -2200,7 +2200,7 @@
   },
   {
     "id": "api.templates.email_footer",
-    "translation": "To change your notification preferences, log in to your team site and go to Account Settings > Notifications."
+    "translation": "Worldr Technologies Ltd."
   },
   {
     "id": "api.templates.email_info1",
@@ -2212,7 +2212,7 @@
   },
   {
     "id": "api.templates.email_info3",
-    "translation": "The {{.SiteName}} Team"
+    "translation": "The Worldr Team"
   },
   {
     "id": "api.templates.email_organization",
@@ -2364,7 +2364,7 @@
   },
   {
     "id": "api.templates.welcome_body.app_download_info",
-    "translation": "For the best experience, download the apps for PC, Mac, iOS and Android from:"
+    "translation": "Please download the apps for PC, Mac, iOS and Android using the links below."
   },
   {
     "id": "api.templates.welcome_body.button",
@@ -2376,19 +2376,31 @@
   },
   {
     "id": "api.templates.welcome_body.info2",
-    "translation": "You can sign in from:"
+    "translation": "Your account details:"
   },
   {
     "id": "api.templates.welcome_body.info3",
-    "translation": "Mattermost lets you share messages and files from your PC or phone, with instant search and archiving."
+    "translation": "Worldr: Sovereign, Intelligent and Secure Communication Platform."
   },
   {
     "id": "api.templates.welcome_body.title",
-    "translation": "You've joined {{ .ServerURL }}"
+    "translation": "You've joined Worldr for Company Name"
   },
   {
     "id": "api.templates.welcome_subject",
-    "translation": "[{{ .SiteName }}] You joined {{ .ServerURL }}"
+    "translation": "[Worldr] You joined Worldr for Company Name"
+  },
+  {
+    "id": "api.templates.welcome_username",
+    "translation": "Username:"
+  },
+  {
+    "id": "api.templates.welcome_password",
+    "translation": "Password:"
+  },
+  {
+    "id": "api.templates.welcome_company",
+    "translation": "Company:"
   },
   {
     "id": "api.user.activate_mfa.email_and_ldap_only.app_error",

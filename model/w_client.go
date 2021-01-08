@@ -109,6 +109,11 @@ func (c *WClient) RevokeSessionUrl(userId string) string {
 	return fmt.Sprintf("%v/admin/user/%v/session/revoke", c.ApiUrl, userId)
 }
 
+// Get absolute api url of the admin register users by email handle.
+func (c *WClient) RegisterUsersWithEmailsUrl() string {
+	return fmt.Sprintf("%v/admin/users/onboard/emails", c.ApiUrl)
+}
+
 //
 // METHODS
 //
@@ -285,4 +290,16 @@ func (c *WClient) RevokeSession(userId string, sessionId string) *Response {
 	}
 	defer closeBody(r)
 	return BuildResponse(r)
+}
+
+func (c *WClient) RegisterUsersWithEmails(request []string) (*RegisterEmailsResponse, *Response) {
+	r, err := c.MMClient.DoApiPostWithUrl(c.RegisterUsersWithEmailsUrl(), ArrayToJson(request), false)
+	if err != nil {
+		return nil, BuildErrorResponse(r, err)
+	}
+	defer closeBody(r)
+	if result, err := RegisterEmailsResponseFromJson(r.Body); err == nil {
+		return result, BuildResponse(r)
+	}
+	return nil, BuildErrorResponse(r, NewAppError("RegisterUsersWithEmails", "WClient.RegisterUsersWithEmails", nil, "Failed to unmarshall response JSON", http.StatusInternalServerError))
 }

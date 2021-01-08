@@ -9,38 +9,73 @@
                         <table align="center" border="0" cellpadding="0" cellspacing="0" width="100%" style="border-collapse: collapse;">
                             <tr>
                                 <td style="padding: 20px 20px 10px; text-align:left;">
-                                    <img src="{{.Props.SiteURL}}/static/images/logo-email.png" width="130px" style="opacity: 0.5" alt="">
+                                    <img src="https://worldr.com/logo192.png" width="130px" style="opacity: 0.5" alt="">
                                 </td>
                             </tr>
                             <tr>
                                 <td>
-                                    <table border="0" cellpadding="0" cellspacing="0" style="padding: 20px 50px 0; text-align: center; margin: 0 auto">
-                                        {{if .Props.VerifyUrl }}
+                                    <table border="0" cellpadding="0" cellspacing="0" style="padding: 20px 50px 0; margin: 0 auto">
                                         <tr>
-                                            <td style="border-bottom: 1px solid #ddd; padding: 0 0 20px;">
-                                                <h2 style="font-weight: normal; margin-top: 10px;">{{.Props.Title}}</h2>
-                                                <p>{{.Props.Info}}</p>
-                                                <p style="margin: 20px 0 15px">
-                                                    <a href="{{.Props.VerifyUrl}}" style="background: #2389D7; border-radius: 3px; color: #fff; border: none; outline: none; min-width: 200px; padding: 15px 25px; font-size: 14px; font-family: inherit; cursor: pointer; -webkit-appearance: none;text-decoration: none;">{{.Props.Button}}</a>
-                                                </p>
+                                            <td style="text-align: center;">
+                                                <h2>{{.Props.Info3}}</h2>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td style="border-bottom: 1px solid #ddd; border-top: 1px solid #ddd; padding: 20px 0px;">
+                                                <p>{{.Props.Info2}}</p>
+                                                {{if .Props.Company}}
+                                                <p><strong>{{.Props.CompanyLabel}}</strong> {{.Props.Company}}</p>
+                                                {{end}}
+                                                {{if .Props.Username}}
+                                                <p><strong>{{.Props.UsernameLabel}}</strong> {{.Props.Username}}</p>
+                                                {{end}}
+                                                {{if .Props.Password}}
+                                                <p><strong>{{.Props.PasswordLabel}}</strong> {{.Props.Password}}</p>
+                                                {{end}}
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td style="padding: 20px 0px;">
+                                                <p>{{.Props.AppDownloadInfo}}</p>
+                                            </td>
+                                        </tr>
+                                        {{if .Props.IosAppDownloadLink}}
+                                        <tr>
+                                            <td style="padding-bottom: 15px;">
+                                                <div><strong>iOS:</strong></div>
+                                                <div><a href="{{.Props.IosAppDownloadLink}}">{{.Props.IosAppDownloadLink}}</a></div>
+                                            </td>
+                                        </tr>
+                                        {{end}}                                        
+                                        {{if .Props.AndroidAppDownloadLink}}
+                                        <tr>
+                                            <td style="padding-bottom: 15px;">
+                                                <div><strong>Android:</strong></div>                                                
+                                                <div><a href="{{.Props.AndroidAppDownloadLink}}">{{.Props.AndroidAppDownloadLink}}</a></div>
                                             </td>
                                         </tr>
                                         {{end}}
+                                        {{if .Props.MacOsAppDownloadLink}}
                                         <tr>
-                                            <td style="border-bottom: 1px solid #ddd; padding: 0 0 20px;">
-                                                <h2 style="font-weight: normal; margin-top: 25px; line-height: 1.5;">{{.Props.Info2}}</h2>
-                                                <a href="{{.Props.SiteURL}}">{{.Props.SiteURL}}</a>
-                                                <p>{{.Props.Info3}}</p>
+                                            <td style="padding-bottom: 15px;">
+                                                <div><strong>macOS:</strong></div>                                                
+                                                <div><a href="{{.Props.MacOsAppDownloadLink}}">{{.Props.MacOsAppDownloadLink}}</a></div>
                                             </td>
                                         </tr>
-                                        {{if .Props.AppDownloadLink}}
+                                        {{end}}
+                                        {{if .Props.WindowsAppDownloadLink}}
                                         <tr>
-                                            <td style="border-bottom: 1px solid #ddd; padding: 0 0 20px;">
-                                                <p>{{.Props.AppDownloadInfo}}</p>
-                                                <a href="{{.Props.AppDownloadLink}}">
-                                                    <p>{{.Props.AppDownloadLink}}</p>
-                                                    <img src="{{.Props.SiteURL}}/static/images/appIcons.png" />
-                                                </a>
+                                            <td style="padding-bottom: 15px;">
+                                                <div><strong>Windows:</strong></div>                                                
+                                                <div><a href="{{.Props.WindowsAppDownloadLink}}">{{.Props.WindowsAppDownloadLink}}</a></div>                                                
+                                            </td>
+                                        </tr>
+                                        {{end}}
+                                        {{if .Props.LinuxAppDownloadLink}}
+                                        <tr>
+                                            <td style="padding-bottom: 50px;">
+                                                <div><strong>Linux:</strong></div>                                                
+                                                <div><a href="{{.Props.LinuxAppDownloadLink}}">{{.Props.LinuxAppDownloadLink}}</a></div>
                                             </td>
                                         </tr>
                                         {{end}}

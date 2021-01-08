@@ -565,6 +565,9 @@ func (a *App) trackConfig() {
 		"isdefault_app_download_link":         isDefault(*cfg.NativeAppSettings.AppDownloadLink, model.NATIVEAPP_SETTINGS_DEFAULT_APP_DOWNLOAD_LINK),
 		"isdefault_android_app_download_link": isDefault(*cfg.NativeAppSettings.AndroidAppDownloadLink, model.NATIVEAPP_SETTINGS_DEFAULT_ANDROID_APP_DOWNLOAD_LINK),
 		"isdefault_iosapp_download_link":      isDefault(*cfg.NativeAppSettings.IosAppDownloadLink, model.NATIVEAPP_SETTINGS_DEFAULT_IOS_APP_DOWNLOAD_LINK),
+		"isdefault_macossapp_download_link":   isDefault(*cfg.NativeAppSettings.MacOsAppDownloadLink, model.NATIVEAPP_SETTINGS_DEFAULT_MACOS_APP_DOWNLOAD_LINK),
+		"isdefault_windowsapp_download_link":  isDefault(*cfg.NativeAppSettings.WindowsAppDownloadLink, model.NATIVEAPP_SETTINGS_DEFAULT_WINDOWS_APP_DOWNLOAD_LINK),
+		"isdefault_linuxapp_download_link":    isDefault(*cfg.NativeAppSettings.LinuxAppDownloadLink, model.NATIVEAPP_SETTINGS_DEFAULT_LINUX_APP_DOWNLOAD_LINK),
 	})
 
 	a.SendDiagnostic(TRACK_CONFIG_EXPERIMENTAL, map[string]interface{}{

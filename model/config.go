@@ -152,9 +152,12 @@ const (
 	SAML_SETTINGS_CANONICAL_ALGORITHM_C14N11  = "Canonical1.1"
 	SAML_SETTINGS_DEFAULT_CANONICAL_ALGORITHM = SAML_SETTINGS_CANONICAL_ALGORITHM_C14N
 
-	NATIVEAPP_SETTINGS_DEFAULT_APP_DOWNLOAD_LINK         = "https://mattermost.com/download/#mattermostApps"
-	NATIVEAPP_SETTINGS_DEFAULT_ANDROID_APP_DOWNLOAD_LINK = "https://about.mattermost.com/mattermost-android-app/"
-	NATIVEAPP_SETTINGS_DEFAULT_IOS_APP_DOWNLOAD_LINK     = "https://about.mattermost.com/mattermost-ios-app/"
+	NATIVEAPP_SETTINGS_DEFAULT_APP_DOWNLOAD_LINK         = "https://worldr.com/downloads"
+	NATIVEAPP_SETTINGS_DEFAULT_ANDROID_APP_DOWNLOAD_LINK = "https://worldr.com/downloads/android"
+	NATIVEAPP_SETTINGS_DEFAULT_IOS_APP_DOWNLOAD_LINK     = "https://worldr.com/downloads/ios"
+	NATIVEAPP_SETTINGS_DEFAULT_MACOS_APP_DOWNLOAD_LINK   = "https://worldr.com/downloads/macos"
+	NATIVEAPP_SETTINGS_DEFAULT_WINDOWS_APP_DOWNLOAD_LINK = "https://worldr.com/downloads/windows"
+	NATIVEAPP_SETTINGS_DEFAULT_LINUX_APP_DOWNLOAD_LINK   = "https://worldr.com/downloads/linux"
 
 	EXPERIMENTAL_SETTINGS_DEFAULT_LINK_METADATA_TIMEOUT_MILLISECONDS = 5000
 
@@ -2225,6 +2228,9 @@ type NativeAppSettings struct {
 	AppDownloadLink        *string `restricted:"true"`
 	AndroidAppDownloadLink *string `restricted:"true"`
 	IosAppDownloadLink     *string `restricted:"true"`
+	MacOsAppDownloadLink   *string `restricted:"true"`
+	WindowsAppDownloadLink *string `restricted:"true"`
+	LinuxAppDownloadLink   *string `restricted:"true"`
 }
 
 func (s *NativeAppSettings) SetDefaults() {
@@ -2238,6 +2244,18 @@ func (s *NativeAppSettings) SetDefaults() {
 
 	if s.IosAppDownloadLink == nil {
 		s.IosAppDownloadLink = NewString(NATIVEAPP_SETTINGS_DEFAULT_IOS_APP_DOWNLOAD_LINK)
+	}
+
+	if s.MacOsAppDownloadLink == nil {
+		s.MacOsAppDownloadLink = NewString(NATIVEAPP_SETTINGS_DEFAULT_MACOS_APP_DOWNLOAD_LINK)
+	}
+
+	if s.WindowsAppDownloadLink == nil {
+		s.WindowsAppDownloadLink = NewString(NATIVEAPP_SETTINGS_DEFAULT_WINDOWS_APP_DOWNLOAD_LINK)
+	}
+
+	if s.LinuxAppDownloadLink == nil {
+		s.LinuxAppDownloadLink = NewString(NATIVEAPP_SETTINGS_DEFAULT_LINUX_APP_DOWNLOAD_LINK)
 	}
 }
 

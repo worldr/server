@@ -1,4 +1,4 @@
-{{define "verify_body"}}
+{{define "welcome_body"}}
 
 <table align="center" border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-top: 20px; line-height: 1.7; color: #555;">
     <tr>
@@ -9,7 +9,7 @@
                         <table align="center" border="0" cellpadding="0" cellspacing="0" width="100%" style="border-collapse: collapse;">
                             <tr>
                                 <td style="padding: 20px 20px 10px; text-align:left;">
-                                    <img src="{{.Props.SiteURL}}/static/images/logo-email.png" width="130px" style="opacity: 0.5" alt="">
+                                    <img src="https://worldr.com/logo192.png" width="130px" style="opacity: 0.5" alt="">
                                 </td>
                             </tr>
                             <tr>
@@ -17,16 +17,20 @@
                                     <table border="0" cellpadding="0" cellspacing="0" style="padding: 20px 50px 0; text-align: center; margin: 0 auto">
                                         <tr>
                                             <td style="border-bottom: 1px solid #ddd; padding: 0 0 20px;">
-                                                <h2 style="font-weight: normal; margin-top: 10px;">{{.Props.Title}}</h2>
-                                                <p>{{.Props.Info}}</p>
-                                                <p style="margin: 20px 0 15px">
-                                                    <a href="{{.Props.VerifyUrl}}" style="background: #2389D7; border-radius: 3px; color: #fff; border: none; outline: none; min-width: 200px; padding: 15px 25px; font-size: 14px; font-family: inherit; cursor: pointer; -webkit-appearance: none;text-decoration: none;">{{.Props.Button}}</a>
-                                                </p>
+                                                <h2 style="font-weight: normal; margin-top: 25px; line-height: 1.5;">{{.Props.Info2}}</h2>
+                                                <a href="{{.Props.SiteURL}}">{{.Props.SiteURL}}</a>
                                             </td>
                                         </tr>
+                                        {{if .Props.AppDownloadLink}}
                                         <tr>
-                                            {{template "email_info" . }}
+                                            <td style="border-bottom: 1px solid #ddd; padding: 0 0 20px;">
+                                                <p>{{.Props.AppDownloadInfo}}</p>
+                                                <a href="{{.Props.AppDownloadLink}}">
+                                                    <p>{{.Props.AppDownloadLink}}</p>
+                                                </a>
+                                            </td>
                                         </tr>
+                                        {{end}}
                                     </table>
                                 </td>
                             </tr>
@@ -42,3 +46,4 @@
 </table>
 
 {{end}}
+

@@ -372,9 +372,12 @@
         "LoginButtonTextColor": "#ffffff"
     },
     "NativeAppSettings": {
-        "AppDownloadLink": "https://mattermost.com/download/#mattermostApps",
-        "AndroidAppDownloadLink": "https://about.mattermost.com/mattermost-android-app/",
-        "IosAppDownloadLink": "https://about.mattermost.com/mattermost-ios-app/"
+        "AppDownloadLink": "https://worldr.com/downloads",
+        "AndroidAppDownloadLink": "https://play.google.com/store/apps/details?id=com.worldr.app",
+        "IosAppDownloadLink": "<AppStore link to the iOS app>",
+        "MacOsAppDownloadLink": "https://worldr.com/downloads/macos",
+        "WindowsAppDownloadLink": "https://worldr.com/downloads/windows",
+        "LinuxAppDownloadLink": "https://worldr.com/downloads/linux"
     },
     "ClusterSettings": {
         "Enable": false,

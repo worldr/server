@@ -123,6 +123,7 @@ func (a *App) CreateUserWithInviteId(user *model.User, inviteId string) (*model.
 
 	user.EmailVerified = false
 
+	password := user.Password
 	ruser, err := a.CreateUser(user)
 	if err != nil {
 		return nil, err
@@ -134,7 +135,7 @@ func (a *App) CreateUserWithInviteId(user *model.User, inviteId string) (*model.
 
 	a.AddDirectChannels(team.Id, ruser)
 
-	if err := a.sendWelcomeEmail(ruser.Id, ruser.Email, ruser.EmailVerified, ruser.Locale, a.GetSiteURL()); err != nil {
+	if err := a.sendWelcomeEmail(ruser, password, a.GetSiteURL()); err != nil {
 		mlog.Error("Failed to send welcome email on create user with inviteId", mlog.Err(err))
 	}
 
@@ -142,12 +143,13 @@ func (a *App) CreateUserWithInviteId(user *model.User, inviteId string) (*model.
 }
 
 func (a *App) CreateUserAsAdmin(user *model.User) (*model.User, *model.AppError) {
+	password := user.Password
 	ruser, err := a.CreateUser(user)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := a.sendWelcomeEmail(ruser.Id, ruser.Email, ruser.EmailVerified, ruser.Locale, a.GetSiteURL()); err != nil {
+	if err := a.sendWelcomeEmail(ruser, password, a.GetSiteURL()); err != nil {
 		mlog.Error("Failed to send welcome email on create admin user", mlog.Err(err))
 	}
 
@@ -165,13 +167,14 @@ func (a *App) CreateUserFromSignup(user *model.User) (*model.User, *model.AppErr
 	}
 
 	user.EmailVerified = false
+	password := user.Password
 
 	ruser, err := a.CreateUser(user)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := a.sendWelcomeEmail(ruser.Id, ruser.Email, ruser.EmailVerified, ruser.Locale, a.GetSiteURL()); err != nil {
+	if err := a.sendWelcomeEmail(ruser, password, a.GetSiteURL()); err != nil {
 		mlog.Error("Failed to send welcome email on create user from signup", mlog.Err(err))
 	}
 
