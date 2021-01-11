@@ -2,15 +2,13 @@ package sqlstore
 
 import (
 	"bytes"
-	"crypto/tls"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/mattermost/mattermost-server/v5/mlog"
+	"github.com/mattermost/mattermost-server/v5/utils"
 	"github.com/pkg/errors"
 )
 
@@ -36,9 +34,8 @@ type vaultUnsealAPIJSONresponse struct {
 
 type IVault interface {
 	GetSecret(url string, secret string, token string) (string, error)
-	Getk8sServiceAccountToken(tokenFile string) (string, error)
-	Login(url string, token string) (string, error)
-	SendKeyToListener(service string, topSecretKey string) error
+	Getk8sServiceAccountToken(tokenFile string) (*string, error)
+	Login(url string, token *string) (*string, error)
 	WaitForVaultToUnseal(url string, wait time.Duration, retry int) error
 }
 
@@ -102,29 +99,17 @@ type VaultKVSecret struct {
 	Auth     interface{} `json:"auth"`
 }
 
-// Get the k8s service account token.
+// Getk8sServiceAccountToken gets the k8s service account token.
 // There are three possible states:
 //   1. There is no token file. Fine, use unencrypted database.
 //   2. There is a token file but we cannot read it. This is bad and cannot happen.
 //   3. There is a token file and we can read it. All is good, proceed.
-func (*Vault) Getk8sServiceAccountToken(name string) (string, error) {
-	_, err := os.Stat(name)
-	if os.IsNotExist(err) {
-		mlog.Info("k8s token file does not exist")
-		return "", nil
-	}
-	file, err := os.Open(name)
-	if err != nil {
-		mlog.Warn("Cannot open k8s token file", mlog.String("k8s token file", name))
-		return "", errors.Wrap(err, "Cannot open token file")
-	}
-	defer file.Close()
-	token, err := ioutil.ReadAll(file)
+func (*Vault) Getk8sServiceAccountToken(name string) (*string, error) {
+	token, err := utils.ReadTextFile(name)
 	if err != nil {
 		mlog.Warn("Cannot read k8s token file data", mlog.String("k8s token file", name))
-		return "", errors.Wrap(err, "Cannot read contents of token file")
 	}
-	return string(token), nil
+	return token, err
 }
 
 func getVaultUnsealStatus(url string) error {
@@ -198,34 +183,34 @@ func (*Vault) WaitForVaultToUnseal(url string, wait time.Duration, retry int) er
 }
 
 // Login into Vault.
-func (*Vault) Login(url string, token string) (string, error) {
+func (*Vault) Login(url string, token *string) (*string, error) {
 	requestBody, _ := json.Marshal(map[string]string{
-		"jwt":  token,
+		"jwt":  *token,
 		"role": "app-server",
 	})
 
 	resp, err := http.Post(url, "application/json", bytes.NewBuffer(requestBody))
 	if err != nil {
 		mlog.Warn("Cannot POST", mlog.Err(err))
-		return "", errors.Wrap(err, "Cannot POST")
+		return nil, errors.Wrap(err, "Cannot POST")
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != 200 {
 		msg := fmt.Sprintf("Error code not 2XX but %d", resp.StatusCode)
 		mlog.Warn(msg)
-		return "", errors.New(msg)
+		return nil, errors.New(msg)
 	}
 
 	message := new(VaultLogin)
 	err = json.NewDecoder(resp.Body).Decode(message)
 	if err != nil {
 		mlog.Warn("Cannot unmarshal JSON", mlog.Err(err))
-		return "", errors.Wrap(err, "Cannot read body")
+		return nil, errors.Wrap(err, "Cannot read body")
 	}
 
 	mlog.Info("Vault login was successful")
-	return message.Auth.ClientToken, nil
+	return &message.Auth.ClientToken, nil
 }
 
 // Get secret from Vault.
@@ -262,88 +247,45 @@ func (*Vault) GetSecret(url string, secret string, token string) (string, error)
 	return message.Data.TopSecretKey, nil // This is the only success possible.
 }
 
-// Send key via secure socket.
-//
-// There is little point in unit testing this. We are not testing TLS and this
-// does not do anything clever at all with the data it gets. If it does not
-// work, a simple manual test (which is done all the time) should show it.
-//
-// The only way to do unit test it would be to create a mocked TLS listener.
-// This seems rather over kill…
-func (*Vault) SendKeyToListener(service string, topSecretKey string) error {
-	TLSClientConfig := &tls.Config{InsecureSkipVerify: true} // FIXME!
-
-	conn, err := tls.Dial("tcp", service, TLSClientConfig)
-	if err != nil {
-		return errors.Wrap(err, "Cannot connect")
-	}
-
-	conn.Write([]byte(topSecretKey))
-
-	var buf [1024]byte
-	count, err := conn.Read(buf[0:])
-	if err != nil {
-		return errors.Wrap(err, "Cannot read")
-	}
-
-	mlog.Info("Key listener quoth '" + string(buf[0:count]) + "'")
-	return nil
-}
-
-// A key talker provider.
-// The service should be a "host:port" string.
+// AuthoriseAndGet gets a value for a given key from Vault.
 //
 // This need to happen:
 //
-//  1. Check if we are using a Vault server: Does the k8s auth service exist?
+//  1. Check whether the k8s auth service exists, if not–report an error.
 //  2. Read the k8s auth service account token.
 //  3. Wait for the vault server to be unsealed.
 //  4. Get an access token from the vault.
-//  5. Finally, get the PG TDE password from Vault.
-//  6. Send the password to the database so it can either unseal or initialise.
-//
-// Easy.
-func KeyTalker(service string, vault IVault) error {
-	// 1. Check if we are using a Vault server: Does the k8s auth service exist?
-	// 2. Read the k8s auth service account token.
+//  5. Finally, get the value from Vault.
+func AuthoriseAndGet(vault IVault, url, key string) (*string, error) {
+	//  1. Check whether the k8s auth service exists, if not–report an error.
+	//  2. Read the k8s auth service account token.
 	tokenK8s, err := vault.Getk8sServiceAccountToken(VAULT_K8S_SERVICE_ACCOUNT_TOKEN_FILE)
-	if err != nil {
-		mlog.Critical("Cannot read token", mlog.Err(err))
-		return errors.Wrap(err, "There should be a k8s token but we cannot read it: Aborting")
-	}
-	if tokenK8s == "" {
-		mlog.Warn("This does not need Vault, using unencrypted database.")
-		return nil
+	if err != nil || tokenK8s == nil || len(*tokenK8s) == 0 {
+		mlog.Critical("K8s token is unavailable or empty", mlog.Err(err))
+		return nil, errors.Wrap(err, "There should be a non-empty k8s token when the server is configured to use Vault!")
 	}
 
 	// 3. Wait for the vault server to be unsealed.
 	err = vault.WaitForVaultToUnseal(VAULT_SERVER_SEAL_STATUS_URL, VAULT_WAIT_UNSEAL_TIMEOUT_SECS, VAULT_WAIT_UNSEAL_TIMEOUT_SECS)
 	if err != nil {
 		mlog.Critical("Vault seal problem.")
-		return errors.Wrap(err, "Vault seal problem")
+		return nil, errors.Wrap(err, "Vault seal problem")
 	}
 
 	//  4. Get an access token from the vault.
 	tokenVault, err := vault.Login(VAULT_SERVER_LOGIN_URL, tokenK8s)
 	if err != nil {
 		mlog.Critical("Cannot login to Vault")
-		return errors.Wrap(err, "Cannot login to Vault")
+		return nil, errors.Wrap(err, "Cannot login to Vault")
 	}
 
-	// 5. Finally, get the PG TDE password from Vault.
-	topSecretKey, err := vault.GetSecret(VAULT_KV_SECRET_URL, VAULT_SECRET_PG_TDE_KEY, tokenVault)
+	// 5. Finally, get the value for the key from Vault.
+	topSecretValue, err := vault.GetSecret(url, key, *tokenVault)
 	if err != nil {
 		mlog.Critical("Cannot get PG TDE secret!")
-		return errors.Wrap(err, "Cannot get PG TDE secret!")
-	}
-
-	// 6. Send the password to the database so it can either unseal or initialise.
-	err = vault.SendKeyToListener(service, topSecretKey)
-	if err != nil {
-		mlog.Critical("Cannot send PG TDE secret!")
-		return errors.Wrap(err, "Cannot send PG TDE secret!")
+		return nil, errors.Wrap(err, "Cannot get PG TDE secret!")
 	}
 
 	// This is a success!
-	return nil
+	return &topSecretValue, nil
 }

@@ -5,14 +5,16 @@ package sqlstore
 
 import (
 	"context"
+	"crypto/tls"
 	dbsql "database/sql"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
 	"strings"
 	"sync/atomic"
 	"time"
+
+	"github.com/pkg/errors"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/dyatlov/go-opengraph/opengraph"
@@ -241,14 +243,29 @@ func setupConnection(con_type string, dataSource string, settings *model.SqlSett
 		if err == nil {
 			break
 		} else {
-
 			if len(dbHostName) > 0 {
-				// Call key talker in case we need it.
-				msg := fmt.Sprintf("If needed, call Vault and key talker (%s:%s) for database key transactions", dbHostName, KEY_LISTENER_PORT)
-				mlog.Info(msg)
-				err = KeyTalker(dbHostName+":"+KEY_LISTENER_PORT, &Vault{})
-				if err != nil {
-					mlog.Warn("Key talker failed: see above messages for reason")
+				service := dbHostName + ":" + KEY_LISTENER_PORT
+				var dbKey *string = nil
+				switch *settings.Security {
+				case model.DATABASE_SECURITY_LOCAL:
+					dbKey, err = utils.ReadTextFile(*settings.DatabaseKeyFile)
+					if err != nil || len(*dbKey) == 0 {
+						mlog.Error("Local db key is unavailable or missing")
+					}
+				case model.DATABASE_SECURITY_VAULT:
+					msg := fmt.Sprintf("Get the key from Vault for database key transactions")
+					mlog.Info(msg)
+					dbKey, err = AuthoriseAndGet(&Vault{}, VAULT_KV_SECRET_URL, VAULT_SECRET_PG_TDE_KEY)
+					if err != nil {
+						mlog.Warn("Key talker failed: see above messages for reason")
+					}
+				}
+				if dbKey != nil && len(*dbKey) > 0 {
+					// Send the password to the database so it can either unseal or initialise.
+					err = SendKeyToListener(service, dbKey)
+					if err != nil {
+						mlog.Critical("Cannot send PG TDE secret!")
+					}
 				}
 			}
 
@@ -289,6 +306,36 @@ func setupConnection(con_type string, dataSource string, settings *model.SqlSett
 	}
 
 	return dbmap
+}
+
+// SendKeyToListener sends the encryption key via secure socket.
+//
+// There is little point in unit testing this. We are not testing TLS and this
+// does not do anything clever at all with the data it gets. If it does not
+// work, a simple manual test (which is done all the time) should show it.
+//
+// The only way to do unit test it would be to create a mocked TLS listener.
+// This seems rather overkill…
+func SendKeyToListener(service string, topSecretKey *string) error {
+	mlog.Info("Sending the key to", mlog.String("service", service))
+
+	TLSClientConfig := &tls.Config{InsecureSkipVerify: true} // FIXME!
+
+	conn, err := tls.Dial("tcp", service, TLSClientConfig)
+	if err != nil {
+		return errors.Wrap(err, "Cannot connect")
+	}
+
+	conn.Write([]byte(*topSecretKey))
+
+	var buf [1024]byte
+	count, err := conn.Read(buf[0:])
+	if err != nil {
+		return errors.Wrap(err, "Cannot read")
+	}
+
+	mlog.Info("Key listener response", mlog.String("response", string(buf[0:count])))
+	return nil
 }
 
 func (ss *SqlSupplier) SetContext(context context.Context) {

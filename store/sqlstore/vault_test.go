@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/mattermost/mattermost-server/v5/model"
 	"github.com/mattermost/mattermost-server/v5/plugin/plugintest/mock"
 	"github.com/mattermost/mattermost-server/v5/store/sqlstore/mocks"
 	"github.com/pkg/errors"
@@ -116,90 +117,67 @@ const (
 func TestKeyTalkerFailOnAccountToken(t *testing.T) {
 	mockVault := &mocks.IVault{}
 	mockVault.On("Getk8sServiceAccountToken",
-		mock.AnythingOfType("string")).Return("", nil)
+		mock.AnythingOfType("string")).Return(model.NewString(""), nil)
 
-	err := KeyTalker("localhost:8888", mockVault)
+	_, err := AuthoriseAndGet(mockVault, VAULT_KV_SECRET_URL, VAULT_SECRET_PG_TDE_KEY)
 	assert.Nil(t, err)
 }
 
 func TestKeyTalkerFailOnReadK8ServiceAccountToken(t *testing.T) {
 	mockVault := &mocks.IVault{}
 	mockVault.On("Getk8sServiceAccountToken",
-		mock.AnythingOfType("string")).Return("", errors.New("Unit test cannot read token"))
+		mock.AnythingOfType("string")).Return(model.NewString(""), errors.New("Unit test cannot read token"))
 
-	err := KeyTalker("localhost:8888", mockVault)
+	_, err := AuthoriseAndGet(mockVault, VAULT_KV_SECRET_URL, VAULT_SECRET_PG_TDE_KEY)
 	assert.NotNil(t, err)
 }
 
 func TestKeyTalkerFailOnVaultSealed(t *testing.T) {
 	mockVault := &mocks.IVault{}
 	mockVault.On("Getk8sServiceAccountToken",
-		mock.AnythingOfType("string")).Return(FAKE_K8S_SERVICE_ACCOUNT_TOKEN, nil)
+		mock.AnythingOfType("string")).Return(model.NewString(FAKE_K8S_SERVICE_ACCOUNT_TOKEN), nil)
 	mockVault.On("WaitForVaultToUnseal",
 		mock.AnythingOfType("string"),
 		mock.AnythingOfType("time.Duration"),
 		mock.AnythingOfType("int")).Return(errors.New("Unit test cannot read token"))
 
-	err := KeyTalker("localhost:8888", mockVault)
+	_, err := AuthoriseAndGet(mockVault, VAULT_KV_SECRET_URL, VAULT_SECRET_PG_TDE_KEY)
 	assert.NotNil(t, err)
 }
 
 func TestKeyTalkerFailOnLogin(t *testing.T) {
 	mockVault := &mocks.IVault{}
 	mockVault.On("Getk8sServiceAccountToken",
-		mock.AnythingOfType("string")).Return(FAKE_K8S_SERVICE_ACCOUNT_TOKEN, nil)
+		mock.AnythingOfType("string")).Return(model.NewString(FAKE_K8S_SERVICE_ACCOUNT_TOKEN), nil)
 	mockVault.On("WaitForVaultToUnseal",
 		mock.AnythingOfType("string"),
 		mock.AnythingOfType("time.Duration"),
 		mock.AnythingOfType("int")).Return(nil)
 	mockVault.On("Login",
 		mock.AnythingOfType("string"),
-		mock.AnythingOfType("string")).Return("", errors.New("unit test cannot login"))
+		mock.AnythingOfType("*string")).Return(model.NewString(""), errors.New("unit test cannot login"))
 
-	err := KeyTalker("localhost:8888", mockVault)
+	_, err := AuthoriseAndGet(mockVault, VAULT_KV_SECRET_URL, VAULT_SECRET_PG_TDE_KEY)
 	assert.NotNil(t, err)
 }
 
 func TestKeyTalkerFailOnSecret(t *testing.T) {
 	mockVault := &mocks.IVault{}
 	mockVault.On("Getk8sServiceAccountToken",
-		mock.AnythingOfType("string")).Return(FAKE_K8S_SERVICE_ACCOUNT_TOKEN, nil)
+		mock.AnythingOfType("string")).Return(model.NewString(FAKE_K8S_SERVICE_ACCOUNT_TOKEN), nil)
 	mockVault.On("WaitForVaultToUnseal",
 		mock.AnythingOfType("string"),
 		mock.AnythingOfType("time.Duration"),
 		mock.AnythingOfType("int")).Return(nil)
 	mockVault.On("Login",
 		mock.AnythingOfType("string"),
-		mock.AnythingOfType("string")).Return(FAKE_VAULT_TOKEN, nil)
+		mock.AnythingOfType("*string")).Return(model.NewString(FAKE_VAULT_TOKEN), nil)
 	mockVault.On("GetSecret",
 		mock.AnythingOfType("string"),
 		mock.AnythingOfType("string"),
 		mock.AnythingOfType("string")).Return("", errors.New("unit test cannot get PG TDE key"))
 
-	err := KeyTalker("localhost:8888", mockVault)
-	assert.NotNil(t, err)
-}
-
-func TestKeyTalkerFailOnKeySend(t *testing.T) {
-	mockVault := &mocks.IVault{}
-	mockVault.On("Getk8sServiceAccountToken",
-		mock.AnythingOfType("string")).Return(FAKE_K8S_SERVICE_ACCOUNT_TOKEN, nil)
-	mockVault.On("WaitForVaultToUnseal",
-		mock.AnythingOfType("string"),
-		mock.AnythingOfType("time.Duration"),
-		mock.AnythingOfType("int")).Return(nil)
-	mockVault.On("Login",
-		mock.AnythingOfType("string"),
-		mock.AnythingOfType("string")).Return(FAKE_VAULT_TOKEN, nil)
-	mockVault.On("GetSecret",
-		mock.AnythingOfType("string"),
-		mock.AnythingOfType("string"),
-		mock.AnythingOfType("string")).Return(FAKE_VAULT_PG_TDE_KEY, nil)
-	mockVault.On("SendKeyToListener",
-		mock.AnythingOfType("string"),
-		mock.AnythingOfType("string")).Return(errors.New("unit test cannot send PG TDE key"))
-
-	err := KeyTalker("localhost:8888", mockVault)
+	_, err := AuthoriseAndGet(mockVault, VAULT_KV_SECRET_URL, VAULT_SECRET_PG_TDE_KEY)
 	assert.NotNil(t, err)
 }
 
@@ -209,23 +187,20 @@ func TestKeyTalkerFailOnKeySend(t *testing.T) {
 func TestKeyTalkerHappyPath(t *testing.T) {
 	mockVault := &mocks.IVault{}
 	mockVault.On("Getk8sServiceAccountToken",
-		mock.AnythingOfType("string")).Return(FAKE_K8S_SERVICE_ACCOUNT_TOKEN, nil)
+		mock.AnythingOfType("string")).Return(model.NewString(FAKE_K8S_SERVICE_ACCOUNT_TOKEN), nil)
 	mockVault.On("WaitForVaultToUnseal",
 		mock.AnythingOfType("string"),
 		mock.AnythingOfType("time.Duration"),
 		mock.AnythingOfType("int")).Return(nil)
 	mockVault.On("Login",
 		mock.AnythingOfType("string"),
-		mock.AnythingOfType("string")).Return(FAKE_VAULT_TOKEN, nil)
+		mock.AnythingOfType("*string")).Return(model.NewString(FAKE_VAULT_TOKEN), nil)
 	mockVault.On("GetSecret",
 		mock.AnythingOfType("string"),
 		mock.AnythingOfType("string"),
 		mock.AnythingOfType("string")).Return(FAKE_VAULT_PG_TDE_KEY, nil)
-	mockVault.On("SendKeyToListener",
-		mock.AnythingOfType("string"),
-		mock.AnythingOfType("string")).Return(nil)
 
-	err := KeyTalker("localhost:8888", mockVault)
+	_, err := AuthoriseAndGet(mockVault, VAULT_KV_SECRET_URL, VAULT_SECRET_PG_TDE_KEY)
 	assert.Nil(t, err)
 }
 
@@ -237,8 +212,8 @@ func TestKeyTalkerHappyPath(t *testing.T) {
 func TestGetk8sServiceAccountTokenNoTokenFile(t *testing.T) {
 	vault := Vault{}
 	token, err := vault.Getk8sServiceAccountToken("cthulhu/fhtagn")
-	assert.Nil(t, err)
-	assert.Equal(t, "", token)
+	assert.NotNil(t, err)
+	assert.Nil(t, token)
 }
 
 // K8s service account: cannot open the k8s token file.
@@ -282,7 +257,7 @@ func TestGetk8sServiceAccountTokenSuccess(t *testing.T) {
 	vault := Vault{}
 	token, err := vault.Getk8sServiceAccountToken("test_token.txt")
 	assert.Nil(t, err)
-	assert.Equal(t, "Fear the old blood", token)
+	assert.Equal(t, "Fear the old blood", *token)
 }
 
 // Wait for vault to unseal: happy path.
@@ -362,9 +337,9 @@ func TestLoginHappyPath(t *testing.T) {
 	defer ts.Close()
 
 	vault := &Vault{}
-	token, err := vault.Login(ts.URL, "Fear the old blood")
+	token, err := vault.Login(ts.URL, model.NewString("Fear the old blood"))
 	assert.Nil(t, err)
-	assert.Equal(t, FAKE_VAULT_TOKEN, token)
+	assert.Equal(t, FAKE_VAULT_TOKEN, *token)
 }
 
 // Vault login: not a 2XX status code.
@@ -375,9 +350,9 @@ func TestLoginStatusCode(t *testing.T) {
 	defer ts.Close()
 
 	vault := &Vault{}
-	token, err := vault.Login(ts.URL, "Fear the old blood")
+	token, err := vault.Login(ts.URL, model.NewString("Fear the old blood"))
 	assert.NotNil(t, err)
-	assert.Equal(t, "", token)
+	assert.Nil(t, token)
 }
 
 // Vault login: Bad body.
@@ -388,17 +363,17 @@ func TestLoginBadBody(t *testing.T) {
 	defer ts.Close()
 
 	vault := &Vault{}
-	token, err := vault.Login(ts.URL, "Fear the old blood")
+	token, err := vault.Login(ts.URL, model.NewString("Fear the old blood"))
 	assert.NotNil(t, err)
-	assert.Equal(t, "", token)
+	assert.Nil(t, token)
 }
 
 // Vault login: cannot POST.
 func TestLoginBadPOST(t *testing.T) {
 	vault := &Vault{}
-	token, err := vault.Login("https://[::1]:22"+VAULT_LOGIN_PATH, "Fear the old blood")
+	token, err := vault.Login("https://[::1]:22"+VAULT_LOGIN_PATH, model.NewString("Fear the old blood"))
 	assert.NotNil(t, err)
-	assert.Equal(t, "", token)
+	assert.Nil(t, token)
 }
 
 // Vault get KV secret: Happy path

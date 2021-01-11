@@ -4,10 +4,15 @@
 package utils
 
 import (
+	"io/ioutil"
 	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
+
+	"github.com/mattermost/mattermost-server/v5/mlog"
+	"github.com/pkg/errors"
 )
 
 func StringInSlice(a string, slice []string) bool {
@@ -106,4 +111,26 @@ func GetHostnameFromSiteURL(siteURL string) string {
 	}
 
 	return u.Hostname()
+}
+
+// ReadTextFile reads a whole file content as a string and wraps basic errors.
+func ReadTextFile(name string) (*string, error) {
+	_, err := os.Stat(name)
+	if os.IsNotExist(err) {
+		mlog.Info("File does not exist")
+		return nil, err
+	}
+	file, err := os.Open(name)
+	if err != nil {
+		mlog.Warn("Cannot open file", mlog.String("file", name))
+		return nil, errors.Wrap(err, "Cannot open file")
+	}
+	defer file.Close()
+	text, err := ioutil.ReadAll(file)
+	if err != nil {
+		mlog.Warn("Cannot read k8s token file data", mlog.String("k8s token file", name))
+		return nil, errors.Wrap(err, "Cannot read contents of token file")
+	}
+	content := string(text)
+	return &content, nil
 }

@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/mattermost/ldap"
+	"github.com/mattermost/mattermost-server/v5/mlog"
 )
 
 const (
@@ -32,6 +33,9 @@ const (
 	DATABASE_DRIVER_SQLITE   = "sqlite3"
 	DATABASE_DRIVER_MYSQL    = "mysql"
 	DATABASE_DRIVER_POSTGRES = "postgres"
+	DATABASE_SECURITY_NONE   = "NONE"
+	DATABASE_SECURITY_LOCAL  = "LOCAL"
+	DATABASE_SECURITY_VAULT  = "VAULT"
 
 	MINIO_ACCESS_KEY = "minioaccesskey"
 	MINIO_SECRET_KEY = "miniosecretkey"
@@ -981,6 +985,8 @@ type SqlSettings struct {
 	Trace                       *bool    `restricted:"true"`
 	AtRestEncryptKey            *string  `restricted:"true"`
 	QueryTimeout                *int     `restricted:"true"`
+	Security                    *string  `restricted:"true"`
+	DatabaseKeyFile             *string  `restricted:"true"`
 }
 
 func (s *SqlSettings) SetDefaults(isUpdate bool) {
@@ -1028,6 +1034,15 @@ func (s *SqlSettings) SetDefaults(isUpdate bool) {
 
 	if s.QueryTimeout == nil {
 		s.QueryTimeout = NewInt(30)
+	}
+
+	if s.Security == nil || len(*s.Security) == 0 {
+		mlog.Warn("SqlSettings.setDefault(): using unencrypted database!")
+		s.Security = NewString(DATABASE_SECURITY_NONE)
+	}
+
+	if s.DatabaseKeyFile == nil {
+		s.DatabaseKeyFile = NewString("")
 	}
 }
 
@@ -2895,6 +2910,21 @@ func (s *SqlSettings) isValid() *AppError {
 
 	if *s.MaxOpenConns <= 0 {
 		return NewAppError("Config.IsValid", "model.config.is_valid.sql_max_conn.app_error", nil, "", http.StatusBadRequest)
+	}
+
+	if s.Security != nil && len(*s.Security) > 0 {
+		if !(*s.Security == DATABASE_SECURITY_NONE || *s.Security == DATABASE_SECURITY_LOCAL || *s.Security == DATABASE_SECURITY_VAULT) {
+			return NewAppError("Config.IsValid", "model.config.is_valid.sql_security", nil, "unexpected database security setting", http.StatusBadRequest)
+		}
+		if *s.Security == DATABASE_SECURITY_LOCAL && (s.DatabaseKeyFile == nil || len(*s.DatabaseKeyFile) == 0) {
+			return NewAppError(
+				"Config.IsValid",
+				"model.config.is_valid.sql_security",
+				nil,
+				"the database security setting is LOCAL, but the database key file path is missing",
+				http.StatusBadRequest,
+			)
+		}
 	}
 
 	return nil
