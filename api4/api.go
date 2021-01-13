@@ -67,6 +67,9 @@ type Routes struct {
 	// Worldr admin API.
 	WAdmin *mux.Router // '/api/worldr/v1/admin'
 
+	// Worldr security API.
+	WSecure *mux.Router // '/api/worldr/v1/secure'
+
 	Plugins *mux.Router // 'api/v4/plugins'
 	Plugin  *mux.Router // 'api/v4/plugins/{plugin_id:[A-Za-z0-9_-]+}'
 
@@ -150,6 +153,7 @@ func Init(configservice configservice.ConfigService, globalOptionsFunc app.AppOp
 	api.BaseRoutes.WFiles = api.BaseRoutes.WorldrRoot.PathPrefix("/files").Subrouter()
 	api.BaseRoutes.WPosts = api.BaseRoutes.WorldrRoot.PathPrefix("/posts").Subrouter()
 	api.BaseRoutes.WAdmin = api.BaseRoutes.WorldrRoot.PathPrefix("/admin").Subrouter()
+	api.BaseRoutes.WSecure = api.BaseRoutes.WorldrRoot.PathPrefix("/secure").Subrouter()
 
 	// Mattermost original API
 
@@ -240,16 +244,19 @@ func Init(configservice configservice.ConfigService, globalOptionsFunc app.AppOp
 	api.BaseRoutes.TermsOfService = api.BaseRoutes.ApiRoot.PathPrefix("/terms_of_service").Subrouter()
 	api.BaseRoutes.Groups = api.BaseRoutes.ApiRoot.PathPrefix("/groups").Subrouter()
 
-	api.InitWAdmin()
-	api.InitUser()
+	api.InitWChannel()
 	api.InitWUser()
+	api.InitWFile()
+	api.InitWPosts()
+	api.InitWAdmin()
+	api.InitWSecure()
+
+	api.InitUser()
 	api.InitBot()
 	api.InitTeam()
 	api.InitChannel()
-	api.InitWChannel()
 	api.InitPost()
 	api.InitFile()
-	api.InitWFile()
 	api.InitSystem()
 	api.InitLicense()
 	api.InitConfig()
@@ -278,7 +285,6 @@ func Init(configservice configservice.ConfigService, globalOptionsFunc app.AppOp
 	api.InitTermsOfService()
 	api.InitGroup()
 	api.InitAction()
-	api.InitWPosts()
 
 	root.Handle("/api/v4/{anything:.*}", http.HandlerFunc(api.Handle404))
 	root.Handle("/api/worldr/v1/{anything:.*}", http.HandlerFunc(api.Handle404))

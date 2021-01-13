@@ -21,7 +21,7 @@ echo Existing tags:
 git fetch --all --tags
 git tag
 
-V=$(cat ./VERSION.txt)
+V=$(cat ./VERSION)
 EXISTING=$(git tag|grep "$V")
 echo Current version is \""$V"\", existing matching version is \""$EXISTING"\".
 if [[ -z "$EXISTING" ]]; then

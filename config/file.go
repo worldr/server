@@ -48,7 +48,16 @@ func NewFileStore(path string, watch bool) (fs *FileStore, err error) {
 		watch: watch,
 	}
 	if err = fs.Load(); err != nil {
-		return nil, errors.Wrap(err, "failed to load")
+		return nil, errors.Wrapf(err, "failed to load main config file from %s", resolvedPath)
+	}
+
+	companyPath := fs.commonStore.Get().ServiceSettings.CompanyConfig
+	if companyPath != nil && *companyPath != "" {
+		resolved, err1 := resolveConfigFilePath(*companyPath)
+		if err1 != nil {
+			return nil, errors.Wrapf(err1, "failed to resolve company configuration from %s", *companyPath)
+		}
+		fs.config.ServiceSettings.CompanyConfig = &resolved
 	}
 
 	if fs.watch {

@@ -249,6 +249,7 @@ var ServerTLSSupportedCiphers = map[string]uint16{
 
 type ServiceSettings struct {
 	ServerTag                                         *string
+	CompanyConfig                                     *string
 	SiteURL                                           *string  `restricted:"true"`
 	WebsocketURL                                      *string  `restricted:"true"`
 	LicenseFileLocation                               *string  `restricted:"true"`
@@ -345,6 +346,10 @@ func (s *ServiceSettings) SetDefaults(isUpdate bool) {
 		} else {
 			s.ServerTag = NewString("")
 		}
+	}
+
+	if s.CompanyConfig == nil {
+		s.CompanyConfig = NewString("")
 	}
 
 	if s.SiteURL == nil {

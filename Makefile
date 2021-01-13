@@ -377,7 +377,8 @@ validate-go-version: ## Validates the installed version of go against Mattermost
 		exit 1; \
 	fi
 
-run-server: prepackaged-binaries validate-go-version start-docker ## Starts the server.
+#ORIGINAL: run-server: prepackaged-binaries validate-go-version start-docker ## Starts the server.
+run-server: validate-go-version start-docker ## Starts the server.
 	@echo Running mattermost for development
 
 	#M: removed client build

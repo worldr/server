@@ -174,28 +174,38 @@ func (a *App) sendWelcomeEmail(user *model.User, password string, siteURL string
 		return model.NewAppError("SendWelcomeEmail", "api.user.send_welcome_email_and_forget.failed.error", nil, "Send Email Notifications and Require Email Verification is disabled in the system console", http.StatusInternalServerError)
 	}
 
+	company, err := a.Srv().CompanyConfig()
+	if err != nil {
+		return err
+	}
+	var alias string
+	if len(company.Aliases) == 0 {
+		alias = company.Name
+	} else {
+		alias = company.Aliases[0]
+	}
+	companyName := map[string]interface{}{"Company": company.Name}
+
 	T := utils.GetUserTranslations(user.Locale)
 
-	serverURL := condenseSiteURL(siteURL)
-
-	subject := T("api.templates.welcome_subject",
-		map[string]interface{}{"SiteName": a.ClientConfig()["SiteName"],
-			"ServerURL": serverURL})
+	subject := T("api.templates.welcome_subject", companyName)
 
 	bodyPage := a.newEmailTemplate("welcome_body", user.Locale)
 	bodyPage.Props["SiteURL"] = siteURL
-	bodyPage.Props["Title"] = T("api.templates.welcome_body.title", map[string]interface{}{"ServerURL": serverURL})
+	bodyPage.Props["Title"] = T("api.templates.welcome_body.title", companyName)
 	bodyPage.Props["Info"] = T("api.templates.welcome_body.info")
 	bodyPage.Props["Button"] = T("api.templates.welcome_body.button")
+	bodyPage.Props["Info1"] = T("api.templates.welcome_body.info1")
 	bodyPage.Props["Info2"] = T("api.templates.welcome_body.info2")
-	bodyPage.Props["Info3"] = T("api.templates.welcome_body.info3")
+	bodyPage.Props["Info3"] = T("api.templates.welcome_body.info3", companyName)
 	bodyPage.Props["SiteURL"] = siteURL
 	bodyPage.Props["UsernameLabel"] = T("api.templates.welcome_username")
 	bodyPage.Props["Username"] = user.Username
 	bodyPage.Props["PasswordLabel"] = T("api.templates.welcome_password")
 	bodyPage.Props["Password"] = password
 	bodyPage.Props["CompanyLabel"] = T("api.templates.welcome_company")
-	bodyPage.Props["Company"] = "Company Name" // TODO add company info config
+	bodyPage.Props["CompanyAlias"] = alias
+	bodyPage.Props["Company"] = company.Name
 
 	bodyPage.Props["AppDownloadInfo"] = T("api.templates.welcome_body.app_download_info")
 	bodyPage.Props["AndroidAppDownloadLink"] = *a.Config().NativeAppSettings.AndroidAppDownloadLink

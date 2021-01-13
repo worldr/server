@@ -2364,7 +2364,7 @@
   },
   {
     "id": "api.templates.welcome_body.app_download_info",
-    "translation": "Please download the apps for PC, Mac, iOS and Android using the links below."
+    "translation": "Please download the apps for iOS, Android, Mac, PC and Linux using the links below."
   },
   {
     "id": "api.templates.welcome_body.button",
@@ -2375,20 +2375,24 @@
     "translation": "Please verify your email address by clicking below."
   },
   {
+    "id": "api.templates.welcome_body.info1",
+    "translation": "Welcome!"
+  },
+  {
     "id": "api.templates.welcome_body.info2",
     "translation": "Your account details:"
   },
   {
     "id": "api.templates.welcome_body.info3",
-    "translation": "Worldr: Sovereign, Intelligent and Secure Communication Platform."
+    "translation": "You joined Worldr at {{ .Company }}: sovereign, intelligent, and secure communication platform."
   },
   {
     "id": "api.templates.welcome_body.title",
-    "translation": "You've joined Worldr for Company Name"
+    "translation": "You've joined Worldr at {{ .Company }}"
   },
   {
     "id": "api.templates.welcome_subject",
-    "translation": "[Worldr] You joined Worldr for Company Name"
+    "translation": "[Worldr] You joined Worldr at {{ .Company }}"
   },
   {
     "id": "api.templates.welcome_username",

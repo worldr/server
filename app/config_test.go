@@ -4,6 +4,7 @@
 package app
 
 import (
+	"os"
 	"strconv"
 	"testing"
 	"time"
@@ -160,4 +161,35 @@ func TestEnsureInstallationDate(t *testing.T) {
 			sqlStore.GetMaster().Exec("DELETE FROM Users")
 		})
 	}
+}
+
+func TestCompanyConfig(t *testing.T) {
+	th := Setup(t)
+	defer th.TearDown()
+
+	t.Run("no configuration", func(t *testing.T) {
+		_, err := th.App.Srv().CompanyConfig()
+		assert.NotNil(t, err)
+		assert.Equal(t, "company_config.undefined", err.Id)
+	})
+
+	t.Run("success", func(t *testing.T) {
+		th.App.UpdateConfig(func(cfg *model.Config) {
+			*cfg.ServiceSettings.CompanyConfig = "company.json"
+		})
+
+		path := th.App.Config().ServiceSettings.CompanyConfig
+		_, errFile := os.Stat(*path)
+		assert.True(t, os.IsNotExist(errFile), "file should not exist")
+
+		content, err := th.App.Srv().CompanyConfig()
+		assert.Nil(t, err)
+		assert.True(t, len(content.Server) > 0, "server address is empty")
+		assert.True(t, len(content.Key) == 0, "server key should be empty")
+		assert.Equal(t, "local", content.Deployment, "unexpected deployment name")
+
+		path = th.App.Config().ServiceSettings.CompanyConfig
+		_, errFile = os.Stat(*path)
+		assert.Nil(t, errFile, "file should exist")
+	})
 }

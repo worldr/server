@@ -59,3 +59,20 @@ func AdminSetupStatusFromJson(data io.Reader) *AdminSetupStatus {
 	json.NewDecoder(data).Decode(&w)
 	return w
 }
+
+type VersionedValue struct {
+	Value     string `json:"value,omitempty"`
+	Version   string `json:"version"`
+	Signature string `json:"signature"` // server certificate signature
+}
+
+func (me *VersionedValue) ToJson() string {
+	b, _ := json.Marshal(me)
+	return string(b)
+}
+
+func VersionedValueFromJson(data io.Reader) *VersionedValue {
+	var w *VersionedValue
+	json.NewDecoder(data).Decode(&w)
+	return w
+}

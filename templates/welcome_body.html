@@ -8,30 +8,29 @@
                     <td style="border: 1px solid #ddd;">
                         <table align="center" border="0" cellpadding="0" cellspacing="0" width="100%" style="border-collapse: collapse;">
                             <tr>
-                                <td style="padding: 20px 20px 10px; text-align:left;">
-                                    <img src="https://worldr.com/logo192.png" width="130px" style="opacity: 0.5" alt="">
+                                <td style="padding-left: 40px">
+                                    <img src="https://worldr.com/logo192.png" width="130px" title="Worldr at {{ .Props.Company }}" alt="Worldr at {{ .Props.Company }}">
                                 </td>
                             </tr>
                             <tr>
                                 <td>
                                     <table border="0" cellpadding="0" cellspacing="0" style="padding: 20px 50px 0; margin: 0 auto">
                                         <tr>
-                                            <td style="text-align: center;">
+                                            <td>
+                                                <h2>{{.Props.Info1}}</h2>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td>
                                                 <h2>{{.Props.Info3}}</h2>
                                             </td>
                                         </tr>
                                         <tr>
                                             <td style="border-bottom: 1px solid #ddd; border-top: 1px solid #ddd; padding: 20px 0px;">
                                                 <p>{{.Props.Info2}}</p>
-                                                {{if .Props.Company}}
-                                                <p><strong>{{.Props.CompanyLabel}}</strong> {{.Props.Company}}</p>
-                                                {{end}}
-                                                {{if .Props.Username}}
+                                                <p><strong>{{.Props.CompanyLabel}}</strong> {{.Props.CompanyAlias}}</p>
                                                 <p><strong>{{.Props.UsernameLabel}}</strong> {{.Props.Username}}</p>
-                                                {{end}}
-                                                {{if .Props.Password}}
                                                 <p><strong>{{.Props.PasswordLabel}}</strong> {{.Props.Password}}</p>
-                                                {{end}}
                                             </td>
                                         </tr>
                                         <tr>

@@ -114,6 +114,11 @@ func (c *WClient) RegisterUsersWithEmailsUrl() string {
 	return fmt.Sprintf("%v/admin/users/onboard/emails", c.ApiUrl)
 }
 
+// Get absolute api url of the get company info handle.
+func (c *WClient) GetCompanyInfoUrl() string {
+	return fmt.Sprintf("%v/secure/company", c.ApiUrl)
+}
+
 //
 // METHODS
 //
@@ -302,4 +307,16 @@ func (c *WClient) RegisterUsersWithEmails(request []string) (*RegisterEmailsResp
 		return result, BuildResponse(r)
 	}
 	return nil, BuildErrorResponse(r, NewAppError("RegisterUsersWithEmails", "WClient.RegisterUsersWithEmails", nil, "Failed to unmarshall response JSON", http.StatusInternalServerError))
+}
+
+func (c *WClient) GetCompanyInfo() (*CompanyConfig, *Response) {
+	r, err := c.MMClient.DoApiGetWithUrl(c.GetCompanyInfoUrl(), "", false)
+	if err != nil {
+		return nil, BuildErrorResponse(r, err)
+	}
+	defer closeBody(r)
+	if result, err := CompanyConfigFromJson(r.Body); err == nil {
+		return result, BuildResponse(r)
+	}
+	return nil, BuildErrorResponse(r, NewAppError("GetCompanyInfo", "WClient.GetCompanyInfo", nil, "Failed to unmarshall response JSON", http.StatusInternalServerError))
 }

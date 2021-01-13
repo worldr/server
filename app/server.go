@@ -100,6 +100,9 @@ type Server struct {
 	clusterLeaderListenerId string
 	configStore             config.Store
 	asymmetricSigningKey    *ecdsa.PrivateKey
+	certSigningKey          *model.SystemEd25519Key
+	certSignature           *model.VersionedValue
+	companyConfig           *model.CompanyConfig
 	postActionCookieSecret  []byte
 
 	pluginCommands     []*PluginCommand

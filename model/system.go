@@ -16,6 +16,7 @@ const (
 	SYSTEM_ACTIVE_LICENSE_ID         = "ActiveLicenseId"
 	SYSTEM_LAST_COMPLIANCE_TIME      = "LastComplianceTime"
 	SYSTEM_ASYMMETRIC_SIGNING_KEY    = "AsymmetricSigningKey"
+	SYSTEM_CERTIFICATE_SIGNING_KEY   = "CertificateSigningKey"
 	SYSTEM_POST_ACTION_COOKIE_SECRET = "PostActionCookieSecret"
 	SYSTEM_INSTALLATION_DATE_KEY     = "InstallationDate"
 )
@@ -49,6 +50,12 @@ type SystemECDSAKey struct {
 	X     *big.Int `json:"x"`
 	Y     *big.Int `json:"y"`
 	D     *big.Int `json:"d,omitempty"`
+}
+
+type SystemEd25519Key struct {
+	Secret  string `json:"secret"`
+	Public  string `json:"public"`
+	Version int    `json:"version"`
 }
 
 // ServerBusyState provides serialization for app.Busy.
