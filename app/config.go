@@ -324,10 +324,10 @@ func (s *Server) CompanyConfig() (*model.CompanyConfig, *model.AppError) {
 
 	if s.companyConfig == nil {
 		var config *model.CompanyConfig
-
 		f, err := os.Open(*path)
 		if err != nil {
 			if os.IsNotExist(err) {
+				mlog.Warn("Company config file does not exist, creating a default one", mlog.String("path", *path))
 				config = &model.CompanyConfig{}
 				config.SetDefaults()
 				var data []byte
@@ -348,6 +348,7 @@ func (s *Server) CompanyConfig() (*model.CompanyConfig, *model.AppError) {
 			return nil, model.NewAppError("CompanyConfig", "company_config.parse", nil, err.Error(), http.StatusInternalServerError)
 		}
 
+		mlog.Info("Company configuration", mlog.String("json", config.ToJson()), mlog.String("path", *path))
 		s.companyConfig = config
 
 		defer func() {

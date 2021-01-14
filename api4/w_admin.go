@@ -44,7 +44,7 @@ func isSystemAdmin(c *Context, where, errorId string) bool {
 	return false
 }
 
-func getTeamAndAdmin(c *Context) (*model.Team, *model.User, *model.AppError) {
+func getTeamAndAdmin(c *Context) (*model.Team, *model.User, int64, *model.AppError) {
 	team, err := c.App.MainTeam()
 	if err != nil {
 		auditRec1 := c.MakeAuditRecord("createMainTeam", audit.Attempt)
@@ -62,9 +62,10 @@ func getTeamAndAdmin(c *Context) (*model.Team, *model.User, *model.AppError) {
 		}
 		defer c.LogAuditRec(auditRec2)
 	}
+
 	if err != nil {
 		err = model.NewAppError("getTeamAndAdmin", "main_team", nil, err.Error(), http.StatusInternalServerError)
-		return nil, nil, err
+		return nil, nil, 0, err
 	}
 
 	userGetOptions := &model.UserGetOptions{
@@ -74,17 +75,24 @@ func getTeamAndAdmin(c *Context) (*model.Team, *model.User, *model.AppError) {
 		PerPage: 1,
 	}
 	profiles, err := c.App.GetUsersPage(userGetOptions, c.IsSystemAdmin())
+
+	userCountOptions := model.UserCountOptions{
+		IncludeBotAccounts: true,
+		IncludeDeleted:     true,
+	}
+	totalUsers, _ := c.App.Srv().Store.User().Count(userCountOptions)
+
 	if err != nil || len(profiles) == 0 {
-		return team, nil, err
+		return team, nil, totalUsers, err
 	}
 
-	return team, profiles[0], nil
+	return team, profiles[0], totalUsers, nil
 }
 
 // getSetupStatus() Checks whether the main team is present in the db and
 // that it has a system administrator.
 func getSetupStatus(c *Context, w http.ResponseWriter, r *http.Request) {
-	team, admin, err := getTeamAndAdmin(c)
+	team, admin, _, err := getTeamAndAdmin(c)
 	if err != nil {
 		c.Err = err
 		return
@@ -94,7 +102,7 @@ func getSetupStatus(c *Context, w http.ResponseWriter, r *http.Request) {
 }
 
 func createInitialAdmin(c *Context, w http.ResponseWriter, r *http.Request) {
-	team, admin, err := getTeamAndAdmin(c)
+	team, admin, totalUsers, err := getTeamAndAdmin(c)
 	if err != nil || team == nil {
 		msg := "main team should be available by the time the initial admin gets created"
 		if err != nil {
@@ -111,6 +119,16 @@ func createInitialAdmin(c *Context, w http.ResponseWriter, r *http.Request) {
 	}
 
 	if admin == nil {
+		if totalUsers > 0 {
+			c.Err = model.NewAppError(
+				"createMainAdmin",
+				"initial_admin.users_already_present",
+				nil,
+				"at least one non-administrator user is already present on the server",
+				http.StatusInternalServerError,
+			)
+			return
+		}
 		auditRec1 := c.MakeAuditRecord("createMainAdmin", audit.Attempt)
 		defer c.LogAuditRec(auditRec1)
 
@@ -122,7 +140,7 @@ func createInitialAdmin(c *Context, w http.ResponseWriter, r *http.Request) {
 		user.SanitizeInput(c.IsSystemAdmin())
 		user.EmailVerified = true
 
-		user.Roles = model.SYSTEM_USER_ROLE_ID + " " + model.SYSTEM_ADMIN_ROLE_ID
+		user.Roles = model.SYSTEM_ADMIN_ROLE_ID + " " + model.SYSTEM_USER_ROLE_ID
 
 		// create the user
 		admin, err = c.App.CreateUser(user)

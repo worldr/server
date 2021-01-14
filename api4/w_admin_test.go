@@ -99,8 +99,8 @@ func TestCreateInitialAdmin1(t *testing.T) {
 		// initial admin
 		response, r := th.WSystemAdminClient.CreateInitialAdmin(initialAdmin)
 		CheckNoError(t, r)
-		assert.Equal(t, "worldr", response.Username)
-		assert.True(t, strings.Contains(response.Roles, "system_admin"))
+		assert.Equal(t, initialAdmin.Username, response.Username)
+		assert.True(t, strings.Contains(response.Roles, model.SYSTEM_ADMIN_ROLE_ID))
 	})
 }
 

@@ -20,6 +20,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -251,9 +252,24 @@ func (a *App) CreateGuest(user *model.User) (*model.User, *model.AppError) {
 }
 
 func (a *App) createUserOrGuest(user *model.User, guest bool) (*model.User, *model.AppError) {
-	user.Roles = model.SYSTEM_USER_ROLE_ID
-	if guest {
-		user.Roles = model.SYSTEM_GUEST_ROLE_ID
+	if len(user.Roles) > 0 {
+		roles := strings.Split(user.Roles, " ")
+		for _, v := range roles {
+			valid := v == model.SYSTEM_USER_ROLE_ID ||
+				v == model.SYSTEM_GUEST_ROLE_ID ||
+				v == model.SYSTEM_ADMIN_ROLE_ID ||
+				v == model.SYSTEM_POST_ALL_ROLE_ID ||
+				v == model.SYSTEM_POST_ALL_PUBLIC_ROLE_ID ||
+				v == model.SYSTEM_USER_ACCESS_TOKEN_ROLE_ID
+			if !valid {
+				return nil, model.NewAppError("CreateUser", "api.user.create_user.custom_roles.app_error", nil, "trying to create a user with invalid roles", http.StatusBadRequest)
+			}
+		}
+	} else {
+		user.Roles = model.SYSTEM_USER_ROLE_ID
+		if guest {
+			user.Roles = model.SYSTEM_GUEST_ROLE_ID
+		}
 	}
 
 	if !user.IsLDAPUser() && !user.IsSAMLUser() && !user.IsGuest() && !CheckUserDomain(user, *a.Config().TeamSettings.RestrictCreationToDomains) {
@@ -270,13 +286,17 @@ func (a *App) createUserOrGuest(user *model.User, guest bool) (*model.User, *mod
 	if err != nil {
 		return nil, err
 	}
-	if count <= 0 {
+	if count <= 0 && !strings.Contains(user.Roles, model.SYSTEM_ADMIN_ROLE_ID) {
 		user.Roles = model.SYSTEM_ADMIN_ROLE_ID + " " + model.SYSTEM_USER_ROLE_ID
 	}
 
 	if _, ok := utils.GetSupportedLocales()[user.Locale]; !ok {
 		user.Locale = *a.Config().LocalizationSettings.DefaultClientLocale
 	}
+
+	roles := model.RemoveDuplicateStrings(strings.Split(user.Roles, " "))
+	sort.Strings(roles)
+	user.Roles = strings.Join(roles, " ")
 
 	ruser, err := a.createUser(user)
 	if err != nil {
