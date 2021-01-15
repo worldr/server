@@ -418,6 +418,11 @@ func registerUsersWithEmails(c *Context, w http.ResponseWriter, r *http.Request)
 	if !isSystemAdmin(c, "registerUsersWithEmails", "admin_register_emails") {
 		return
 	}
+	team, err1 := c.App.MainTeam()
+	if err1 != nil {
+		c.Err = err1
+		return
+	}
 
 	emails := model.ArrayFromJson(r.Body)
 	if len(emails) == 0 {
@@ -429,6 +434,8 @@ func registerUsersWithEmails(c *Context, w http.ResponseWriter, r *http.Request)
 	failures := make(map[string]string, len(emails))
 
 	regName := regexp.MustCompile(`[._-]`)
+
+	uids := make([]string, 0, len(emails))
 
 	for _, email := range emails {
 		email = strings.ToLower(strings.Trim(email, ", \n\t\r"))
@@ -464,13 +471,21 @@ func registerUsersWithEmails(c *Context, w http.ResponseWriter, r *http.Request)
 
 		ruser, err := executeCreateUser(c, &user, "", "")
 		if err != nil {
-			failures[email] = fmt.Sprintf("%v:%v", err.Id, err.Message)
+			failures[email] = fmt.Sprintf("%v", err.Message)
 		} else {
 			successes = append(successes, ruser)
 			// This method of registration returns the password to the caller.
 			// This may change in the future.
 			ruser.Password = password
+			uids = append(uids, ruser.Id)
 		}
+	}
+
+	// Automatically add to main team
+	_, err := c.App.AddTeamMembers(team.Id, uids, c.App.Session().UserId, false)
+	if err != nil {
+		c.Err = err
+		return
 	}
 
 	response := model.RegisterEmailsResponse{

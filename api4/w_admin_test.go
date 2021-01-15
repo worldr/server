@@ -218,6 +218,8 @@ func TestRegisterUsersWithEmails(t *testing.T) {
 	th := Setup(t).InitBasic()
 	defer th.TearDown()
 
+	team := th.CreateMainTeam()
+
 	type userChecker func(i int, user *model.User)
 
 	checkSuccess := func(emails []string, checkUser userChecker) {
@@ -230,6 +232,8 @@ func TestRegisterUsersWithEmails(t *testing.T) {
 			assert.Equal(t, emails[i], v.Email, "registered email doesn't match")
 			assert.True(t, len(v.Password) > 0, "this form of registration is expected to return passwords")
 			checkUser(i, v)
+			_, resp := th.Client.GetTeamMember(team.Id, v.Id, "")
+			CheckNoError(t, resp)
 		}
 	}
 
