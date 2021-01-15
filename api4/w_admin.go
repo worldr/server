@@ -13,6 +13,10 @@ import (
 	"github.com/mattermost/mattermost-server/v5/store/sqlstore"
 )
 
+const (
+	MAX_EMAILS_REGISTRATION = 500
+)
+
 func (api *API) InitWAdmin() {
 	// Valid session IS NOT required
 	api.BaseRoutes.WAdmin.Handle("/token", api.ApiHandler(isAdminTokenValid)).Methods("POST")
@@ -419,27 +423,48 @@ func registerUsersWithEmails(c *Context, w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	emails := model.ArrayFromJson(r.Body)
-	if len(emails) == 0 {
+	emailsInput := model.ArrayFromJson(r.Body)
+	if len(emailsInput) == 0 {
 		c.Err = model.NewAppError("registerUsersWithEmails", "admin_register_emails", nil, "no emails to register", http.StatusBadRequest)
 		return
 	}
+	if len(emailsInput) > MAX_EMAILS_REGISTRATION {
+		c.Err = model.NewAppError(
+			"registerUsersWithEmails",
+			"admin_register_emails",
+			map[string]interface{}{"max": MAX_EMAILS_REGISTRATION},
+			"too many emails to register",
+			http.StatusBadRequest,
+		)
+		return
+	}
 
-	successes := make([]*model.User, 0, len(emails))
-	failures := make(map[string]string, len(emails))
+	successes := make([]*model.User, 0, len(emailsInput))
+	failures := make(map[string]string, len(emailsInput))
 
 	regName := regexp.MustCompile(`[._-]`)
 
-	for _, email := range emails {
+	usernames := make([]string, 0, len(emailsInput))
+	emails := make([]string, 0, len(emailsInput))
+	passwords := make([]string, 0, len(emailsInput))
+	users := make([]*model.User, 0, len(emailsInput))
+	dupes := make(map[string]bool)
+
+	for _, email := range emailsInput {
 		email = strings.ToLower(strings.Trim(email, ", \n\t\r"))
 		if !model.IsValidEmailAddress(email) {
 			failures[email] = "Email is invalid"
 			continue
 		}
+		if _, exists := dupes[email]; exists {
+			failures[email] = "Email is duplicate"
+			continue
+		}
+		dupes[email] = true
 
 		username := strings.Split(email, "@")[0]
 		if !model.IsValidUsername(username) {
-			failures[email] = "Unable to use email part before @ as a username"
+			failures[email] = "Unable to use the email part before @ as a username"
 			continue
 		}
 		firstLast := regName.Split(username, -1)
@@ -452,26 +477,34 @@ func registerUsersWithEmails(c *Context, w http.ResponseWriter, r *http.Request)
 			last = strings.Join(firstLast[1:], " ")
 		}
 
-		password := fmt.Sprintf("Worldr-%v", fake.CharactersN(5))
 		user := model.User{
 			Username:      username,
 			FirstName:     first,
 			LastName:      last,
 			Email:         email,
-			Password:      password,
+			Password:      fmt.Sprintf("Worldr-%v", fake.CharactersN(5)),
 			EmailVerified: true,
 		}
 
-		ruser, err := executeCreateUser(c, &user, "", "")
-		if err != nil {
-			failures[email] = fmt.Sprintf("%v:%v", err.Id, err.Message)
-		} else {
-			successes = append(successes, ruser)
-			// This method of registration returns the password to the caller.
-			// This may change in the future.
-			ruser.Password = password
-		}
+		usernames = append(usernames, user.Username)
+		emails = append(emails, user.Email)
+		passwords = append(passwords, user.Password)
+		users = append(users, &user)
 	}
+
+	/*
+		// 	emails = utils.RemoveDuplicatesFromStringArray(emails)
+
+		// ruser, err := executeCreateUser(c, &user, "", "")
+		// if err != nil {
+		// 	failures[email] = fmt.Sprintf("%v:%v", err.Id, err.Message)
+		// } else {
+		// 	successes = append(successes, ruser)
+		// 	// This method of registration returns the password to the caller.
+		// 	// This may change in the future.
+		// 	ruser.Password = password
+		// }
+	*/
 
 	response := model.RegisterEmailsResponse{
 		Successes: successes,
