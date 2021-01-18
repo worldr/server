@@ -143,6 +143,14 @@ func (a *App) CreateUserWithInviteId(user *model.User, inviteId string) (*model.
 	return ruser, nil
 }
 
+func (a *App) CreateUsersAsAdmin(users []*model.User) ([]*model.User, *model.AppError) {
+	rusers, err := a.createUsers(users)
+	if err != nil {
+		return nil, err
+	}
+	return rusers, nil
+}
+
 func (a *App) CreateUserAsAdmin(user *model.User) (*model.User, *model.AppError) {
 	password := user.Password
 	ruser, err := a.CreateUser(user)
@@ -251,10 +259,13 @@ func (a *App) CreateGuest(user *model.User) (*model.User, *model.AppError) {
 	return a.createUserOrGuest(user, true)
 }
 
-func (a *App) createUserOrGuest(user *model.User, guest bool) (*model.User, *model.AppError) {
+func (a *App) prepareUserRoles(user *model.User, guest bool) *model.AppError {
 	if len(user.Roles) > 0 {
 		roles := strings.Split(user.Roles, " ")
 		for _, v := range roles {
+			if v == "" {
+				continue
+			}
 			valid := v == model.SYSTEM_USER_ROLE_ID ||
 				v == model.SYSTEM_GUEST_ROLE_ID ||
 				v == model.SYSTEM_ADMIN_ROLE_ID ||
@@ -262,7 +273,13 @@ func (a *App) createUserOrGuest(user *model.User, guest bool) (*model.User, *mod
 				v == model.SYSTEM_POST_ALL_PUBLIC_ROLE_ID ||
 				v == model.SYSTEM_USER_ACCESS_TOKEN_ROLE_ID
 			if !valid {
-				return nil, model.NewAppError("CreateUser", "api.user.create_user.custom_roles.app_error", nil, "trying to create a user with invalid roles", http.StatusBadRequest)
+				return model.NewAppError(
+					"prepareUserRoles",
+					"api.user.create_user.custom_roles.app_error",
+					map[string]interface{}{"roles": user.Roles},
+					fmt.Sprintf("trying to create a user with invalid roles '%s'", user.Roles),
+					http.StatusBadRequest,
+				)
 			}
 		}
 	} else {
@@ -270,6 +287,35 @@ func (a *App) createUserOrGuest(user *model.User, guest bool) (*model.User, *mod
 		if guest {
 			user.Roles = model.SYSTEM_GUEST_ROLE_ID
 		}
+	}
+
+	roles := model.RemoveDuplicateStrings(strings.Split(user.Roles, " "))
+	sort.Strings(roles)
+	nonEmptyIndex := 0
+	for i := range roles {
+		if roles[i] == "" {
+			nonEmptyIndex = i
+		}
+	}
+	user.Roles = strings.Join(roles[nonEmptyIndex:], " ")
+
+	return nil
+}
+
+func (a *App) createUserOrGuest(user *model.User, guest bool) (*model.User, *model.AppError) {
+	// Below is a special case where the first user in the entire
+	// system is granted the system_admin role
+	count, err := a.Srv().Store.User().Count(model.UserCountOptions{IncludeDeleted: true})
+	if err != nil {
+		return nil, err
+	}
+	if count <= 0 && !strings.Contains(user.Roles, model.SYSTEM_ADMIN_ROLE_ID) {
+		user.Roles = model.SYSTEM_ADMIN_ROLE_ID + " " + user.Roles
+	}
+
+	err = a.prepareUserRoles(user, guest)
+	if err != nil {
+		return nil, err
 	}
 
 	if !user.IsLDAPUser() && !user.IsSAMLUser() && !user.IsGuest() && !CheckUserDomain(user, *a.Config().TeamSettings.RestrictCreationToDomains) {
@@ -280,23 +326,9 @@ func (a *App) createUserOrGuest(user *model.User, guest bool) (*model.User, *mod
 		return nil, model.NewAppError("CreateUser", "api.user.create_user.accepted_domain.app_error", nil, "", http.StatusBadRequest)
 	}
 
-	// Below is a special case where the first user in the entire
-	// system is granted the system_admin role
-	count, err := a.Srv().Store.User().Count(model.UserCountOptions{IncludeDeleted: true})
-	if err != nil {
-		return nil, err
-	}
-	if count <= 0 && !strings.Contains(user.Roles, model.SYSTEM_ADMIN_ROLE_ID) {
-		user.Roles = model.SYSTEM_ADMIN_ROLE_ID + " " + model.SYSTEM_USER_ROLE_ID
-	}
-
 	if _, ok := utils.GetSupportedLocales()[user.Locale]; !ok {
 		user.Locale = *a.Config().LocalizationSettings.DefaultClientLocale
 	}
-
-	roles := model.RemoveDuplicateStrings(strings.Split(user.Roles, " "))
-	sort.Strings(roles)
-	user.Roles = strings.Join(roles, " ")
 
 	ruser, err := a.createUser(user)
 	if err != nil {
@@ -326,6 +358,29 @@ func (a *App) createUserOrGuest(user *model.User, guest bool) (*model.User, *mod
 	}
 
 	return ruser, nil
+}
+
+func (a *App) createUsers(users []*model.User) ([]*model.User, *model.AppError) {
+	for _, u := range users {
+		u.MakeNonNil()
+		if err := a.IsPasswordValid(u.Password); u.AuthService == "" && err != nil {
+			return nil, err
+		}
+		if err := a.prepareUserRoles(u, false); err != nil {
+			return nil, err
+		}
+	}
+
+	rusers, err := a.Srv().Store.User().SaveAll(users)
+	if err != nil {
+		mlog.Error("Couldn't save users", mlog.Err(err))
+		return nil, err
+	}
+	for _, ru := range rusers {
+		ru.Sanitize(map[string]bool{})
+	}
+
+	return rusers, nil
 }
 
 func (a *App) createUser(user *model.User) (*model.User, *model.AppError) {

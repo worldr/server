@@ -134,6 +134,49 @@ func (us SqlUserStore) Save(user *model.User) (*model.User, *model.AppError) {
 	return user, nil
 }
 
+// SaveAll inserts a list of users into the DB performing all the usual checks.
+// The insert is done in transaction so it fails completely if something is wrong with any of the users.
+func (us SqlUserStore) SaveAll(users []*model.User) ([]*model.User, *model.AppError) {
+	for _, u := range users {
+		if len(u.Id) > 0 {
+			return nil, model.NewAppError("SqlUserStore.SaveAll", "store.sql_user.saveall.existing.app_error", nil, "user_id="+u.Id, http.StatusBadRequest)
+		}
+		u.PreSave()
+		if err := u.IsValid(); err != nil {
+			return nil, err
+		}
+	}
+
+	cast := make([]interface{}, len(users), len(users))
+	for i := range users {
+		cast[i] = users[i]
+	}
+
+	var transaction *gorp.Transaction
+	var err error
+
+	if transaction, err = us.GetMaster().Begin(); err != nil {
+		return nil, model.NewAppError("SqlUserStore.ClearAllCustomRoleAssignments", "store.sql_user.clear_all_custom_role_assignments.open_transaction.app_error", nil, err.Error(), http.StatusInternalServerError)
+	}
+	defer finalizeTransaction(transaction)
+
+	if err := transaction.Insert(cast...); err != nil {
+		if IsUniqueConstraintError(err, []string{"Email", "users_email_key", "idx_users_email_unique"}) {
+			return nil, model.NewAppError("SqlUserStore.SaveAll", "store.sql_user.saveall.email_exists.app_error", nil, err.Error(), http.StatusBadRequest)
+		}
+		if IsUniqueConstraintError(err, []string{"Username", "users_username_key", "idx_users_username_unique"}) {
+			return nil, model.NewAppError("SqlUserStore.SaveAll", "store.sql_user.saveall.username_exists.app_error", nil, err.Error(), http.StatusBadRequest)
+		}
+		return nil, model.NewAppError("SqlUserStore.SaveAll", "store.sql_user.saveall.app_error", nil, err.Error(), http.StatusInternalServerError)
+	}
+
+	if err := transaction.Commit(); err != nil {
+		return nil, model.NewAppError("SqlUserStore.SaveAll", "store.sql_user.saveall.commit_transaction.app_error", nil, err.Error(), http.StatusInternalServerError)
+	}
+
+	return users, nil
+}
+
 func (us SqlUserStore) DeactivateGuests() ([]string, *model.AppError) {
 	curTime := model.GetMillis()
 	updateQuery := us.getQueryBuilder().Update("Users").
@@ -1000,6 +1043,32 @@ func (us SqlUserStore) GetAllUsingAuthService(authService string) ([]*model.User
 	}
 
 	return users, nil
+}
+
+func (us SqlUserStore) GetExistingUsernames(usernames []string) ([]string, *model.AppError) {
+	query := `
+		SELECT username from Users
+		WHERE username in ('` + strings.Join(usernames, "','") + `')
+	`
+	var existing = []string{}
+	_, err := us.GetMaster().Select(&existing, query)
+	if err != nil {
+		return nil, model.NewAppError("SqlUserStore.GetExistingUsernames", "store.sql_user.app_error", nil, err.Error(), http.StatusInternalServerError)
+	}
+	return existing, nil
+}
+
+func (us SqlUserStore) GetExistingEmails(emails []string) ([]string, *model.AppError) {
+	query := `
+		SELECT email from Users
+		WHERE email in ('` + strings.Join(emails, "','") + `')
+	`
+	var existing = []string{}
+	_, err := us.GetMaster().Select(&existing, query)
+	if err != nil {
+		return nil, model.NewAppError("SqlUserStore.GetExistingEmails", "store.sql_user.app_error", nil, err.Error(), http.StatusInternalServerError)
+	}
+	return existing, nil
 }
 
 func (us SqlUserStore) GetByUsername(username string) (*model.User, *model.AppError) {

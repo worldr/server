@@ -516,6 +516,56 @@ func (_m *UserStore) GetEtagForProfilesNotInTeam(teamId string) string {
 	return r0
 }
 
+// GetExistingEmails provides a mock function with given fields: emails
+func (_m *UserStore) GetExistingEmails(emails []string) ([]string, *model.AppError) {
+	ret := _m.Called(emails)
+
+	var r0 []string
+	if rf, ok := ret.Get(0).(func([]string) []string); ok {
+		r0 = rf(emails)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]string)
+		}
+	}
+
+	var r1 *model.AppError
+	if rf, ok := ret.Get(1).(func([]string) *model.AppError); ok {
+		r1 = rf(emails)
+	} else {
+		if ret.Get(1) != nil {
+			r1 = ret.Get(1).(*model.AppError)
+		}
+	}
+
+	return r0, r1
+}
+
+// GetExistingUsernames provides a mock function with given fields: usernames
+func (_m *UserStore) GetExistingUsernames(usernames []string) ([]string, *model.AppError) {
+	ret := _m.Called(usernames)
+
+	var r0 []string
+	if rf, ok := ret.Get(0).(func([]string) []string); ok {
+		r0 = rf(usernames)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]string)
+		}
+	}
+
+	var r1 *model.AppError
+	if rf, ok := ret.Get(1).(func([]string) *model.AppError); ok {
+		r1 = rf(usernames)
+	} else {
+		if ret.Get(1) != nil {
+			r1 = ret.Get(1).(*model.AppError)
+		}
+	}
+
+	return r0, r1
+}
+
 // GetForLogin provides a mock function with given fields: loginId, allowSignInWithUsername, allowSignInWithEmail
 func (_m *UserStore) GetForLogin(loginId string, allowSignInWithUsername bool, allowSignInWithEmail bool) (*model.User, *model.AppError) {
 	ret := _m.Called(loginId, allowSignInWithUsername, allowSignInWithEmail)
@@ -1039,6 +1089,31 @@ func (_m *UserStore) Save(user *model.User) (*model.User, *model.AppError) {
 	var r1 *model.AppError
 	if rf, ok := ret.Get(1).(func(*model.User) *model.AppError); ok {
 		r1 = rf(user)
+	} else {
+		if ret.Get(1) != nil {
+			r1 = ret.Get(1).(*model.AppError)
+		}
+	}
+
+	return r0, r1
+}
+
+// SaveAll provides a mock function with given fields: users
+func (_m *UserStore) SaveAll(users []*model.User) ([]*model.User, *model.AppError) {
+	ret := _m.Called(users)
+
+	var r0 []*model.User
+	if rf, ok := ret.Get(0).(func([]*model.User) []*model.User); ok {
+		r0 = rf(users)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*model.User)
+		}
+	}
+
+	var r1 *model.AppError
+	if rf, ok := ret.Get(1).(func([]*model.User) *model.AppError); ok {
+		r1 = rf(users)
 	} else {
 		if ret.Get(1) != nil {
 			r1 = ret.Get(1).(*model.AppError)

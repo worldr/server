@@ -418,10 +418,19 @@ func getUserSessionsByAdmin(c *Context, w http.ResponseWriter, r *http.Request) 
 	getSessions(c, w, r)
 }
 
+// registerUsersWithEmails creates user accouts for a given list of emails.
+// The returned object contains a list of sucessfully created users and a map of failures.
 func registerUsersWithEmails(c *Context, w http.ResponseWriter, r *http.Request) {
 	if !isSystemAdmin(c, "registerUsersWithEmails", "admin_register_emails") {
 		return
 	}
+	team, err1 := c.App.MainTeam()
+	if err1 != nil {
+		c.Err = err1
+		return
+	}
+
+	// 1. Collect input list, perform basic checks
 
 	emailsInput := model.ArrayFromJson(r.Body)
 	if len(emailsInput) == 0 {
@@ -446,9 +455,12 @@ func registerUsersWithEmails(c *Context, w http.ResponseWriter, r *http.Request)
 
 	usernames := make([]string, 0, len(emailsInput))
 	emails := make([]string, 0, len(emailsInput))
-	passwords := make([]string, 0, len(emailsInput))
-	users := make([]*model.User, 0, len(emailsInput))
+	passwordByUsername := make(map[string]string, len(emailsInput))
+	passwordByEmail := make(map[string]string, len(emailsInput))
+	userByEmail := make(map[string]*model.User, len(emailsInput))
 	dupes := make(map[string]bool)
+
+	// 2. Collect users structures, filter-out invalid emails and duplicates
 
 	for _, email := range emailsInput {
 		email = strings.ToLower(strings.Trim(email, ", \n\t\r"))
@@ -467,6 +479,7 @@ func registerUsersWithEmails(c *Context, w http.ResponseWriter, r *http.Request)
 			failures[email] = "Unable to use the email part before @ as a username"
 			continue
 		}
+
 		firstLast := regName.Split(username, -1)
 		first, last := firstLast[0], ""
 		first = fmt.Sprintf("%v%v", strings.ToUpper(first[0:1]), first[1:])
@@ -488,27 +501,108 @@ func registerUsersWithEmails(c *Context, w http.ResponseWriter, r *http.Request)
 
 		usernames = append(usernames, user.Username)
 		emails = append(emails, user.Email)
-		passwords = append(passwords, user.Password)
-		users = append(users, &user)
+		userByEmail[user.Email] = &user
+		passwordByUsername[user.Username] = user.Password
+		passwordByEmail[user.Email] = user.Password
 	}
 
-	/*
-		// 	emails = utils.RemoveDuplicatesFromStringArray(emails)
+	// 3. Filter-out the users with unavailable usernames or emails
 
-		// ruser, err := executeCreateUser(c, &user, "", "")
-		// if err != nil {
-		// 	failures[email] = fmt.Sprintf("%v:%v", err.Id, err.Message)
-		// } else {
-		// 	successes = append(successes, ruser)
-		// 	// This method of registration returns the password to the caller.
-		// 	// This may change in the future.
-		// 	ruser.Password = password
-		// }
-	*/
+	// 3.1 Check the db for usernames availability
+	existingUsernames, err2 := c.App.Srv().Store.User().GetExistingUsernames(usernames)
+	if err2 != nil {
+		c.Err = err2
+		return
+	}
+	for _, username := range existingUsernames {
+		delete(passwordByUsername, username)
+	}
 
+	// 3.2 Check the db for emails availability
+	existingEmails, err3 := c.App.Srv().Store.User().GetExistingEmails(emails)
+	if err3 != nil {
+		c.Err = err3
+		return
+	}
+	for _, email := range existingEmails {
+		delete(passwordByEmail, email)
+	}
+
+	// 3.3 Filter
+	users := make([]*model.User, 0, len(emailsInput))
+	for _, k := range userByEmail {
+		_, check1 := passwordByUsername[k.Username]
+		_, check2 := passwordByEmail[k.Email]
+		if check1 || check2 {
+			users = append(users, k)
+		} else if !check1 {
+			failures[k.Email] = "User with this username is already registered"
+		} else {
+			failures[k.Email] = "User with this email is already registered"
+		}
+	}
+
+	// 4. Insert users into DB
+
+	rusers, err := createUsers(c, users)
+	if err != nil {
+		for _, u := range users {
+			failures[u.Email] = "Internal server error"
+		}
+		c.Err = model.NewAppError(
+			"registerUsersWithEmails",
+			"admin_register_emails.db_query_failed",
+			nil,
+			err.Error(),
+			http.StatusInternalServerError,
+		)
+		return
+	}
+
+	// 5. Add users to team
+
+	uids := make([]string, len(rusers), len(rusers))
+	for i, u := range rusers {
+		uids[i] = u.Id
+		successes = append(successes, u)
+		password, exists := passwordByUsername[u.Username]
+		if !exists {
+			password = passwordByEmail[u.Email]
+		}
+		u.Password = password
+	}
+	_, err4 := c.App.AddTeamMembers(team.Id, uids, c.App.Session().UserId, false)
+	if err4 != nil {
+		c.Err = err4
+		return
+	}
+
+	// Assemble response
 	response := model.RegisterEmailsResponse{
 		Successes: successes,
 		Failures:  failures,
 	}
 	w.Write([]byte(response.ToJson()))
+}
+
+func createUsers(c *Context, users []*model.User) ([]*model.User, *model.AppError) {
+	if !isSystemAdmin(c, "createUsers", "admin_create_users") {
+		return nil, model.NewAppError("createUsers", "admin_create_users", nil, "current session is not an admin", http.StatusForbidden)
+	}
+	auditRec := c.MakeAuditRecord("createUsers", audit.Fail)
+	defer c.LogAuditRec(auditRec)
+	auditRec.AddMeta("admin", true)
+
+	result, err := c.App.CreateUsersAsAdmin(users)
+	if err != nil {
+		return nil, err
+	}
+	auditRec.Success()
+	uids := make([]string, len(result))
+	for i := range result {
+		uids[i] = result[i].Id
+	}
+	auditRec.AddMeta("create_user_ids", strings.Join(uids, ","))
+
+	return result, nil
 }

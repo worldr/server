@@ -290,6 +290,7 @@ type PostStore interface {
 
 type UserStore interface {
 	Save(user *model.User) (*model.User, *model.AppError)
+	SaveAll(users []*model.User) ([]*model.User, *model.AppError)
 	Update(user *model.User, allowRoleUpdate bool) (*model.UserUpdate, *model.AppError)
 	UpdateLastPictureUpdate(userId string) *model.AppError
 	ResetLastPictureUpdate(userId string) *model.AppError
@@ -351,6 +352,8 @@ type UserStore interface {
 	DemoteUserToGuest(userID string) *model.AppError
 	DeactivateGuests() ([]string, *model.AppError)
 	GetAllPaginated(fromIndex uint64, perPage uint64) ([]*model.User, uint64, *model.AppError)
+	GetExistingUsernames(usernames []string) ([]string, *model.AppError)
+	GetExistingEmails(emails []string) ([]string, *model.AppError)
 }
 
 type BotStore interface {

@@ -2252,6 +2252,28 @@ func (a *OpenTracingAppLayer) CreateUserWithToken(user *model.User, token *model
 	return resultVar0, resultVar1
 }
 
+func (a *OpenTracingAppLayer) CreateUsersAsAdmin(users []*model.User) ([]*model.User, *model.AppError) {
+	origCtx := a.ctx
+	span, newCtx := tracing.StartSpanWithParentByContext(a.ctx, "app.CreateUsersAsAdmin")
+
+	a.ctx = newCtx
+	a.app.Srv().Store.SetContext(newCtx)
+	defer func() {
+		a.app.Srv().Store.SetContext(origCtx)
+		a.ctx = origCtx
+	}()
+
+	defer span.Finish()
+	resultVar0, resultVar1 := a.app.CreateUsersAsAdmin(users)
+
+	if resultVar1 != nil {
+		span.LogFields(spanlog.Error(resultVar1))
+		ext.Error.Set(span, true)
+	}
+
+	return resultVar0, resultVar1
+}
+
 func (a *OpenTracingAppLayer) CreateVerifyEmailToken(userId string, newEmail string) (*model.Token, *model.AppError) {
 	origCtx := a.ctx
 	span, newCtx := tracing.StartSpanWithParentByContext(a.ctx, "app.CreateVerifyEmailToken")

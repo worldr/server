@@ -4,6 +4,7 @@
 package api4
 
 import (
+	"sort"
 	"strconv"
 	"strings"
 	"testing"
@@ -218,7 +219,9 @@ func TestRegisterUsersWithEmails(t *testing.T) {
 	th := Setup(t).InitBasic()
 	defer th.TearDown()
 
-	type userChecker func(i int, user *model.User)
+	th.CreateMainTeam()
+
+	type userChecker func(user *model.User)
 
 	checkSuccess := func(emails []string, checkUser userChecker) {
 		result, r := th.WSystemAdminClient.RegisterUsersWithEmails(emails)
@@ -226,10 +229,14 @@ func TestRegisterUsersWithEmails(t *testing.T) {
 		assert.NotNil(t, result, "response says ok, but result data is nil")
 		assert.Equal(t, 0, len(result.Failures), "no failures are expected")
 		assert.Equal(t, len(emails), len(result.Successes), "not all emails were successfully registered")
+		sort.Strings(emails)
+		sort.SliceStable(result.Successes, func(i, j int) bool {
+			return strings.Compare(result.Successes[i].Email, result.Successes[j].Email) == -1
+		})
 		for i, v := range result.Successes {
 			assert.Equal(t, emails[i], v.Email, "registered email doesn't match")
 			assert.True(t, len(v.Password) > 0, "this form of registration is expected to return passwords")
-			checkUser(i, v)
+			checkUser(v)
 		}
 	}
 
@@ -244,40 +251,40 @@ func TestRegisterUsersWithEmails(t *testing.T) {
 	t.Run("register users with emails – successes", func(t *testing.T) {
 		checkSuccess(
 			[]string{"a1@example.com"},
-			func(i int, user *model.User) {
+			func(user *model.User) {
 				assert.Equal(t, "A1", user.FirstName, "unexpected first name")
 				assert.Equal(t, "", user.LastName, "unexpected last name")
 			},
 		)
 		checkSuccess(
 			[]string{"a2@example.com", "a.b@example.com", "c_d@example.com", "e-f@example.com", "a.b_c@example.com", "c_d.e@example.com", "e-f-g@example.com", "ccc_ddd.eee@example.com", "eee-fff_ggg@example.com"},
-			func(i int, user *model.User) {
-				switch i {
-				case 0:
+			func(user *model.User) {
+				switch user.Email {
+				case "a2@example.com":
 					assert.Equal(t, "A2", user.FirstName, "unexpected first name")
 					assert.Equal(t, "", user.LastName, "unexpected last name")
-				case 1:
+				case "a.b@example.com":
 					assert.Equal(t, "A", user.FirstName, "unexpected first name")
 					assert.Equal(t, "B", user.LastName, "unexpected last name")
-				case 2:
+				case "c_d@example.com":
 					assert.Equal(t, "C", user.FirstName, "unexpected first name")
 					assert.Equal(t, "D", user.LastName, "unexpected last name")
-				case 3:
+				case "e-f@example.com":
 					assert.Equal(t, "E", user.FirstName, "unexpected first name")
 					assert.Equal(t, "F", user.LastName, "unexpected last name")
-				case 4:
+				case "a.b_c@example.com":
 					assert.Equal(t, "A", user.FirstName, "unexpected first name")
 					assert.Equal(t, "B C", user.LastName, "unexpected last name")
-				case 5:
+				case "c_d.e@example.com":
 					assert.Equal(t, "C", user.FirstName, "unexpected first name")
 					assert.Equal(t, "D E", user.LastName, "unexpected last name")
-				case 6:
+				case "e-f-g@example.com":
 					assert.Equal(t, "E", user.FirstName, "unexpected first name")
 					assert.Equal(t, "F G", user.LastName, "unexpected last name")
-				case 7:
+				case "ccc_ddd.eee@example.com":
 					assert.Equal(t, "Ccc", user.FirstName, "unexpected first name")
 					assert.Equal(t, "Ddd Eee", user.LastName, "unexpected last name")
-				case 8:
+				case "eee-fff_ggg@example.com":
 					assert.Equal(t, "Eee", user.FirstName, "unexpected first name")
 					assert.Equal(t, "Fff Ggg", user.LastName, "unexpected last name")
 				}

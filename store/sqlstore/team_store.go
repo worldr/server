@@ -1236,7 +1236,7 @@ func (s SqlTeamStore) MainTeam() (*model.Team, *model.AppError) {
 		}
 		details := []string{
 			"name=" + MAIN_TEAM_NAME,
-			"found:" + found,
+			"found=" + found,
 			"error=" + errMsg,
 		}
 		return nil, model.NewAppError(

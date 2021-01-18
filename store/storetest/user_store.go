@@ -4,6 +4,7 @@
 package storetest
 
 import (
+	"sort"
 	"strings"
 	"testing"
 	"time"
@@ -82,6 +83,8 @@ func TestUserStore(t *testing.T, ss store.Store, s SqlSupplier) {
 	t.Run("DemoteUserToGuest", func(t *testing.T) { testUserStoreDemoteUserToGuest(t, ss) })
 	t.Run("DeactivateGuests", func(t *testing.T) { testDeactivateGuests(t, ss) })
 	t.Run("ResetLastPictureUpdate", func(t *testing.T) { testUserStoreResetLastPictureUpdate(t, ss) })
+	t.Run("GetExistingUsernames", func(t *testing.T) { testUserStoreGetExistingUsernames(t, ss) })
+	t.Run("GetExistingEmails", func(t *testing.T) { testUserStoreGetExistingEmails(t, ss) })
 }
 
 func testUserStoreSave(t *testing.T, ss store.Store) {
@@ -4954,4 +4957,50 @@ func testUserStoreResetLastPictureUpdate(t *testing.T, ss store.Store) {
 
 	assert.True(t, user2.UpdateAt > user.UpdateAt)
 	assert.Zero(t, user2.LastPictureUpdate)
+}
+
+func testUserStoreGetExistingUsernames(t *testing.T, ss store.Store) {
+	given := make([]string, 10)
+	for i := 0; i < 10; i++ {
+		u := &model.User{}
+		u.Username = model.NewId()
+		u.Email = MakeEmail()
+		_, err := ss.User().Save(u)
+		require.Nil(t, err)
+		defer func() { require.Nil(t, ss.User().PermanentDelete(u.Id)) }()
+		given[i] = u.Username
+	}
+	sort.Strings(given)
+
+	existing, err := ss.User().GetExistingUsernames(given)
+	require.Nil(t, err)
+	assert.Equal(t, len(given), len(existing), "unexpected number of existing usernames")
+
+	sort.Strings(existing)
+	for i := 0; i < len(given); i++ {
+		assert.Equal(t, given[i], existing[i], "unexpected username")
+	}
+}
+
+func testUserStoreGetExistingEmails(t *testing.T, ss store.Store) {
+	given := make([]string, 10)
+	for i := 0; i < 10; i++ {
+		u := &model.User{}
+		u.Username = model.NewId()
+		u.Email = MakeEmail()
+		_, err := ss.User().Save(u)
+		require.Nil(t, err)
+		defer func() { require.Nil(t, ss.User().PermanentDelete(u.Id)) }()
+		given[i] = u.Email
+	}
+	sort.Strings(given)
+
+	existing, err := ss.User().GetExistingEmails(given)
+	require.Nil(t, err)
+	assert.Equal(t, len(given), len(existing), "unexpected number of existing emails")
+
+	sort.Strings(existing)
+	for i := 0; i < len(given); i++ {
+		assert.Equal(t, given[i], existing[i], "unexpected emails")
+	}
 }

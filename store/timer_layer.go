@@ -6977,6 +6977,38 @@ func (s *TimerLayerUserStore) GetEtagForProfilesNotInTeam(teamId string) string 
 	return resultVar0
 }
 
+func (s *TimerLayerUserStore) GetExistingEmails(emails []string) ([]string, *model.AppError) {
+	start := timemodule.Now()
+
+	resultVar0, resultVar1 := s.UserStore.GetExistingEmails(emails)
+
+	elapsed := float64(timemodule.Since(start)) / float64(timemodule.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if resultVar1 == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("UserStore.GetExistingEmails", success, elapsed)
+	}
+	return resultVar0, resultVar1
+}
+
+func (s *TimerLayerUserStore) GetExistingUsernames(usernames []string) ([]string, *model.AppError) {
+	start := timemodule.Now()
+
+	resultVar0, resultVar1 := s.UserStore.GetExistingUsernames(usernames)
+
+	elapsed := float64(timemodule.Since(start)) / float64(timemodule.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if resultVar1 == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("UserStore.GetExistingUsernames", success, elapsed)
+	}
+	return resultVar0, resultVar1
+}
+
 func (s *TimerLayerUserStore) GetForLogin(loginId string, allowSignInWithUsername bool, allowSignInWithEmail bool) (*model.User, *model.AppError) {
 	start := timemodule.Now()
 
@@ -7370,6 +7402,22 @@ func (s *TimerLayerUserStore) Save(user *model.User) (*model.User, *model.AppErr
 			success = "true"
 		}
 		s.Root.Metrics.ObserveStoreMethodDuration("UserStore.Save", success, elapsed)
+	}
+	return resultVar0, resultVar1
+}
+
+func (s *TimerLayerUserStore) SaveAll(users []*model.User) ([]*model.User, *model.AppError) {
+	start := timemodule.Now()
+
+	resultVar0, resultVar1 := s.UserStore.SaveAll(users)
+
+	elapsed := float64(timemodule.Since(start)) / float64(timemodule.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if resultVar1 == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("UserStore.SaveAll", success, elapsed)
 	}
 	return resultVar0, resultVar1
 }
