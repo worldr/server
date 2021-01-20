@@ -421,6 +421,7 @@ func getUserSessionsByAdmin(c *Context, w http.ResponseWriter, r *http.Request) 
 // registerUsersWithEmails creates user accouts for a given list of emails.
 // The returned object contains a list of sucessfully created users and a map of failures.
 func registerUsersWithEmails(c *Context, w http.ResponseWriter, r *http.Request) {
+	t0 := model.GetMillis()
 	if !isSystemAdmin(c, "registerUsersWithEmails", "admin_register_emails") {
 		return
 	}
@@ -506,6 +507,13 @@ func registerUsersWithEmails(c *Context, w http.ResponseWriter, r *http.Request)
 		passwordByEmail[user.Email] = user.Password
 	}
 
+	t1 := model.GetMillis()
+
+	if len(usernames) == 0 {
+		respondUsersWithEmailsEmpty(c, w, successes, failures)
+		return
+	}
+
 	// 3. Filter-out the users with unavailable usernames or emails
 
 	// 3.1 Check the db for usernames availability
@@ -542,6 +550,13 @@ func registerUsersWithEmails(c *Context, w http.ResponseWriter, r *http.Request)
 		}
 	}
 
+	t2 := model.GetMillis()
+
+	if len(users) == 0 {
+		respondUsersWithEmailsEmpty(c, w, successes, failures)
+		return
+	}
+
 	// 4. Insert users into DB
 
 	rusers, err := createUsers(c, users)
@@ -558,6 +573,8 @@ func registerUsersWithEmails(c *Context, w http.ResponseWriter, r *http.Request)
 		)
 		return
 	}
+
+	t3 := model.GetMillis()
 
 	// 5. Add users to team
 
@@ -578,6 +595,25 @@ func registerUsersWithEmails(c *Context, w http.ResponseWriter, r *http.Request)
 	}
 
 	// Assemble response
+	response := model.RegisterEmailsResponse{
+		Successes: successes,
+		Failures:  failures,
+	}
+
+	t4 := model.GetMillis()
+
+	t := []string{
+		fmt.Sprintf("total\t%v", t4-t0),
+		fmt.Sprintf("prepare\t%v", t1-t0),
+		fmt.Sprintf("filter\t%v", t2-t1),
+		fmt.Sprintf("insert\t%v", t3-t2),
+		fmt.Sprintf("team\t%v", t4-t3),
+	}
+	fmt.Printf("-- TIMINGS\n\t%s\n--", strings.Join(t, "\n\t"))
+	w.Write([]byte(response.ToJson()))
+}
+
+func respondUsersWithEmailsEmpty(c *Context, w http.ResponseWriter, successes []*model.User, failures map[string]string) {
 	response := model.RegisterEmailsResponse{
 		Successes: successes,
 		Failures:  failures,

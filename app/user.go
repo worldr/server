@@ -371,7 +371,10 @@ func (a *App) createUsers(users []*model.User) ([]*model.User, *model.AppError) 
 		}
 	}
 
+	t0 := model.GetMillis()
 	rusers, err := a.Srv().Store.User().SaveAll(users)
+	t1 := model.GetMillis()
+	fmt.Printf("DB: %v\n", t1-t0)
 	if err != nil {
 		mlog.Error("Couldn't save users", mlog.Err(err))
 		return nil, err
