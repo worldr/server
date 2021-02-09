@@ -11,6 +11,7 @@ import (
 	"github.com/mattermost/mattermost-server/v5/audit"
 	"github.com/mattermost/mattermost-server/v5/model"
 	"github.com/mattermost/mattermost-server/v5/store/sqlstore"
+	"github.com/mattermost/mattermost-server/v5/utils"
 )
 
 func (api *API) InitWAdmin() {
@@ -33,6 +34,9 @@ func (api *API) InitWAdmin() {
 	api.BaseRoutes.WAdmin.Handle("/user/{user_id:[A-Za-z0-9]+}/sessions", api.ApiSessionRequired(getUserSessionsByAdmin)).Methods("GET")
 	api.BaseRoutes.WAdmin.Handle("/user/{user_id:[A-Za-z0-9]+}/sessions/revoke", api.ApiSessionRequired(revokeAllUserSessionsByAdmin)).Methods("POST")
 	api.BaseRoutes.WAdmin.Handle("/user/{user_id:[A-Za-z0-9]+}/session/revoke", api.ApiSessionRequired(revokeSessionByAdmin)).Methods("POST")
+
+	api.BaseRoutes.WAdmin.Handle("/config", api.ApiSessionRequired(getConfigurableValues)).Methods("GET")
+	api.BaseRoutes.WAdmin.Handle("/config", api.ApiSessionRequired(setConfigurableValues)).Methods("PUT")
 }
 
 // Checks and side-effects context with appropriate error if the check is negative.
@@ -493,4 +497,90 @@ func registerUsersWithEmails(c *Context, w http.ResponseWriter, r *http.Request)
 		Failures:  failures,
 	}
 	w.Write([]byte(response.ToJson()))
+}
+
+func getConfigurableValues(c *Context, w http.ResponseWriter, r *http.Request) {
+	if !isSystemAdmin(c, "getConfigurableValues", "admin_get_configurable") {
+		return
+	}
+
+	local := c.App.Config().EmailSettings
+	exposed := &model.EmailSettingsExposed{
+		SMTPServer:                        local.SMTPServer,
+		SMTPPort:                          local.SMTPPort,
+		ConnectionSecurity:                local.ConnectionSecurity,
+		SkipServerCertificateVerification: local.SkipServerCertificateVerification,
+		EnableSMTPAuth:                    local.EnableSMTPAuth,
+		SMTPUsername:                      local.SMTPUsername,
+		SMTPPassword:                      local.SMTPPassword,
+	}
+
+	response := model.Configurable{
+		Email: exposed,
+	}
+	w.Write([]byte(response.ToJson()))
+}
+
+func setConfigurableValues(c *Context, w http.ResponseWriter, r *http.Request) {
+	if !isSystemAdmin(c, "setConfigurableValues", "admin_set_configurable") {
+		return
+	}
+
+	local := c.App.Config()
+	incoming, err := model.ConfigurableFromJson(r.Body)
+	if err != nil {
+		c.Err = model.NewAppError(
+			"setConfigurableValues",
+			"admin_set_configurable_request",
+			nil,
+			err.Error(),
+			http.StatusBadRequest,
+		)
+		return
+	}
+
+	auditRec := c.MakeAuditRecord("patchConfig", audit.Fail)
+	defer c.LogAuditRec(auditRec)
+
+	patch := &model.Config{
+		EmailSettings: model.EmailSettings{
+			SMTPServer:                        incoming.Email.SMTPServer,
+			SMTPPort:                          incoming.Email.SMTPPort,
+			ConnectionSecurity:                incoming.Email.ConnectionSecurity,
+			SkipServerCertificateVerification: incoming.Email.SkipServerCertificateVerification,
+			EnableSMTPAuth:                    incoming.Email.EnableSMTPAuth,
+			SMTPUsername:                      incoming.Email.SMTPUsername,
+			SMTPPassword:                      incoming.Email.SMTPPassword,
+		},
+	}
+
+	merged, mergeErr := utils.Merge(local, patch, nil)
+	if mergeErr != nil {
+		c.Err = model.NewAppError(
+			"setConfigurableValues",
+			"admin_set_configurable_merge",
+			nil,
+			mergeErr.Error(),
+			http.StatusInternalServerError,
+		)
+		return
+	}
+	updated := merged.(model.Config)
+
+	errValid := updated.IsValid()
+	if errValid != nil {
+		c.Err = errValid
+		return
+	}
+
+	errSave := c.App.SaveConfig(&updated, true)
+	if errSave != nil {
+		c.Err = errSave
+		return
+	}
+
+	auditRec.Success()
+
+	w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
+	getConfigurableValues(c, w, r)
 }

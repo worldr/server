@@ -295,3 +295,44 @@ func TestRegisterUsersWithEmails(t *testing.T) {
 		checkFailure([]string{"x@example.com", "y@example.com"}, 2, 0)
 	})
 }
+
+func TestGetConfigurableValues(t *testing.T) {
+	th := Setup(t).InitBasic()
+	defer th.TearDown()
+
+	t.Run("get by admin", func(t *testing.T) {
+		result, r := th.WSystemAdminClient.GetConfigurableValues()
+		CheckNoError(t, r)
+		assert.NotNil(t, result)
+		assert.NotNil(t, result.Email)
+	})
+
+	t.Run("get by user", func(t *testing.T) {
+		_, r := th.WClient.GetConfigurableValues()
+		CheckForbiddenStatus(t, r)
+	})
+}
+
+func TestSetConfigurableValues(t *testing.T) {
+	th := Setup(t).InitBasic()
+	defer th.TearDown()
+
+	t.Run("set by admin", func(t *testing.T) {
+		patch := &model.Configurable{
+			Email: &model.EmailSettingsExposed{
+				SMTPPort:     model.NewString("123"),
+				SMTPUsername: model.NewString("nox"),
+			},
+		}
+		result, r := th.WSystemAdminClient.SetConfigurableValues(patch)
+		CheckNoError(t, r)
+		assert.NotNil(t, result)
+		assert.Equal(t, "123", *(result.Email.SMTPPort), "unexpected port value")
+		assert.Equal(t, "nox", *(result.Email.SMTPUsername), "unexpected username value")
+	})
+
+	t.Run("set by user", func(t *testing.T) {
+		_, r := th.WClient.GetConfigurableValues()
+		CheckForbiddenStatus(t, r)
+	})
+}

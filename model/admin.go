@@ -76,3 +76,18 @@ func VersionedValueFromJson(data io.Reader) *VersionedValue {
 	json.NewDecoder(data).Decode(&w)
 	return w
 }
+
+type Configurable struct {
+	Email *EmailSettingsExposed `json:"email,omitempty"`
+}
+
+func (o *Configurable) ToJson() string {
+	b, _ := json.Marshal(o)
+	return string(b)
+}
+
+func ConfigurableFromJson(data io.Reader) (*Configurable, error) {
+	var o *Configurable
+	err := json.NewDecoder(data).Decode(&o)
+	return o, err
+}

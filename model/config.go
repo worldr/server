@@ -1347,6 +1347,16 @@ type EmailSettings struct {
 	LoginButtonTextColor              *string
 }
 
+type EmailSettingsExposed struct {
+	SMTPServer                        *string `json:"server"`
+	SMTPPort                          *string `json:"port"`
+	ConnectionSecurity                *string `json:"security_type"`
+	SkipServerCertificateVerification *bool   `json:"insecure_cert"`
+	EnableSMTPAuth                    *bool   `json:"authorisation"`
+	SMTPUsername                      *string `json:"user"`
+	SMTPPassword                      *string `json:"password"`
+}
+
 func (s *EmailSettings) SetDefaults(isUpdate bool) {
 	if s.EnableSignUpWithEmail == nil {
 		s.EnableSignUpWithEmail = NewBool(true)

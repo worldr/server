@@ -2049,6 +2049,7 @@ func (s *SqlPostStore) CheckForUpdates(userId string, list *[]model.ChannelWithP
 	channelIds := make([]string, len(*list))
 	channelById := make(map[string]*model.ChannelWithPost, len(*list))
 	for i, v := range *list {
+		// TODO remove duplicates
 		channelIds[i] = v.ChannelId
 		channelById[v.ChannelId] = &((*list)[i])
 	}

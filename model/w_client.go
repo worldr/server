@@ -119,6 +119,16 @@ func (c *WClient) GetCompanyInfoUrl() string {
 	return fmt.Sprintf("%v/secure/company", c.ApiUrl)
 }
 
+// Get absolute api url of the get configurable values handle.
+func (c *WClient) GetConfigurableValuesUrl() string {
+	return fmt.Sprintf("%v/admin/config", c.ApiUrl)
+}
+
+// Get absolute api url of the set configurable values handle.
+func (c *WClient) SetConfigurableValuesUrl() string {
+	return fmt.Sprintf("%v/admin/config", c.ApiUrl)
+}
+
 //
 // METHODS
 //
@@ -319,4 +329,28 @@ func (c *WClient) GetCompanyInfo() (*CompanyConfig, *Response) {
 		return result, BuildResponse(r)
 	}
 	return nil, BuildErrorResponse(r, NewAppError("GetCompanyInfo", "WClient.GetCompanyInfo", nil, "Failed to unmarshall response JSON", http.StatusInternalServerError))
+}
+
+func (c *WClient) GetConfigurableValues() (*Configurable, *Response) {
+	r, err := c.MMClient.DoApiGetWithUrl(c.GetConfigurableValuesUrl(), "", false)
+	if err != nil {
+		return nil, BuildErrorResponse(r, err)
+	}
+	defer closeBody(r)
+	if result, err := ConfigurableFromJson(r.Body); err == nil {
+		return result, BuildResponse(r)
+	}
+	return nil, BuildErrorResponse(r, NewAppError("GetConfigurableValues", "WClient.GetConfigurableValues", nil, "Failed to unmarshall response JSON", http.StatusInternalServerError))
+}
+
+func (c *WClient) SetConfigurableValues(patch *Configurable) (*Configurable, *Response) {
+	r, err := c.MMClient.DoApiPutWithUrl(c.SetConfigurableValuesUrl(), patch.ToJson(), false)
+	if err != nil {
+		return nil, BuildErrorResponse(r, err)
+	}
+	defer closeBody(r)
+	if result, err := ConfigurableFromJson(r.Body); err == nil {
+		return result, BuildResponse(r)
+	}
+	return nil, BuildErrorResponse(r, NewAppError("SetConfigurableValues", "WClient.SetConfigurableValues", nil, "Failed to unmarshall response JSON", http.StatusInternalServerError))
 }
