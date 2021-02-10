@@ -505,14 +505,24 @@ func getConfigurableValues(c *Context, w http.ResponseWriter, r *http.Request) {
 	}
 
 	local := c.App.Config().EmailSettings
+	// Don't give out the password. If it's set, send a * placeholder,
+	// if it's not set, send an empty string.
+	var pass string
+	if local.SMTPPassword != nil && len(*local.SMTPPassword) > 0 {
+		pass = "*"
+	} else {
+		pass = ""
+	}
 	exposed := &model.EmailSettingsExposed{
-		SMTPServer:                        local.SMTPServer,
-		SMTPPort:                          local.SMTPPort,
-		ConnectionSecurity:                local.ConnectionSecurity,
-		SkipServerCertificateVerification: local.SkipServerCertificateVerification,
-		EnableSMTPAuth:                    local.EnableSMTPAuth,
-		SMTPUsername:                      local.SMTPUsername,
-		SMTPPassword:                      local.SMTPPassword,
+		EmailAddress:       local.FeedbackEmail,
+		EmailFrom:          local.FeedbackName,
+		SMTPServer:         local.SMTPServer,
+		SMTPPort:           local.SMTPPort,
+		ConnectionSecurity: local.ConnectionSecurity,
+		VerifyCertificate:  model.NewBool(!*local.SkipServerCertificateVerification),
+		EnableSMTPAuth:     local.EnableSMTPAuth,
+		SMTPUsername:       local.SMTPUsername,
+		SMTPPassword:       model.NewString(pass),
 	}
 
 	response := model.Configurable{
@@ -542,15 +552,32 @@ func setConfigurableValues(c *Context, w http.ResponseWriter, r *http.Request) {
 	auditRec := c.MakeAuditRecord("patchConfig", audit.Fail)
 	defer c.LogAuditRec(auditRec)
 
+	// If a new password has been set, replace it in the config.
+	// If it hasn't been set, leave the old one.
+	var pass *string
+	if incoming.Email.SMTPPassword != nil && len(*incoming.Email.SMTPPassword) > 0 {
+		pass = incoming.Email.SMTPPassword
+	} else {
+		pass = local.EmailSettings.SMTPPassword
+	}
+	var verify bool
+	if incoming.Email.VerifyCertificate != nil {
+		verify = *incoming.Email.VerifyCertificate
+	} else {
+		verify = false
+	}
 	patch := &model.Config{
 		EmailSettings: model.EmailSettings{
+			FeedbackEmail:                     incoming.Email.EmailAddress,
+			ReplyToAddress:                    incoming.Email.EmailAddress,
+			FeedbackName:                      incoming.Email.EmailFrom,
 			SMTPServer:                        incoming.Email.SMTPServer,
 			SMTPPort:                          incoming.Email.SMTPPort,
 			ConnectionSecurity:                incoming.Email.ConnectionSecurity,
-			SkipServerCertificateVerification: incoming.Email.SkipServerCertificateVerification,
+			SkipServerCertificateVerification: model.NewBool(!verify),
 			EnableSMTPAuth:                    incoming.Email.EnableSMTPAuth,
 			SMTPUsername:                      incoming.Email.SMTPUsername,
-			SMTPPassword:                      incoming.Email.SMTPPassword,
+			SMTPPassword:                      pass,
 		},
 	}
 

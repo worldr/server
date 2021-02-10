@@ -1348,13 +1348,15 @@ type EmailSettings struct {
 }
 
 type EmailSettingsExposed struct {
-	SMTPServer                        *string `json:"server"`
-	SMTPPort                          *string `json:"port"`
-	ConnectionSecurity                *string `json:"security_type"`
-	SkipServerCertificateVerification *bool   `json:"insecure_cert"`
-	EnableSMTPAuth                    *bool   `json:"authorisation"`
-	SMTPUsername                      *string `json:"user"`
-	SMTPPassword                      *string `json:"password"`
+	EmailAddress       *string `json:"email_address"`
+	EmailFrom          *string `json:"email_from"`
+	SMTPServer         *string `json:"server"`
+	SMTPPort           *string `json:"port"`
+	ConnectionSecurity *string `json:"security_type"`
+	VerifyCertificate  *bool   `json:"verify_certificate"`
+	EnableSMTPAuth     *bool   `json:"authorisation"`
+	SMTPUsername       *string `json:"user"`
+	SMTPPassword       *string `json:"password,omitempty"`
 }
 
 func (s *EmailSettings) SetDefaults(isUpdate bool) {
