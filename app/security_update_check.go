@@ -45,7 +45,7 @@ func (s *Server) DoSecurityUpdateCheck() {
 	currentTime := model.GetMillis()
 
 	if (currentTime - lastSecurityTime) > SECURITY_UPDATE_PERIOD {
-		mlog.Debug("Checking for security update from Mattermost")
+		mlog.Debug("Checking for security update from Worldr")
 
 		v := url.Values{}
 
@@ -82,7 +82,7 @@ func (s *Server) DoSecurityUpdateCheck() {
 
 		res, err := http.Get(SECURITY_URL + "/security?" + v.Encode())
 		if err != nil {
-			mlog.Error("Failed to get security update information from Mattermost.")
+			mlog.Error("Failed to get security update information from Worldr.")
 			return
 		}
 
@@ -95,7 +95,7 @@ func (s *Server) DoSecurityUpdateCheck() {
 				if props["SecurityBulletin_"+bulletin.Id] == "" {
 					users, userErr := s.Store.User().GetSystemAdminProfiles()
 					if userErr != nil {
-						mlog.Error("Failed to get system admins for security update information from Mattermost.")
+						mlog.Error("Failed to get system admins for security update information from Worldr.")
 						return
 					}
 

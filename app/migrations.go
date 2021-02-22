@@ -104,40 +104,40 @@ func (a *App) DoEmojisPermissionsMigration() {
 	case model.RESTRICT_EMOJI_CREATION_ALL:
 		role, err = a.GetRoleByName(model.SYSTEM_USER_ROLE_ID)
 		if err != nil {
-			mlog.Critical("Failed to migrate emojis creation permissions from mattermost config.", mlog.Err(err))
+			mlog.Critical("Failed to migrate emojis creation permissions from worldr config.", mlog.Err(err))
 			return
 		}
 	case model.RESTRICT_EMOJI_CREATION_ADMIN:
 		role, err = a.GetRoleByName(model.TEAM_ADMIN_ROLE_ID)
 		if err != nil {
-			mlog.Critical("Failed to migrate emojis creation permissions from mattermost config.", mlog.Err(err))
+			mlog.Critical("Failed to migrate emojis creation permissions from worldr config.", mlog.Err(err))
 			return
 		}
 	case model.RESTRICT_EMOJI_CREATION_SYSTEM_ADMIN:
 		role = nil
 	default:
-		mlog.Critical("Failed to migrate emojis creation permissions from mattermost config. Invalid restrict emoji creation setting")
+		mlog.Critical("Failed to migrate emojis creation permissions from worldr config. Invalid restrict emoji creation setting")
 		return
 	}
 
 	if role != nil {
 		role.Permissions = append(role.Permissions, model.PERMISSION_CREATE_EMOJIS.Id, model.PERMISSION_DELETE_EMOJIS.Id)
 		if _, err = a.Srv().Store.Role().Save(role); err != nil {
-			mlog.Critical("Failed to migrate emojis creation permissions from mattermost config.", mlog.Err(err))
+			mlog.Critical("Failed to migrate emojis creation permissions from worldr config.", mlog.Err(err))
 			return
 		}
 	}
 
 	systemAdminRole, err = a.GetRoleByName(model.SYSTEM_ADMIN_ROLE_ID)
 	if err != nil {
-		mlog.Critical("Failed to migrate emojis creation permissions from mattermost config.", mlog.Err(err))
+		mlog.Critical("Failed to migrate emojis creation permissions from worldr config.", mlog.Err(err))
 		return
 	}
 
 	systemAdminRole.Permissions = append(systemAdminRole.Permissions, model.PERMISSION_CREATE_EMOJIS.Id, model.PERMISSION_DELETE_EMOJIS.Id)
 	systemAdminRole.Permissions = append(systemAdminRole.Permissions, model.PERMISSION_DELETE_OTHERS_EMOJIS.Id)
 	if _, err := a.Srv().Store.Role().Save(systemAdminRole); err != nil {
-		mlog.Critical("Failed to migrate emojis creation permissions from mattermost config.", mlog.Err(err))
+		mlog.Critical("Failed to migrate emojis creation permissions from worldr config.", mlog.Err(err))
 		return
 	}
 

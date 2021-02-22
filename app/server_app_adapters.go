@@ -128,7 +128,7 @@ func (s *Server) RunOldAppInitialization() error {
 	}
 
 	if _, err := url.ParseRequestURI(*s.FakeApp().Config().ServiceSettings.SiteURL); err != nil {
-		mlog.Error("SiteURL must be set. Some features will operate incorrectly if the SiteURL is not set. See documentation for details: http://about.mattermost.com/default-site-url")
+		mlog.Error("SiteURL must be set. Some features will operate incorrectly if the SiteURL is not set. See documentation for details: http://about.worldr.com/default-site-url")
 	}
 
 	backend, appErr := s.FakeApp().FileBackend()

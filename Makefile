@@ -501,8 +501,8 @@ clean: stop-docker ## Clean up everything except persistant server data.
 	find . -type d -name data -not -path './vendor/*' | xargs rm -rf
 	rm -rf logs
 
-	rm -f mattermost.log
-	rm -f mattermost.log.jsonl
+	rm -f worldr.log
+	rm -f worldr.log.jsonl
 	rm -f npm-debug.log
 	rm -f .prepare-go
 	rm -f enterprise

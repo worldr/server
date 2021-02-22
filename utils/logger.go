@@ -14,7 +14,7 @@ import (
 
 const (
 	LOG_ROTATE_SIZE           = 10000
-	LOG_FILENAME              = "mattermost.log"
+	LOG_FILENAME              = "worldr.log"
 	LOG_NOTIFICATION_FILENAME = "notifications.log"
 )
 

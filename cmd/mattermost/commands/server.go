@@ -69,7 +69,7 @@ func runServer(configStore config.Store, disableConfigWatch bool, usedPlatform b
 	defer server.Shutdown()
 
 	if usedPlatform {
-		mlog.Error("The platform binary has been deprecated, please switch to using the mattermost binary.")
+		mlog.Error("The platform binary has been deprecated, please switch to using the worldr binary.")
 	}
 
 	api := api4.Init(server, server.AppOptions, server.Router)

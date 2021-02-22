@@ -34,7 +34,7 @@ func (a *App) LoadLicense() {
 
 	record, err := a.Srv().Store.License().Get(licenseId)
 	if err != nil {
-		mlog.Info("License key from https://mattermost.com required to unlock enterprise features.")
+		mlog.Info("License key from https://worldr.com required to unlock enterprise features.")
 		a.SetLicense(nil)
 		return
 	}
