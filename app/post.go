@@ -1455,7 +1455,7 @@ func convertPostsToPtrs(posts *[]model.Post, reverse bool) *[]*model.Post {
 // CheckIncrementPossible() returns true if it is reasonable to proceed with downloading incremental updates for given chats.
 //
 func (a *App) CheckIncrementPossible(request *model.IncrementCheckRequest) (bool, *model.AppError) {
-	channelsWithPosts := make([]model.ChannelWithPost, len(request.Channels))[:0]
+	channelsWithPosts := make([]model.ChannelWithPost, 0, len(request.Channels))
 	missingChannels := []string{}
 	for _, v := range request.Channels {
 		if len(v.PostId) == 0 {

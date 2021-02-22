@@ -1888,6 +1888,8 @@ func (s *SqlPostStore) GetOldestPostsForChannels(channelIds *[]string) (*map[str
 	return &result, nil
 }
 
+// Validates post ids requested for channels.
+// Does one select from the db and a lot of error checking.
 func (s *SqlPostStore) getValidPostIdsForChannels(
 	channels *[]model.ChannelWithPost,
 	where string,
@@ -1896,59 +1898,110 @@ func (s *SqlPostStore) getValidPostIdsForChannels(
 	channelByPost := make(map[string]string, len(*channels))
 	postIds := make([]string, len(*channels))
 	for i, v := range *channels {
+		// Error 1: Check for duplicates in post ids
+		if _, exists := channelByPost[v.PostId]; exists {
+			return nil, model.NewAppError(
+				where,
+				"store.sql_post."+errorId+".duplicate_posts.app_error",
+				map[string]interface{}{
+					"post_id": v.PostId,
+				},
+				"Duplicate post ids",
+				http.StatusBadRequest,
+			)
+		}
+		// Collect ids
 		postIds[i] = v.PostId
 		channelByPost[v.PostId] = v.ChannelId
 	}
 
-	// Get channel ids and creation time for all given posts, distinct on channel id
+	// ACTUAL WORK
+	// Get channel ids and creation time for all given posts
 	var requestData []struct {
 		ChannelId string
 		PostId    string
 		CreateAt  int64
 	}
-	_, err := s.GetReplica().Select(&requestData, `
-		SELECT DISTINCT ON (ChannelId) ChannelId,Id as PostId,CreateAt 
+	_, err := s.GetMaster().Select(&requestData, `
+		SELECT ChannelId,Id as PostId,CreateAt 
 		FROM Posts
 		WHERE Id IN ('`+strings.Join(postIds, "','")+`')
 		`,
 	)
 
+	// Error 2: Generic db error
 	if err != nil {
 		return nil, model.NewAppError(
 			where,
 			"store.sql_post."+errorId+".failed_to_get_posts.app_error",
-			nil,
-			"Duplicate or missing channels in requested post list",
-			http.StatusInternalServerError,
-		)
-	}
-
-	// Check that number of channels pulled from db equals the number of channels requested
-	if len(requestData) != len(*channels) {
-		return nil, model.NewAppError(
-			where,
-			"store.sql_post."+errorId+".channel_id_duplicate_or_missing.app_error",
-			nil,
-			"Duplicate or missing channels in requested post list",
+			map[string]interface{}{
+				"post_ids": strings.Join(postIds, "','"),
+			},
+			"Failed to get requested posts",
 			http.StatusInternalServerError,
 		)
 	}
 
 	// Check that given posts really belong to given channels
+	// Check for duplicates in channel ids
+	channelById := make(map[string]bool, len(*channels))
 	for _, v := range requestData {
+
+		// Error 3: Duplicates in channels ids
+		if _, exists := channelById[v.ChannelId]; exists {
+			return nil, model.NewAppError(
+				where,
+				"store.sql_post."+errorId+".duplicate_channels.app_error",
+				map[string]interface{}{
+					"channel_id": v.ChannelId,
+				},
+				"Duplicate channel ids",
+				http.StatusBadRequest,
+			)
+		}
+		channelById[v.ChannelId] = true
+
 		if cid, exists := channelByPost[v.PostId]; exists {
+			// Error 4: The post requested belongs to a different channel
 			if cid != v.ChannelId {
 				return nil, model.NewAppError(
 					where,
 					"store.sql_post."+errorId+".channel_id_post_id_mismatch.app_error",
-					nil,
+					map[string]interface{}{
+						"post_id":          v.PostId,
+						"expected_channel": cid,
+						"actual_channel":   v.ChannelId,
+					},
 					"Unexpected channel id for post",
-					http.StatusInternalServerError,
+					http.StatusBadRequest,
 				)
 			}
+			// Delete from the map so we can check that everything was found
+			delete(channelByPost, v.PostId)
 		}
 	}
 
+	// Error 5: Posts not found
+	// The only post ids remaining in the map are those that were not found in the db
+	if len(channelByPost) != 0 {
+		// Collect a detailed error info
+		missing := make([]string, 0, len(channelByPost))
+		for k, v := range channelByPost {
+			missing = append(missing, fmt.Sprintf("post %s for channel %s", k, v))
+		}
+
+		return nil, model.NewAppError(
+			where,
+			"store.sql_post."+errorId+".posts_not_found.app_error",
+			map[string]interface{}{
+				"missing_posts": strings.Join(missing, ","),
+			},
+			"Duplicate channels or missing posts in requested list",
+			http.StatusBadRequest,
+		)
+	}
+
+	// Success
 	return &postIds, nil
 }
 

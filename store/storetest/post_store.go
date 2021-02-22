@@ -3143,7 +3143,47 @@ func testCheckIncrementPossible(t *testing.T, ss store.Store, s SqlSupplier) {
 		require.NotNil(t, err)
 		require.Equal(
 			t,
-			"store.sql_post.get_posts_count_after_for_channels.channel_id_duplicate_or_missing.app_error",
+			"store.sql_post.get_posts_count_after_for_channels.duplicate_channels.app_error",
+			err.Id,
+			"wrong error id",
+		)
+	})
+
+	t.Run("duplicate post ids", func(t *testing.T) {
+		c := (*channels)[0]
+		request := []model.ChannelWithPost{
+			{
+				ChannelId: c.Id,
+				PostId:    (*posts)[c.Id][0],
+			},
+			{
+				ChannelId: c.Id,
+				PostId:    (*posts)[c.Id][0],
+			},
+		}
+		_, err := ss.Post().GetPostCountAfter(&request)
+		require.NotNil(t, err)
+		require.Equal(
+			t,
+			"store.sql_post.get_posts_count_after_for_channels.duplicate_posts.app_error",
+			err.Id,
+			"wrong error id",
+		)
+	})
+
+	t.Run("posts not found", func(t *testing.T) {
+		c := (*channels)[0]
+		request := []model.ChannelWithPost{
+			{
+				ChannelId: c.Id,
+				PostId:    "123",
+			},
+		}
+		_, err := ss.Post().GetPostCountAfter(&request)
+		require.NotNil(t, err)
+		require.Equal(
+			t,
+			"store.sql_post.get_posts_count_after_for_channels.posts_not_found.app_error",
 			err.Id,
 			"wrong error id",
 		)
@@ -3183,7 +3223,7 @@ func testCheckIncrementPossible(t *testing.T, ss store.Store, s SqlSupplier) {
 		require.NotNil(t, err)
 		require.Equal(
 			t,
-			"store.sql_post.get_posts_count_after_for_channels.channel_id_duplicate_or_missing.app_error",
+			"store.sql_post.get_posts_count_after_for_channels.posts_not_found.app_error",
 			err.Id,
 			"wrong error id",
 		)
@@ -3256,7 +3296,7 @@ func testGetPostCountAfterForChannels(t *testing.T, ss store.Store, s SqlSupplie
 		require.NotNil(t, err)
 		require.Equal(
 			t,
-			"store.sql_post.get_posts_count_after_for_channels.channel_id_duplicate_or_missing.app_error",
+			"store.sql_post.get_posts_count_after_for_channels.posts_not_found.app_error",
 			err.Id,
 			"wrong error id",
 		)

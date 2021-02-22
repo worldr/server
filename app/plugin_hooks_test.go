@@ -899,8 +899,7 @@ func TestErrorString(t *testing.T) {
 		cause := errors.Cause(activationErrors[0])
 		require.IsType(t, &model.AppError{}, cause)
 
-		// params not expected, since not exported
-		expectedErr := model.NewAppError("where", "id", nil, "details", 42)
+		expectedErr := model.NewAppError("where", "id", map[string]interface{}{"param": 1}, "details", 42)
 		require.Equal(t, expectedErr, cause)
 	})
 }

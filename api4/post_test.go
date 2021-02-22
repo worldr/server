@@ -910,7 +910,8 @@ func TestPatchPost(t *testing.T) {
 
 	t.Run("invalid requests", func(t *testing.T) {
 		r, err := Client.DoApiPut("/posts/"+post.Id+"/patch", "garbage")
-		require.EqualError(t, err, ": Invalid or missing post in request body., ")
+		require.NotNil(t, err, "Error is expected")
+		require.Equal(t, "Invalid or missing post in request body.", err.Message)
 		require.Equal(t, http.StatusBadRequest, r.StatusCode, "wrong status code")
 
 		patch := &model.PostPatch{}

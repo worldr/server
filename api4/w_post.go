@@ -81,7 +81,7 @@ func checkIncrementPossible(c *Context, w http.ResponseWriter, r *http.Request) 
 			"api.w_post.check_increment_posts.check_failed.app_error",
 			nil,
 			err.Error(),
-			http.StatusInternalServerError,
+			err.StatusCode,
 		)
 		return
 	}
@@ -103,6 +103,7 @@ func checkIncrementPossible(c *Context, w http.ResponseWriter, r *http.Request) 
 // This means, not all of the requested channels may have messages in the response.
 // Those should be requested again.
 //
+// Returns model.IncrementPostsResponse
 func getIncrementalUpdate(c *Context, w http.ResponseWriter, r *http.Request) {
 	requestData := model.IncrementPostsRequestDataFromJson(r.Body)
 	if requestData == nil {
@@ -167,6 +168,20 @@ func getReactionsForPosts(c *Context, w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(response.ToJson()))
 }
 
+// This handle is used for synchronising the state of the client when it restores the
+// socket connection and needs to catch up with everything that happened while it
+// didn't have the socket events notifying of messages, new chats, etc. This handle helps
+// to not request everything again as if it is a fresh start of the client app.
+//
+// Also, this handle can be used to synchronise state when the app goes from background
+// to foreground.
+//
+// The handle trusts the client to provide the full list of ids it is aware of. This means,
+// if the client provides a single channel (or no channels) in the request, the server will
+// collect the data about user's current channel memberships and treat the channels as if
+// they are new for the client.
+//
+// Returns model.ChannelUpdates
 func checkForUpdates(c *Context, w http.ResponseWriter, r *http.Request) {
 	requestData, errJson := model.ChannelWithPostListFromJson(r.Body)
 	if errJson != nil {

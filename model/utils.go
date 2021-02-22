@@ -60,18 +60,29 @@ func AppErrorInit(t goi18n.TranslateFunc) {
 }
 
 type AppError struct {
-	Id            string `json:"id"`
-	Message       string `json:"message"`               // Message to be display to the end user without debugging information
-	DetailedError string `json:"detailed_error"`        // Internal error string to help the developer
-	RequestId     string `json:"request_id,omitempty"`  // The RequestId that's also set in the header
-	StatusCode    int    `json:"status_code,omitempty"` // The http status code
-	Where         string `json:"-"`                     // The function where it happened in the form of Struct.Func
-	IsOAuth       bool   `json:"is_oauth,omitempty"`    // Whether the error is OAuth specific
-	params        map[string]interface{}
+	Id            string                 `json:"id"`
+	Message       string                 `json:"message"`               // Message to be display to the end user without debugging information
+	DetailedError string                 `json:"detailed_error"`        // Internal error string to help the developer
+	RequestId     string                 `json:"request_id,omitempty"`  // The RequestId that's also set in the header
+	StatusCode    int                    `json:"status_code,omitempty"` // The http status code
+	Where         string                 `json:"-"`                     // The function where it happened in the form of Struct.Func
+	IsOAuth       bool                   `json:"is_oauth,omitempty"`    // Whether the error is OAuth specific
+	Params        map[string]interface{} `json:"params,omitempty"`      // Error details
 }
 
 func (er *AppError) Error() string {
-	return er.Where + ": " + er.Message + ", " + er.DetailedError
+	var p []string
+	if er.Params != nil {
+		p = make([]string, 0, len(er.Params))
+		for k, v := range er.Params {
+			p = append(p, fmt.Sprintf("%s=%v", k, v))
+		}
+	}
+	params := ""
+	if len(p) > 0 {
+		params = ", params:(" + strings.Join(p, ",") + ")"
+	}
+	return er.Where + ": " + er.Message + ", " + er.DetailedError + params
 }
 
 func (er *AppError) Translate(T goi18n.TranslateFunc) {
@@ -80,18 +91,18 @@ func (er *AppError) Translate(T goi18n.TranslateFunc) {
 		return
 	}
 
-	if er.params == nil {
+	if er.Params == nil {
 		er.Message = T(er.Id)
 	} else {
-		er.Message = T(er.Id, er.params)
+		er.Message = T(er.Id, er.Params)
 	}
 }
 
 func (er *AppError) SystemMessage(T goi18n.TranslateFunc) string {
-	if er.params == nil {
+	if er.Params == nil {
 		return T(er.Id)
 	} else {
-		return T(er.Id, er.params)
+		return T(er.Id, er.Params)
 	}
 }
 
@@ -123,7 +134,7 @@ func AppErrorFromJson(data io.Reader) *AppError {
 func NewAppError(where string, id string, params map[string]interface{}, details string, status int) *AppError {
 	ap := &AppError{}
 	ap.Id = id
-	ap.params = params
+	ap.Params = params
 	ap.Message = id
 	ap.Where = where
 	ap.DetailedError = details

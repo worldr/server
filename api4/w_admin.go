@@ -245,7 +245,7 @@ func loginByAdmin(c *Context, w http.ResponseWriter, r *http.Request) {
 	isAdmin, err := c.App.IsAdminUsername(team.Id, loginId)
 
 	if err != nil {
-		c.Err = model.NewAppError("loginForAdmins", "admin_check_role", nil, err.Error(), http.StatusInternalServerError)
+		c.Err = model.NewAppError("loginForAdmins", "admin_check_role", nil, err.Error(), err.StatusCode)
 		return
 	}
 	if !isAdmin {

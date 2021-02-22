@@ -1012,7 +1012,11 @@ func (us SqlUserStore) GetByUsername(username string) (*model.User, *model.AppEr
 
 	var user *model.User
 	if err := us.GetReplica().SelectOne(&user, queryString, args...); err != nil {
-		return nil, model.NewAppError("SqlUserStore.GetByUsername", "store.sql_user.get_by_username.app_error", nil, err.Error()+" -- "+queryString, http.StatusInternalServerError)
+		if strings.Contains(err.Error(), "no rows in result set") {
+			return nil, model.NewAppError("SqlUserStore.GetByUsername", "store.sql_user.get_by_username.app_error", nil, "user not found", http.StatusNotFound)
+		} else {
+			return nil, model.NewAppError("SqlUserStore.GetByUsername", "store.sql_user.get_by_username.app_error", nil, err.Error(), http.StatusInternalServerError)
+		}
 	}
 
 	return user, nil
