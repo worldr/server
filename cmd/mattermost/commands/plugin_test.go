@@ -33,6 +33,17 @@ func TestPlugin(t *testing.T) {
 	th.CheckCommand(t, "plugin", "enable", "testplugin")
 	fs, err := config.NewFileStore(th.ConfigPath(), false)
 	require.Nil(t, err)
+
+	// XXX: the test here is unstable. Sometimes a nil dereference happens
+	// and it is unclear what exactly is nil (it shouldn't be!).
+	// The following assertions are here to explain what is going on the next time
+	// the test fails. Remove them when the problem is resolved.
+	assert.NotNil(t, fs, "-> fs")
+	assert.NotNil(t, fs.Get(), "-> fs.Get()")
+	assert.NotNil(t, fs.Get().PluginSettings, "-> fs.Get().PluginSettings")
+	assert.NotNil(t, fs.Get().PluginSettings.PluginStates, "-> fs.Get().PluginSettings.PluginStates")
+	assert.NotNil(t, fs.Get().PluginSettings.PluginStates["testplugin"], "-> fs.Get().PluginSettings.PluginStates['testplugin']")
+
 	assert.True(t, fs.Get().PluginSettings.PluginStates["testplugin"].Enable)
 	fs.Close()
 

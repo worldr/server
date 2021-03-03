@@ -101,9 +101,9 @@ func (a *App) CreatePostMissingChannel(post *model.Post, triggerWebhooks bool) (
 }
 
 // deduplicateCreatePost attempts to make posting idempotent within a caching window.
+// We rely on the client sending the pending post id across "duplicate" requests. If there
+// isn't one, we can't deduplicate, so allow creation normally.
 func (a *App) deduplicateCreatePost(post *model.Post) (foundPost *model.Post, err *model.AppError) {
-	// We rely on the client sending the pending post id across "duplicate" requests. If there
-	// isn't one, we can't deduplicate, so allow creation normally.
 	if post.PendingPostId == "" {
 		return nil, nil
 	}
@@ -167,41 +167,22 @@ func (a *App) CreatePost(post *model.Post, channel *model.Channel, triggerWebhoo
 
 	post.SanitizeProps()
 
+	// Get a parent post(s) if any
 	var pchan chan store.StoreResult
+	var ancestorId string
 	if len(post.RootId) > 0 {
+		ancestorId = post.RootId
+	} else if len(post.ReplyToId) > 0 {
+		ancestorId = post.ReplyToId
+	}
+	if ancestorId != "" {
 		pchan = make(chan store.StoreResult, 1)
 		go func() {
-			r, pErr := a.Srv().Store.Post().Get(post.RootId, false)
+			// The result is either a thread of posts or a single post
+			r, pErr := a.Srv().Store.Post().Get(ancestorId, len(post.ReplyToId) > 0)
 			pchan <- store.StoreResult{Data: r, Err: pErr}
 			close(pchan)
 		}()
-	}
-
-	if len(post.ReplyToId) > 0 {
-		r, pErr := a.Srv().Store.Post().Get(post.ReplyToId, true)
-		if pErr != nil {
-			return nil, pErr
-		}
-		if len(r.Posts) != 1 {
-			return nil, model.NewAppError(
-				"createPost",
-				"api.post.create_post.simple_reply_not_found",
-				nil,
-				"failed to find the post specified as the reply target",
-				http.StatusNotFound,
-			)
-		}
-		for _, v := range r.Posts {
-			if v.ChannelId != channel.Id {
-				return nil, model.NewAppError(
-					"createPost",
-					"api.post.create_post.simple_reply_channel",
-					nil,
-					"the post specified as the reply target belongs to a different channel",
-					http.StatusBadRequest,
-				)
-			}
-		}
 	}
 
 	user, err := a.Srv().Store.User().Get(post.UserId)
@@ -239,29 +220,28 @@ func (a *App) CreatePost(post *model.Post, channel *model.Channel, triggerWebhoo
 	// Verify the parent/child relationships are correct
 	var parentPostList *model.PostList
 	if pchan != nil {
+		// We only get here if either RootId or ReplyToId is defined
 		result := <-pchan
+
 		if result.Err != nil {
 			return nil, model.NewAppError("createPost", "api.post.create_post.root_id.app_error", nil, "", http.StatusBadRequest)
 		}
 		parentPostList = result.Data.(*model.PostList)
-		if len(parentPostList.Posts) == 0 || !parentPostList.IsChannelId(post.ChannelId) {
-			return nil, model.NewAppError("createPost", "api.post.create_post.channel_root_id.app_error", nil, "", http.StatusInternalServerError)
-		}
 
-		rootPost := parentPostList.Posts[post.RootId]
-		if len(rootPost.RootId) > 0 {
-			return nil, model.NewAppError("createPost", "api.post.create_post.root_id.app_error", nil, "", http.StatusBadRequest)
-		}
-
-		if post.ParentId == "" {
-			post.ParentId = post.RootId
-		}
-
-		if post.RootId != post.ParentId {
-			parent := parentPostList.Posts[post.ParentId]
-			if parent == nil {
-				return nil, model.NewAppError("createPost", "api.post.create_post.parent_id.app_error", nil, "", http.StatusInternalServerError)
+		var parentErr *model.AppError
+		if len(post.RootId) > 0 {
+			// Check threaded replies
+			if post.ParentId == "" {
+				post.ParentId = post.RootId
 			}
+			parentErr = checkThreadedReply(post, parentPostList)
+		} else {
+			// Check non-threaded replies
+			parentErr = checkNonThreadedReply(post, parentPostList)
+		}
+
+		if parentErr != nil {
+			return nil, parentErr
 		}
 	}
 
@@ -364,6 +344,53 @@ func (a *App) CreatePost(post *model.Post, channel *model.Channel, triggerWebhoo
 	}
 
 	return rpost, nil
+}
+
+func checkThreadedReply(post *model.Post, parentPostList *model.PostList) *model.AppError {
+	if len(parentPostList.Posts) == 0 || !parentPostList.IsChannelId(post.ChannelId) {
+		return model.NewAppError("createPost", "api.post.create_post.channel_root_id.app_error", nil, "", http.StatusInternalServerError)
+	}
+
+	rootPost := parentPostList.Posts[post.RootId]
+	if len(rootPost.RootId) > 0 {
+		return model.NewAppError("createPost", "api.post.create_post.root_id.app_error", nil, "", http.StatusBadRequest)
+	}
+
+	if post.RootId != post.ParentId {
+		parent := parentPostList.Posts[post.ParentId]
+		if parent == nil {
+			return model.NewAppError("createPost", "api.post.create_post.parent_id.app_error", nil, "", http.StatusInternalServerError)
+		}
+	}
+
+	return nil
+}
+
+func checkNonThreadedReply(post *model.Post, parentPostList *model.PostList) *model.AppError {
+	if len(parentPostList.Posts) != 1 {
+		return model.NewAppError(
+			"createPost",
+			"api.post.create_post.simple_reply.not_found",
+			map[string]interface{}{
+				"found_posts": len(parentPostList.Posts),
+				"reply_to_id": post.ReplyToId,
+			},
+			"failed to find the post specified as the reply target",
+			http.StatusNotFound,
+		)
+	}
+	for _, v := range parentPostList.Posts {
+		if v.ChannelId != post.ChannelId {
+			return model.NewAppError(
+				"createPost",
+				"api.post.create_post.simple_reply.channel",
+				nil,
+				"the post specified as the reply target belongs to a different channel",
+				http.StatusBadRequest,
+			)
+		}
+	}
+	return nil
 }
 
 func (a *App) attachFilesToPost(post *model.Post) *model.AppError {

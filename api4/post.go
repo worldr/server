@@ -63,6 +63,7 @@ func createPost(c *Context, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// If you are an administrator, you can set creation time (XXX: why?)
 	if post.CreateAt != 0 && !c.App.SessionHasPermissionTo(*c.App.Session(), model.PERMISSION_MANAGE_SYSTEM) {
 		post.CreateAt = 0
 	}

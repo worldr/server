@@ -2102,7 +2102,9 @@ func (s *SqlPostStore) CheckForUpdates(userId string, list *[]model.ChannelWithP
 	channelIds := make([]string, len(*list))
 	channelById := make(map[string]*model.ChannelWithPost, len(*list))
 	for i, v := range *list {
-		// TODO remove duplicates
+		if _, exists := channelById[v.ChannelId]; exists {
+			continue
+		}
 		channelIds[i] = v.ChannelId
 		channelById[v.ChannelId] = &((*list)[i])
 	}
@@ -2133,7 +2135,7 @@ func (s *SqlPostStore) CheckForUpdates(userId string, list *[]model.ChannelWithP
 
 	// Which channels among the requested are deleted?
 	var deleted []string
-	_, err = s.GetReplica().Select(
+	_, err = s.GetMaster().Select(
 		&deleted,
 		`
 		SELECT Id FROM channels 
@@ -2192,18 +2194,13 @@ func (s *SqlPostStore) CheckForUpdates(userId string, list *[]model.ChannelWithP
 	// Which of the existing memberships have more messages?
 	// Get last messages for channels
 	var posts []PostBrief
-	_, err = s.GetReplica().Select(&posts,
+	_, err = s.GetMaster().Select(&posts,
 		`
-		SELECT
-			p.Id, p.ChannelId
-		FROM
-			Posts as p
-		JOIN (
-			SELECT Id, LastPostAt FROM Channels
-			WHERE Id IN ('`+strings.Join(toRequestUpdates, "','")+`')
-		) as c
-		ON p.ChannelId=c.Id and c.LastPostAt=p.CreateAt
-		`,
+		SELECT DISTINCT ON (ChannelId) Id,ChannelId 
+		FROM Posts 
+		WHERE ChannelId IN ('`+strings.Join(toRequestUpdates, "','")+`')
+		ORDER BY ChannelId,CreateAt DESC;
+	`,
 	)
 	if err != nil {
 		return nil, model.NewAppError(

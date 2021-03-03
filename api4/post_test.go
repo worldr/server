@@ -73,7 +73,7 @@ func TestCreatePost(t *testing.T) {
 	post.ParentId = ""
 	post.ReplyToId = "junk"
 	_, resp = Client.CreatePost(post)
-	CheckNotFoundStatus(t, resp)
+	CheckBadRequestStatus(t, resp)
 
 	// Reply to id is from a different channel
 	post.RootId = ""

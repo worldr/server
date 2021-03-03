@@ -89,6 +89,8 @@ type Post struct {
 	// simple non-threaded reponses. If ReplyToId is set, RootId and ParentId must be empty.
 	ReplyToId string `json:"reply_to_id"`
 
+	// Id for edit history. When a post gets edited, a new post with the contents
+	// before edits is created and OriginalId is pointing to the initial post.
 	OriginalId string `json:"original_id"`
 
 	Message string `json:"message"`
@@ -97,13 +99,17 @@ type Post struct {
 	// populate edit boxes if present.
 	MessageSource string `json:"message_source,omitempty" db:"-"`
 
-	Type          string          `json:"type"`
-	Props         StringInterface `json:"props"`
-	Hashtags      string          `json:"hashtags"`
-	Filenames     StringArray     `json:"filenames,omitempty"` // Deprecated, do not use this field any more
-	FileIds       StringArray     `json:"file_ids,omitempty"`
-	PendingPostId string          `json:"pending_post_id" db:"-"`
-	HasReactions  bool            `json:"has_reactions,omitempty"`
+	Type      string          `json:"type"`
+	Props     StringInterface `json:"props"`
+	Hashtags  string          `json:"hashtags"`
+	Filenames StringArray     `json:"filenames,omitempty"` // Deprecated, do not use this field any more
+	FileIds   StringArray     `json:"file_ids,omitempty"`
+
+	// An id controlled by the client side, used for deduplication of posts.
+	// The client should use the same id for retrying.
+	PendingPostId string `json:"pending_post_id" db:"-"`
+
+	HasReactions bool `json:"has_reactions,omitempty"`
 
 	// Transient data populated before sending a post to the client
 	ReplyCount int64         `json:"reply_count" db:"-"`
