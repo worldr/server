@@ -14579,7 +14579,7 @@ func (a *OpenTracingAppLayer) UpdateOutgoingWebhook(oldHook *model.OutgoingWebho
 	return resultVar0, resultVar1
 }
 
-func (a *OpenTracingAppLayer) UpdatePassword(user *model.User, newPassword string) *model.AppError {
+func (a *OpenTracingAppLayer) UpdatePassword(user *model.User, newPassword string, userMustReset bool) *model.AppError {
 	origCtx := a.ctx
 	span, newCtx := tracing.StartSpanWithParentByContext(a.ctx, "app.UpdatePassword")
 
@@ -14591,7 +14591,7 @@ func (a *OpenTracingAppLayer) UpdatePassword(user *model.User, newPassword strin
 	}()
 
 	defer span.Finish()
-	resultVar0 := a.app.UpdatePassword(user, newPassword)
+	resultVar0 := a.app.UpdatePassword(user, newPassword, userMustReset)
 
 	if resultVar0 != nil {
 		span.LogFields(spanlog.Error(resultVar0))
@@ -14645,7 +14645,7 @@ func (a *OpenTracingAppLayer) UpdatePasswordByUserIdSendEmail(userId string, new
 	return resultVar0
 }
 
-func (a *OpenTracingAppLayer) UpdatePasswordSendEmail(user *model.User, newPassword string, method string) *model.AppError {
+func (a *OpenTracingAppLayer) UpdatePasswordSendEmail(user *model.User, newPassword string, method string, userMustReset bool) *model.AppError {
 	origCtx := a.ctx
 	span, newCtx := tracing.StartSpanWithParentByContext(a.ctx, "app.UpdatePasswordSendEmail")
 
@@ -14657,7 +14657,7 @@ func (a *OpenTracingAppLayer) UpdatePasswordSendEmail(user *model.User, newPassw
 	}()
 
 	defer span.Finish()
-	resultVar0 := a.app.UpdatePasswordSendEmail(user, newPassword, method)
+	resultVar0 := a.app.UpdatePasswordSendEmail(user, newPassword, method, userMustReset)
 
 	if resultVar0 != nil {
 		span.LogFields(spanlog.Error(resultVar0))

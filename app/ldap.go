@@ -142,7 +142,7 @@ func (a *App) SwitchLdapToEmail(ldapPassword, code, email, newPassword string) (
 		return "", err
 	}
 
-	if err := a.UpdatePassword(user, newPassword); err != nil {
+	if err := a.UpdatePassword(user, newPassword, false); err != nil {
 		return "", err
 	}
 

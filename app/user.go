@@ -963,7 +963,7 @@ func (a *App) UpdatePasswordAsUser(userId, currentPassword, newPassword string) 
 
 	T := utils.GetUserTranslations(user.Locale)
 
-	return a.UpdatePasswordSendEmail(user, newPassword, T("api.user.update_password.menu"))
+	return a.UpdatePasswordSendEmail(user, newPassword, T("api.user.update_password.menu"), false)
 }
 
 func (a *App) userDeactivated(userId string) *model.AppError {
@@ -1116,7 +1116,7 @@ func (a *App) UpdateUserAuth(userId string, userAuth *model.UserAuth) (*model.Us
 		}
 		password := model.HashPassword(userAuth.Password)
 
-		if err := a.Srv().Store.User().UpdatePassword(userId, password); err != nil {
+		if err := a.Srv().Store.User().UpdatePassword(userId, password, false); err != nil {
 			return nil, err
 		}
 	} else {
@@ -1288,17 +1288,21 @@ func (a *App) UpdatePasswordByUserIdSendEmail(userId, newPassword, method string
 		return err
 	}
 
-	return a.UpdatePasswordSendEmail(user, newPassword, method)
+	return a.UpdatePasswordSendEmail(user, newPassword, method, true)
 }
 
-func (a *App) UpdatePassword(user *model.User, newPassword string) *model.AppError {
+// UpdatePassword receives a userMustReset flag.
+// If userMustReset is true, the user has to reset their password when they log in next time.
+// This happens when the password is reset by an administrator or by other means
+// other than the user deciding to change the password themselves.
+func (a *App) UpdatePassword(user *model.User, newPassword string, userMustReset bool) *model.AppError {
 	if err := a.IsPasswordValid(newPassword); err != nil {
 		return err
 	}
 
 	hashedPassword := model.HashPassword(newPassword)
 
-	if err := a.Srv().Store.User().UpdatePassword(user.Id, hashedPassword); err != nil {
+	if err := a.Srv().Store.User().UpdatePassword(user.Id, hashedPassword, userMustReset); err != nil {
 		return model.NewAppError("UpdatePassword", "api.user.update_password.failed.app_error", nil, err.Error(), http.StatusInternalServerError)
 	}
 
@@ -1307,13 +1311,13 @@ func (a *App) UpdatePassword(user *model.User, newPassword string) *model.AppErr
 	return nil
 }
 
-func (a *App) UpdatePasswordSendEmail(user *model.User, newPassword, method string) *model.AppError {
-	if err := a.UpdatePassword(user, newPassword); err != nil {
+func (a *App) UpdatePasswordSendEmail(user *model.User, newPassword, method string, userMustReset bool) *model.AppError {
+	if err := a.UpdatePassword(user, newPassword, userMustReset); err != nil {
 		return err
 	}
 
 	a.Srv().Go(func() {
-		if err := a.sendPasswordChangeEmail(user.Email, method, user.Locale, a.GetSiteURL()); err != nil {
+		if err := a.sendPasswordChangeEmail(user, method, newPassword); err != nil {
 			mlog.Error("Failed to send password change email", mlog.Err(err))
 		}
 	})
@@ -1355,7 +1359,7 @@ func (a *App) ResetPasswordFromToken(userSuppliedTokenString, newPassword string
 
 	T := utils.GetUserTranslations(user.Locale)
 
-	if err := a.UpdatePasswordSendEmail(user, newPassword, T("api.user.reset_password.method")); err != nil {
+	if err := a.UpdatePasswordSendEmail(user, newPassword, T("api.user.reset_password.method"), false); err != nil {
 		return err
 	}
 

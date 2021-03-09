@@ -1285,13 +1285,13 @@ func (_m *UserStore) UpdateMfaSecret(userId string, secret string) *model.AppErr
 	return r0
 }
 
-// UpdatePassword provides a mock function with given fields: userId, newPassword
-func (_m *UserStore) UpdatePassword(userId string, newPassword string) *model.AppError {
-	ret := _m.Called(userId, newPassword)
+// UpdatePassword provides a mock function with given fields: userId, newPassword, userMustReset
+func (_m *UserStore) UpdatePassword(userId string, newPassword string, userMustReset bool) *model.AppError {
+	ret := _m.Called(userId, newPassword, userMustReset)
 
 	var r0 *model.AppError
-	if rf, ok := ret.Get(0).(func(string, string) *model.AppError); ok {
-		r0 = rf(userId, newPassword)
+	if rf, ok := ret.Get(0).(func(string, string, bool) *model.AppError); ok {
+		r0 = rf(userId, newPassword, userMustReset)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*model.AppError)

@@ -386,7 +386,7 @@ var emailRegex = regexp.MustCompile("^[a-zA-Z0-9.!#$%&'*+\\/=?^_`{|}~-]+@[a-zA-Z
 
 // IsValidEmailAddress uses the W3C recommended regular expression to validate emails.
 func IsValidEmailAddress(e string) bool {
-	if len(e) < 3 && len(e) > 254 {
+	if len(e) < 5 && len(e) > 254 {
 		return false
 	}
 	return emailRegex.MatchString(e)

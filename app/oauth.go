@@ -844,7 +844,7 @@ func (a *App) SwitchOAuthToEmail(email, password, requesterId string) (string, *
 		return "", model.NewAppError("SwitchOAuthToEmail", "api.user.oauth_to_email.context.app_error", nil, "", http.StatusForbidden)
 	}
 
-	if err := a.UpdatePassword(user, password); err != nil {
+	if err := a.UpdatePassword(user, password, false); err != nil {
 		return "", err
 	}
 

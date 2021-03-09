@@ -668,7 +668,7 @@ func TestUserWillLogIn_Blocked(t *testing.T) {
 	th := Setup(t).InitBasic()
 	defer th.TearDown()
 
-	err := th.App.UpdatePassword(th.BasicUser, "hunter2")
+	err := th.App.UpdatePassword(th.BasicUser, "hunter2", false)
 	assert.Nil(t, err, "Error updating user password: %s", err)
 	tearDown, _, _ := SetAppEnvironmentWithPlugins(t,
 		[]string{
@@ -705,7 +705,7 @@ func TestUserWillLogInIn_Passed(t *testing.T) {
 	th := Setup(t).InitBasic()
 	defer th.TearDown()
 
-	err := th.App.UpdatePassword(th.BasicUser, "hunter2")
+	err := th.App.UpdatePassword(th.BasicUser, "hunter2", false)
 
 	assert.Nil(t, err, "Error updating user password: %s", err)
 
@@ -745,7 +745,7 @@ func TestUserHasLoggedIn(t *testing.T) {
 	th := Setup(t).InitBasic()
 	defer th.TearDown()
 
-	err := th.App.UpdatePassword(th.BasicUser, "hunter2")
+	err := th.App.UpdatePassword(th.BasicUser, "hunter2", false)
 
 	assert.Nil(t, err, "Error updating user password: %s", err)
 

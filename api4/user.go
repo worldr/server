@@ -1304,6 +1304,7 @@ func executeUpdatePassword(c *Context, r *http.Request) bool {
 
 	var err *model.AppError
 	if c.Params.UserId == c.App.Session().UserId {
+		// Update your own password; requires your current password
 		currentPassword := props["current_password"]
 		if len(currentPassword) <= 0 {
 			c.SetInvalidParam("current_password")
@@ -1312,7 +1313,8 @@ func executeUpdatePassword(c *Context, r *http.Request) bool {
 
 		err = c.App.UpdatePasswordAsUser(c.Params.UserId, currentPassword, newPassword)
 	} else if c.App.SessionHasPermissionTo(*c.App.Session(), model.PERMISSION_MANAGE_SYSTEM) {
-		err = c.App.UpdatePasswordByUserIdSendEmail(c.Params.UserId, newPassword, c.App.T("api.user.reset_password.method"))
+		// Update other user's password; requires administrative role
+		err = c.App.UpdatePasswordByUserIdSendEmail(c.Params.UserId, newPassword, c.App.T("api.user.reset_password_by_admin.method"))
 	} else {
 		err = model.NewAppError("updatePassword", "api.user.update_password.context.app_error", nil, "", http.StatusForbidden)
 	}

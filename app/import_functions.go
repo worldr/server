@@ -550,7 +550,7 @@ func (a *App) importUser(data *UserImportData, dryRun bool) *model.AppError {
 			}
 		}
 		if len(password) > 0 {
-			if err = a.UpdatePassword(user, password); err != nil {
+			if err = a.UpdatePassword(user, password, false); err != nil {
 				return err
 			}
 		} else {

@@ -115,6 +115,8 @@ func setupTestHelper(dbStore store.Store, enterprise bool, includeCacheLayer boo
 		th.tempWorkspace = tempWorkspace
 	}
 
+	SetDefaultCompanyConfig(th.Server, th.App, th.tempWorkspace)
+
 	return th
 }
 

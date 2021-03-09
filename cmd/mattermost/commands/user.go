@@ -498,7 +498,7 @@ func botToUser(command *cobra.Command, args []string, a *app.App) error {
 		return fmt.Errorf("Unable to update user. Error: %s" + appErr.Error())
 	}
 
-	appErr = a.UpdatePassword(user, password)
+	appErr = a.UpdatePassword(user, password, false)
 	if appErr != nil {
 		return fmt.Errorf("Unable to update password. Error: %s", appErr.Error())
 	}
@@ -624,7 +624,7 @@ func resetUserPasswordCmdF(command *cobra.Command, args []string) error {
 	}
 	password := args[1]
 
-	if err := a.Srv().Store.User().UpdatePassword(user.Id, model.HashPassword(password)); err != nil {
+	if err := a.Srv().Store.User().UpdatePassword(user.Id, model.HashPassword(password), false); err != nil {
 		return err
 	}
 

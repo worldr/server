@@ -163,16 +163,21 @@ func getGroupMessageNotificationEmailSubject(user *model.User, post *model.Post,
  * Computes the email body for notification messages
  */
 func (a *App) getNotificationEmailBody(recipient *model.User, post *model.Post, channel *model.Channel, channelName string, senderName string, teamName string, landingURL string, emailNotificationContentsType string, useMilitaryTime bool, translateFunc i18n.TranslateFunc) string {
+	company, companyErr := a.Srv().CompanyConfig()
+	if companyErr != nil {
+		return companyErr.Error()
+	}
+
 	// only include message contents in notification email if email notification contents type is set to full
 	var bodyPage *utils.HTMLTemplate
 	if emailNotificationContentsType == model.EMAIL_NOTIFICATION_CONTENTS_FULL {
-		bodyPage = a.newEmailTemplate("post_body_full", recipient.Locale)
+		bodyPage = a.newEmailTemplate("post_body_full", recipient.Locale, company)
 		postMessage := a.GetMessageForNotification(post, translateFunc)
 		postMessage = html.EscapeString(postMessage)
 		normalizedPostMessage := a.generateHyperlinkForChannels(postMessage, teamName, landingURL)
 		bodyPage.Props["PostMessage"] = template.HTML(normalizedPostMessage)
 	} else {
-		bodyPage = a.newEmailTemplate("post_body_generic", recipient.Locale)
+		bodyPage = a.newEmailTemplate("post_body_generic", recipient.Locale, company)
 	}
 
 	bodyPage.Props["SiteURL"] = a.GetSiteURL()

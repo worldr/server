@@ -320,6 +320,11 @@ type AppIface interface {
 	UpdateChannel(channel *model.Channel) (*model.Channel, *model.AppError)
 	// UpdateChannelScheme saves the new SchemeId of the channel passed.
 	UpdateChannelScheme(channel *model.Channel) (*model.Channel, *model.AppError)
+	// UpdatePassword receives a userMustReset flag.
+	// If userMustReset is true, the user has to reset their password when they log in next time.
+	// This happens when the password is reset by an administrator or by other means
+	// other than the user deciding to change the password themselves.
+	UpdatePassword(user *model.User, newPassword string, userMustReset bool) *model.AppError
 	// UploadFile uploads a single file in form of a completely constructed byte array for a channel.
 	UploadFile(data []byte, channelId string, filename string) (*model.FileInfo, *model.AppError)
 	// UploadFileX uploads a single file as specified in t. It applies the upload
@@ -977,10 +982,9 @@ type AppIface interface {
 	UpdateOAuthUserAttrs(userData io.Reader, user *model.User, provider einterfaces.OauthProvider, service string) *model.AppError
 	UpdateOauthApp(oldApp, updatedApp *model.OAuthApp) (*model.OAuthApp, *model.AppError)
 	UpdateOutgoingWebhook(oldHook, updatedHook *model.OutgoingWebhook) (*model.OutgoingWebhook, *model.AppError)
-	UpdatePassword(user *model.User, newPassword string) *model.AppError
 	UpdatePasswordAsUser(userId, currentPassword, newPassword string) *model.AppError
 	UpdatePasswordByUserIdSendEmail(userId, newPassword, method string) *model.AppError
-	UpdatePasswordSendEmail(user *model.User, newPassword, method string) *model.AppError
+	UpdatePasswordSendEmail(user *model.User, newPassword, method string, userMustReset bool) *model.AppError
 	UpdatePost(post *model.Post, safeUpdate bool) (*model.Post, *model.AppError)
 	UpdatePreferences(userId string, preferences model.Preferences) *model.AppError
 	UpdateRole(role *model.Role) (*model.Role, *model.AppError)

@@ -411,7 +411,7 @@ func TestMessageExportSettingsIsValidGlobalRelaySettingsInvalidCustomerType(t *t
 		BatchSize:           NewInt(100),
 		GlobalRelaySettings: &GlobalRelayMessageExportSettings{
 			CustomerType: NewString("Invalid"),
-			EmailAddress: NewString("valid@mattermost.com"),
+			EmailAddress: NewString("valid@worldr.com"),
 			SmtpUsername: NewString("SomeUsername"),
 			SmtpPassword: NewString("SomePassword"),
 		},
@@ -445,7 +445,7 @@ func TestMessageExportSettingsGlobalRelaySettings(t *testing.T) {
 			"Missing smtp username",
 			&GlobalRelayMessageExportSettings{
 				CustomerType: NewString(GLOBALRELAY_CUSTOMER_TYPE_A10),
-				EmailAddress: NewString("valid@mattermost.com"),
+				EmailAddress: NewString("valid@worldr.com"),
 				SmtpPassword: NewString("SomePassword"),
 			},
 			false,
@@ -454,7 +454,7 @@ func TestMessageExportSettingsGlobalRelaySettings(t *testing.T) {
 			"Invalid smtp username",
 			&GlobalRelayMessageExportSettings{
 				CustomerType: NewString(GLOBALRELAY_CUSTOMER_TYPE_A10),
-				EmailAddress: NewString("valid@mattermost.com"),
+				EmailAddress: NewString("valid@worldr.com"),
 				SmtpUsername: NewString(""),
 				SmtpPassword: NewString("SomePassword"),
 			},
@@ -464,7 +464,7 @@ func TestMessageExportSettingsGlobalRelaySettings(t *testing.T) {
 			"Invalid smtp password",
 			&GlobalRelayMessageExportSettings{
 				CustomerType: NewString(GLOBALRELAY_CUSTOMER_TYPE_A10),
-				EmailAddress: NewString("valid@mattermost.com"),
+				EmailAddress: NewString("valid@worldr.com"),
 				SmtpUsername: NewString("SomeUsername"),
 				SmtpPassword: NewString(""),
 			},
@@ -474,7 +474,7 @@ func TestMessageExportSettingsGlobalRelaySettings(t *testing.T) {
 			"Valid data",
 			&GlobalRelayMessageExportSettings{
 				CustomerType: NewString(GLOBALRELAY_CUSTOMER_TYPE_A9),
-				EmailAddress: NewString("valid@mattermost.com"),
+				EmailAddress: NewString("valid@worldr.com"),
 				SmtpUsername: NewString("SomeUsername"),
 				SmtpPassword: NewString("SomePassword"),
 			},

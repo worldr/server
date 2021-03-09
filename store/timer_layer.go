@@ -7550,10 +7550,10 @@ func (s *TimerLayerUserStore) UpdateMfaSecret(userId string, secret string) *mod
 	return resultVar0
 }
 
-func (s *TimerLayerUserStore) UpdatePassword(userId string, newPassword string) *model.AppError {
+func (s *TimerLayerUserStore) UpdatePassword(userId string, newPassword string, userMustReset bool) *model.AppError {
 	start := timemodule.Now()
 
-	resultVar0 := s.UserStore.UpdatePassword(userId, newPassword)
+	resultVar0 := s.UserStore.UpdatePassword(userId, newPassword, userMustReset)
 
 	elapsed := float64(timemodule.Since(start)) / float64(timemodule.Second)
 	if s.Root.Metrics != nil {

@@ -18,6 +18,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path/filepath"
 	"runtime/debug"
 	"strconv"
 	"time"
@@ -316,13 +317,12 @@ func (a *App) ensureInstallationDate() error {
 }
 
 func (s *Server) CompanyConfig() (*model.CompanyConfig, *model.AppError) {
-	path := s.Config().ServiceSettings.CompanyConfig
-
-	if path == nil || len(*path) == 0 {
-		return nil, model.NewAppError("CompanyConfig", "company_config.undefined", nil, "company configuration is not defined on the server", http.StatusNotImplemented)
-	}
-
 	if s.companyConfig == nil {
+		path := s.Config().ServiceSettings.CompanyConfig
+		if path == nil || len(*path) == 0 {
+			return nil, model.NewAppError("CompanyConfig", "company_config.undefined", nil, "company configuration is not defined on the server", http.StatusNotImplemented)
+		}
+
 		var config *model.CompanyConfig
 		f, err := os.Open(*path)
 		if err != nil {
@@ -359,6 +359,31 @@ func (s *Server) CompanyConfig() (*model.CompanyConfig, *model.AppError) {
 		}()
 	}
 	return s.companyConfig, nil
+}
+
+func SetDefaultCompanyConfig(srv *Server, app *App, tempWorkspace string) {
+	srv.SetDefaultCompanyConfig()
+	app.UpdateConfig(func(cfg *model.Config) {
+		if tempWorkspace == "" {
+			tmp, err := ioutil.TempDir("", "apptest")
+			if err != nil {
+				panic(err)
+			}
+			tempWorkspace = tmp
+		}
+		cfg.ServiceSettings.CompanyConfig = model.NewString(filepath.Join(tempWorkspace, "company.cfg"))
+	})
+}
+
+func (s *Server) SetDefaultCompanyConfig() {
+	if s.companyConfig == nil {
+		s.companyConfig = &model.CompanyConfig{}
+		s.companyConfig.SetDefaults()
+	}
+}
+
+func (s *Server) ResetCompanyConfig() {
+	s.companyConfig = nil
 }
 
 func (s *Server) CertSignature() (*model.VersionedValue, *model.AppError) {

@@ -1873,14 +1873,29 @@ func testUserStoreUpdatePassword(t *testing.T, ss store.Store) {
 	_, err = ss.Team().SaveMember(&model.TeamMember{TeamId: teamId, UserId: u1.Id}, -1)
 	require.Nil(t, err)
 
+	// Change password, userMustReset is false
 	hashedPassword := model.HashPassword("newpwd")
-
-	err = ss.User().UpdatePassword(u1.Id, hashedPassword)
+	err = ss.User().UpdatePassword(u1.Id, hashedPassword, false)
 	require.Nil(t, err)
 
 	user, err := ss.User().GetByEmail(u1.Email)
 	require.Nil(t, err)
 	require.Equal(t, user.Password, hashedPassword, "Password was not updated correctly")
+	require.True(
+		t,
+		user.LastPasswordUpdate > 0 && user.LastPasswordUpdate != user.CreateAt,
+		"lastpasswordupdate should be updated",
+	)
+
+	// Change password, userMustReset is true
+	hashedPassword = model.HashPassword("newpwd123")
+	err = ss.User().UpdatePassword(u1.Id, hashedPassword, true)
+	require.Nil(t, err)
+
+	user, err = ss.User().GetByEmail(u1.Email)
+	require.Nil(t, err)
+	require.Equal(t, user.Password, hashedPassword, "Password was not updated correctly")
+	require.True(t, user.LastPasswordUpdate == 0, "lastpasswordupdate should be zero")
 }
 
 func testUserStoreDelete(t *testing.T, ss store.Store) {

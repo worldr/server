@@ -84,7 +84,7 @@ func TestCreateUserInputFilter(t *testing.T) {
 		th.App.UpdateConfig(func(cfg *model.Config) {
 			*cfg.TeamSettings.EnableOpenServer = true
 			*cfg.TeamSettings.EnableUserCreation = true
-			*cfg.TeamSettings.RestrictCreationToDomains = "mattermost.com"
+			*cfg.TeamSettings.RestrictCreationToDomains = "worldr.com"
 		})
 
 		defer th.App.UpdateConfig(func(cfg *model.Config) {
@@ -92,24 +92,24 @@ func TestCreateUserInputFilter(t *testing.T) {
 		})
 
 		t.Run("ValidUser", func(t *testing.T) {
-			user := &model.User{Email: "foobar+testdomainrestriction@mattermost.com", Password: "Password1", Username: GenerateTestUsername()}
+			user := &model.User{Email: "foobar+testdomainrestriction@worldr.com", Password: "Password1", Username: GenerateTestUsername()}
 			_, resp := th.SystemAdminClient.CreateUser(user)
 			CheckNoError(t, resp)
 		})
 
 		t.Run("InvalidEmail", func(t *testing.T) {
-			user := &model.User{Email: "foobar+testdomainrestriction@mattermost.org", Password: "Password1", Username: GenerateTestUsername()}
+			user := &model.User{Email: "foobar+testdomainrestriction@worldr.org", Password: "Password1", Username: GenerateTestUsername()}
 			_, resp := th.SystemAdminClient.CreateUser(user)
 			CheckBadRequestStatus(t, resp)
 		})
 		t.Run("ValidAuthServiceFilter", func(t *testing.T) {
-			user := &model.User{Email: "foobar+testdomainrestriction@mattermost.org", Username: GenerateTestUsername(), AuthService: "ldap", AuthData: model.NewString("999099")}
+			user := &model.User{Email: "foobar+testdomainrestriction@worldr.org", Username: GenerateTestUsername(), AuthService: "ldap", AuthData: model.NewString("999099")}
 			_, resp := th.SystemAdminClient.CreateUser(user)
 			CheckNoError(t, resp)
 		})
 
 		t.Run("InvalidAuthServiceFilter", func(t *testing.T) {
-			user := &model.User{Email: "foobar+testdomainrestriction@mattermost.org", Password: "Password1", Username: GenerateTestUsername(), AuthService: "ldap"}
+			user := &model.User{Email: "foobar+testdomainrestriction@worldr.org", Password: "Password1", Username: GenerateTestUsername(), AuthService: "ldap"}
 			_, resp := th.Client.CreateUser(user)
 			CheckBadRequestStatus(t, resp)
 		})
@@ -123,7 +123,7 @@ func TestCreateUserInputFilter(t *testing.T) {
 		})
 
 		t.Run("InvalidRole", func(t *testing.T) {
-			user := &model.User{Email: "foobar+testinvalidrole@mattermost.com", Password: "Password1", Username: GenerateTestUsername(), Roles: "system_user system_admin1"}
+			user := &model.User{Email: "foobar+testinvalidrole@worldr.com", Password: "Password1", Username: GenerateTestUsername(), Roles: "system_user system_admin1"}
 			_, resp := th.SystemAdminClient.CreateUser(user)
 			CheckErrorMessage(t, resp, "api.user.create_user.custom_roles.app_error")
 		})
@@ -135,7 +135,7 @@ func TestCreateUserInputFilter(t *testing.T) {
 			*cfg.TeamSettings.EnableUserCreation = true
 		})
 
-		user := &model.User{Id: "AAAAAAAAAAAAAAAAAAAAAAAAAA", Email: "foobar+testinvalidid@mattermost.com", Password: "Password1", Username: GenerateTestUsername(), Roles: "system_user system_admin"}
+		user := &model.User{Id: "AAAAAAAAAAAAAAAAAAAAAAAAAA", Email: "foobar+testinvalidid@worldr.com", Password: "Password1", Username: GenerateTestUsername(), Roles: "system_user system_admin"}
 		_, resp := th.SystemAdminClient.CreateUser(user)
 		CheckBadRequestStatus(t, resp)
 	})

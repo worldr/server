@@ -2220,7 +2220,7 @@
   },
   {
     "id": "api.templates.email_warning",
-    "translation": "If you did not make this change, please contact the system administrator."
+    "translation": "If you are not aware of this change, please contact the system administrator."
   },
   {
     "id": "api.templates.invite_body.button",
@@ -2271,8 +2271,16 @@
     "translation": "Multi-factor authentication was removed"
   },
   {
-    "id": "api.templates.password_change_body.info",
-    "translation": "Your password has been updated for {{.TeamDisplayName}} on {{ .TeamURL }} by {{.Method}}."
+    "id": "api.templates.password_change_body.info1",
+    "translation": "Your password has been {{.Method}}"
+  },
+  {
+    "id": "api.templates.password_change_body.info2",
+    "translation": "You will be required to change it the next time you log in. Please do so as soon as you receive this email."
+  },
+  {
+    "id": "api.templates.password_change_body.info3",
+    "translation": "Your account credentials:"
   },
   {
     "id": "api.templates.password_change_body.title",
@@ -2280,7 +2288,7 @@
   },
   {
     "id": "api.templates.password_change_subject",
-    "translation": "[{{ .SiteName }}] Your password has been updated"
+    "translation": "[Worldr] Your password has been updated"
   },
   {
     "id": "api.templates.post_body.button",
@@ -2660,7 +2668,11 @@
   },
   {
     "id": "api.user.reset_password.method",
-    "translation": "using a reset password link"
+    "translation": "reset using a reset password link"
+  },
+  {
+    "id": "api.user.reset_password_by_admin.method",
+    "translation": "reset by the administrator"
   },
   {
     "id": "api.user.reset_password.sso.app_error",
@@ -2752,7 +2764,7 @@
   },
   {
     "id": "api.user.update_password.menu",
-    "translation": "using the settings menu"
+    "translation": "changed by you in the app."
   },
   {
     "id": "api.user.update_password.oauth.app_error",

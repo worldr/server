@@ -267,8 +267,16 @@ func (us SqlUserStore) UpdateUpdateAt(userId string) (int64, *model.AppError) {
 	return curTime, nil
 }
 
-func (us SqlUserStore) UpdatePassword(userId, hashedPassword string) *model.AppError {
-	updateAt := model.GetMillis()
+// UpdatePassword receives a userMustReset flag.
+// If userMustReset is true, the user has to reset their password when they log in next time.
+// This happens when the password is reset by an administrator or by other means
+// other than the user deciding to change the password themselves.
+// To achieve this, LastPasswordUpdate is set to zero.
+func (us SqlUserStore) UpdatePassword(userId, hashedPassword string, userMustReset bool) *model.AppError {
+	var updateAt int64 = 0
+	if !userMustReset {
+		updateAt = model.GetMillis()
+	}
 
 	if _, err := us.GetMaster().Exec("UPDATE Users SET Password = :Password, LastPasswordUpdate = :LastPasswordUpdate, UpdateAt = :UpdateAt, AuthData = NULL, AuthService = '', FailedAttempts = 0 WHERE Id = :UserId", map[string]interface{}{"Password": hashedPassword, "LastPasswordUpdate": updateAt, "UpdateAt": updateAt, "UserId": userId}); err != nil {
 		return model.NewAppError("SqlUserStore.UpdatePassword", "store.sql_user.update_password.app_error", nil, "id="+userId+", "+err.Error(), http.StatusInternalServerError)

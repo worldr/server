@@ -142,7 +142,6 @@ func createInitialAdmin(c *Context, w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		user.SanitizeInput(c.IsSystemAdmin())
-		user.EmailVerified = true
 
 		user.Roles = model.SYSTEM_ADMIN_ROLE_ID + " " + model.SYSTEM_USER_ROLE_ID
 
@@ -349,7 +348,6 @@ func createUserByAdmin(c *Context, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	user.SanitizeInput(c.IsSystemAdmin())
-	user.EmailVerified = true
 
 	// Create user, but do not write a response
 	ruser, err := executeCreateUser(c, user, "", "")
@@ -465,12 +463,11 @@ func registerUsersWithEmails(c *Context, w http.ResponseWriter, r *http.Request)
 
 		password := fmt.Sprintf("Worldr-%v", fake.CharactersN(5))
 		user := model.User{
-			Username:      username,
-			FirstName:     first,
-			LastName:      last,
-			Email:         email,
-			Password:      password,
-			EmailVerified: true,
+			Username:  username,
+			FirstName: first,
+			LastName:  last,
+			Email:     email,
+			Password:  password,
 		}
 
 		ruser, err := executeCreateUser(c, &user, "", "")

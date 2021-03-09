@@ -11,11 +11,6 @@ func TestCompanyInfo(t *testing.T) {
 	th := Setup(t).InitBasic()
 	defer th.TearDown()
 
-	t.Run("no configuration", func(t *testing.T) {
-		_, r := th.WClient.GetCompanyInfo()
-		CheckErrorMessage(t, r, "company_config.undefined")
-	})
-
 	t.Run("success", func(t *testing.T) {
 		th.App.UpdateConfig(func(cfg *model.Config) {
 			*cfg.ServiceSettings.CompanyConfig = "company.json"

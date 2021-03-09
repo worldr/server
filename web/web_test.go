@@ -124,6 +124,8 @@ func setupTestHelper(t testing.TB, store store.Store, includeCacheLayer bool) *T
 		IncludeCacheLayer: includeCacheLayer,
 	}
 
+	app.SetDefaultCompanyConfig(s, a, th.tempWorkspace)
+
 	return th
 }
 

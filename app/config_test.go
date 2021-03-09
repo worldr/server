@@ -4,7 +4,9 @@
 package app
 
 import (
+	"io/ioutil"
 	"os"
+	"path/filepath"
 	"strconv"
 	"testing"
 	"time"
@@ -167,20 +169,14 @@ func TestCompanyConfig(t *testing.T) {
 	th := Setup(t)
 	defer th.TearDown()
 
-	t.Run("no configuration", func(t *testing.T) {
-		_, err := th.App.Srv().CompanyConfig()
-		assert.NotNil(t, err)
-		assert.Equal(t, "company_config.undefined", err.Id)
-	})
-
 	t.Run("success", func(t *testing.T) {
 		th.App.UpdateConfig(func(cfg *model.Config) {
-			*cfg.ServiceSettings.CompanyConfig = "company.json"
+			tempWorkspace, err := ioutil.TempDir("", "apptest")
+			assert.Nil(t, err)
+			cfg.ServiceSettings.CompanyConfig = model.NewString(filepath.Join(tempWorkspace, "company.cfg"))
 		})
 
-		path := th.App.Config().ServiceSettings.CompanyConfig
-		_, errFile := os.Stat(*path)
-		assert.True(t, os.IsNotExist(errFile), "file should not exist")
+		th.App.Srv().ResetCompanyConfig()
 
 		content, err := th.App.Srv().CompanyConfig()
 		assert.Nil(t, err)
@@ -188,8 +184,8 @@ func TestCompanyConfig(t *testing.T) {
 		assert.True(t, len(content.Key) == 0, "server key should be empty")
 		assert.Equal(t, "local", content.Deployment, "unexpected deployment name")
 
-		path = th.App.Config().ServiceSettings.CompanyConfig
-		_, errFile = os.Stat(*path)
+		path := th.App.Config().ServiceSettings.CompanyConfig
+		_, errFile := os.Stat(*path)
 		assert.Nil(t, errFile, "file should exist")
 	})
 }

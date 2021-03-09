@@ -8338,7 +8338,7 @@ func (s *OpenTracingLayerUserStore) UpdateMfaSecret(userId string, secret string
 	return resultVar0
 }
 
-func (s *OpenTracingLayerUserStore) UpdatePassword(userId string, newPassword string) *model.AppError {
+func (s *OpenTracingLayerUserStore) UpdatePassword(userId string, newPassword string, userMustReset bool) *model.AppError {
 	origCtx := s.Root.Store.Context()
 	span, newCtx := tracing.StartSpanWithParentByContext(s.Root.Store.Context(), "UserStore.UpdatePassword")
 	s.Root.Store.SetContext(newCtx)
@@ -8347,7 +8347,7 @@ func (s *OpenTracingLayerUserStore) UpdatePassword(userId string, newPassword st
 	}()
 
 	defer span.Finish()
-	resultVar0 := s.UserStore.UpdatePassword(userId, newPassword)
+	resultVar0 := s.UserStore.UpdatePassword(userId, newPassword, userMustReset)
 	if resultVar0 != nil {
 		span.LogFields(spanlog.Error(resultVar0))
 		ext.Error.Set(span, true)

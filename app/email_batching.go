@@ -107,7 +107,9 @@ func (job *EmailBatchingJob) CheckPendingEmails() {
 	// without actually sending emails
 	job.checkPendingNotifications(time.Now(), job.server.sendBatchedEmailNotification)
 
-	mlog.Debug("Email batching job ran. Some users still have notifications pending.", mlog.Int("number_of_users", len(job.pendingNotifications)))
+	if len(job.pendingNotifications) != 0 {
+		mlog.Debug("Email batching job ran. Some users still have notifications pending.", mlog.Int("number_of_users", len(job.pendingNotifications)))
+	}
 }
 
 func (job *EmailBatchingJob) handleNewNotifications() {
@@ -201,6 +203,12 @@ func (s *Server) sendBatchedEmailNotification(userId string, notifications []*ba
 		return
 	}
 
+	company, companyErr := s.CompanyConfig()
+	if companyErr != nil {
+		mlog.Error("Batched email failed: " + companyErr.Error())
+		return
+	}
+
 	translateFunc := utils.GetUserTranslations(user.Locale)
 	displayNameFormat := *s.Config().TeamSettings.TeammateNameDisplay
 
@@ -235,7 +243,7 @@ func (s *Server) sendBatchedEmailNotification(userId string, notifications []*ba
 		"Day":      tm.Day(),
 	})
 
-	body := s.FakeApp().newEmailTemplate("post_batched_body", user.Locale)
+	body := s.FakeApp().newEmailTemplate("post_batched_body", user.Locale, company)
 	body.Props["SiteURL"] = *s.Config().ServiceSettings.SiteURL
 	body.Props["Posts"] = template.HTML(contents)
 	body.Props["BodyText"] = translateFunc("api.email_batching.send_batched_email_notification.body_text", len(notifications))
@@ -246,12 +254,17 @@ func (s *Server) sendBatchedEmailNotification(userId string, notifications []*ba
 }
 
 func (s *Server) renderBatchedPost(notification *batchedNotification, channel *model.Channel, sender *model.User, siteURL string, displayNameFormat string, translateFunc i18n.TranslateFunc, userLocale string, emailNotificationContentsType string) string {
+	company, companyErr := s.CompanyConfig()
+	if companyErr != nil {
+		return companyErr.Error()
+	}
+
 	// don't include message contents if email notification contents type is set to generic
 	var template *utils.HTMLTemplate
 	if emailNotificationContentsType == model.EMAIL_NOTIFICATION_CONTENTS_FULL {
-		template = s.FakeApp().newEmailTemplate("post_batched_post_full", userLocale)
+		template = s.FakeApp().newEmailTemplate("post_batched_post_full", userLocale, company)
 	} else {
-		template = s.FakeApp().newEmailTemplate("post_batched_post_generic", userLocale)
+		template = s.FakeApp().newEmailTemplate("post_batched_post_generic", userLocale, company)
 	}
 
 	template.Props["Button"] = translateFunc("api.email_batching.render_batched_post.go_to_post")

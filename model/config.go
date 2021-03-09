@@ -111,18 +111,18 @@ const (
 	TEAM_SETTINGS_DEFAULT_CUSTOM_DESCRIPTION_TEXT  = ""
 	TEAM_SETTINGS_DEFAULT_USER_STATUS_AWAY_TIMEOUT = 300
 
-	SQL_SETTINGS_DEFAULT_DATA_SOURCE = "mmuser:mostest@tcp(localhost:3306)/mattermost_test?charset=utf8mb4,utf8&readTimeout=30s&writeTimeout=30s"
+	SQL_SETTINGS_DEFAULT_DATA_SOURCE = "mmuser:mostest@tcp(localhost:3306)/worldr_test?charset=utf8mb4,utf8&readTimeout=30s&writeTimeout=30s"
 
 	FILE_SETTINGS_DEFAULT_DIRECTORY = "./data/"
 
 	EMAIL_SETTINGS_DEFAULT_FEEDBACK_ORGANIZATION = ""
 
-	SUPPORT_SETTINGS_DEFAULT_TERMS_OF_SERVICE_LINK = "https://about.mattermost.com/default-terms/"
-	SUPPORT_SETTINGS_DEFAULT_PRIVACY_POLICY_LINK   = "https://about.mattermost.com/default-privacy-policy/"
-	SUPPORT_SETTINGS_DEFAULT_ABOUT_LINK            = "https://about.mattermost.com/default-about/"
-	SUPPORT_SETTINGS_DEFAULT_HELP_LINK             = "https://about.mattermost.com/default-help/"
-	SUPPORT_SETTINGS_DEFAULT_REPORT_A_PROBLEM_LINK = "https://about.mattermost.com/default-report-a-problem/"
-	SUPPORT_SETTINGS_DEFAULT_SUPPORT_EMAIL         = "feedback@mattermost.com"
+	SUPPORT_SETTINGS_DEFAULT_TERMS_OF_SERVICE_LINK = "https://worldr.com/tnc.pdf"
+	SUPPORT_SETTINGS_DEFAULT_PRIVACY_POLICY_LINK   = "https://worldr.com/pp.pdf"
+	SUPPORT_SETTINGS_DEFAULT_ABOUT_LINK            = "https://worldr.com/about/"
+	SUPPORT_SETTINGS_DEFAULT_HELP_LINK             = "https://worldr.com"
+	SUPPORT_SETTINGS_DEFAULT_REPORT_A_PROBLEM_LINK = "https://worldr.com"
+	SUPPORT_SETTINGS_DEFAULT_SUPPORT_EMAIL         = "support@worldr.com"
 	SUPPORT_SETTINGS_DEFAULT_RE_ACCEPTANCE_PERIOD  = 365
 
 	LDAP_SETTINGS_DEFAULT_FIRST_NAME_ATTRIBUTE         = ""
@@ -3390,4 +3390,25 @@ func (o *Config) Sanitize() {
 	for i := range o.SqlSettings.DataSourceSearchReplicas {
 		o.SqlSettings.DataSourceSearchReplicas[i] = FAKE_SETTING
 	}
+}
+
+func isNilOrEmpty(s *string) bool {
+	return s == nil || len(*s) == 0
+}
+
+// HasEmailServer checks that SMTP server is configured.
+// This means that the the required fields have values but their validity
+// is not checked.
+func (o *Config) HasEmailServer() bool {
+	if isNilOrEmpty(o.EmailSettings.SMTPServer) || isNilOrEmpty(o.EmailSettings.SMTPPort) {
+		// No server address
+		return false
+	}
+	if *o.EmailSettings.EnableSMTPAuth {
+		if isNilOrEmpty(o.EmailSettings.SMTPUsername) || isNilOrEmpty(o.EmailSettings.SMTPPassword) {
+			// SMTP auth is on, but username or password is missing
+			return false
+		}
+	}
+	return true
 }

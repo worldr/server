@@ -78,6 +78,8 @@ func setupTestHelper(enterprise bool) *TestHelper {
 		th.App.SetLicense(nil)
 	}
 
+	app.SetDefaultCompanyConfig(th.Server, th.App, th.tempWorkspace)
+
 	return th
 }
 
