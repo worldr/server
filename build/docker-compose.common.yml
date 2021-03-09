@@ -9,7 +9,6 @@ services:
 #__/ MySQL \____________________________________________________________________
   mysql:
     image: "mysql:5.7"
-    restart: always
     networks:
       - mm-test
     environment:
@@ -27,7 +26,6 @@ services:
     #image: "postgres:12.3"
     #image: "postgres:12.3-alpine"
     #image: "docker-registry.worldr.com/worldr-postgres-tde:latest"  # PG-TDE
-    restart: always
     networks:
       - mm-test
     environment:
@@ -57,7 +55,6 @@ services:
 #__/ Inbucket \_________________________________________________________________
   inbucket:
     image: "jhillyerd/inbucket:release-1.2.0"
-    restart: always
     networks:
       - mm-test
 
@@ -65,7 +62,6 @@ services:
 #__/ Open LDAP \________________________________________________________________
   openldap:
     image: "osixia/openldap:1.2.2"
-    restart: always
     networks:
       - mm-test
     environment:
